@@ -13,15 +13,13 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY runtime/ runtime/
-COPY web/ web/
-COPY tests/ tests/
-COPY examples/ examples/
-COPY run_agent.py .
+COPY app/ app/
+COPY docs/ docs/
 
 # Copy built React dist from Stage 1
 COPY --from=build-frontend /app/frontend/dist /app/frontend/dist
 
+ENV PYTHONPATH=/app
 EXPOSE 5000
 
-CMD ["python3", "web/app.py"]
+CMD ["python3", "app/main.py"]
