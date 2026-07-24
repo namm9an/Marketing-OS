@@ -1,0 +1,12 @@
+services:
+  marketing-os:
+    build: .
+    ports:
+      - "80:5000"
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - APP_USERNAME=${APP_USERNAME:-admin}
+      - APP_PASSWORD=${APP_PASSWORD:-marketing2026}
+      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-marketing-os-secret-key-2026}
+    restart: always
