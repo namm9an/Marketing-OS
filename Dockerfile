@@ -15,6 +15,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app/ app/
 COPY docs/ docs/
+COPY tests/ tests/
 
 # Copy built React dist from Stage 1
 COPY --from=build-frontend /app/frontend/dist /app/frontend/dist
