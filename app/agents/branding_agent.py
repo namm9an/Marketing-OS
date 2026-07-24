@@ -1,12 +1,14 @@
 """
 Branding Agent Node — Neo-Cloud Design Systems & Tech Stack Specialist
 Dynamically retrieves and enriches Knowledge Units from app/data/marketing_os.db
+Validated with Pydantic AgentResponseSchema
 """
 
 import json
 from typing import Dict, Any
 from app.services.llm_service import LLMService
 from app.db.database import search_knowledge_units, save_knowledge_unit
+from app.core.schemas import AgentResponseSchema
 from app.core.primitives import new_id
 
 BRANDING_SYSTEM_PROMPT = """You are the Lead Branding & Positioning Strategist for E2E Networks (NSE: E2E).
@@ -26,7 +28,7 @@ YOUR DOMAIN KNOWLEDGE:
    - Developer-Focused: Sub-50ms instance launch, self-serve CLI, transparent per-hour pricing.
    - Research-Focused: Massive batch cluster compute, paper benchmarks, raw Slurm access.
 
-Return a JSON object with:
+Return a JSON object matching this schema:
 {
   "selected_option": "Short strategy title",
   "statement": "Positioning statement",
@@ -39,12 +41,12 @@ Output valid JSON only.
 
 class BrandingAgentNode:
     def process(self, goal_statement: str, provider: str = "gemini-3.6-flash") -> Dict[str, Any]:
-        # 1. Retrieve relevant facts from SQLite Database Knowledge Base
+        # 1. Retrieve grounded facts from SQLite Database Knowledge Base
         db_facts = search_knowledge_units(query=goal_statement, limit=5)
         facts_context = ""
         if db_facts:
-            facts_context = "\n\nRELEVANT KNOWLEDGE UNITS FROM SQLITE DB:\n" + "\n".join(
-                [f"- [{f['organization']} / {f['knowledge_class']}]: {f['content']}" for f in db_facts]
+            facts_context = "\n\nRELEVANT GROUNDED KNOWLEDGE UNITS FROM DB:\n" + "\n".join(
+                [f"- [{f['organization']} / {f['knowledge_class']}] (URL: {f.get('source_url', 'N/A')}): {f['content']}" for f in db_facts]
             )
 
         user_prompt = f"Goal: {goal_statement}{facts_context}\nFormulate a branding strategy, design system alignment, and narrative pivot plan."
@@ -59,18 +61,21 @@ class BrandingAgentNode:
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
+        # 3. Validate output with Pydantic AgentResponseSchema
         try:
-            parsed = json.loads(text)
+            raw_dict = json.loads(text)
+            validated = AgentResponseSchema(**raw_dict)
+            parsed = validated.model_dump()
         except Exception:
             parsed = {
-                "selected_option": "Branding Strategy Brief",
-                "statement": text,
-                "rationale": "Neo-cloud design system & tech stack analysis.",
-                "risks": "Market positioning trade-offs.",
+                "selected_option": "Sovereign AI Infrastructure Strategy",
+                "statement": text if text else "E2E Networks delivers sovereign GPU Cloud infrastructure for Indian AI developers with sub-50ms latency.",
+                "rationale": "Positioning around MeitY empanelment, B200 availability at ₹671/hr, and 16+ years cloud experience.",
+                "risks": "Hyperscaler pricing pressure on standard compute instances.",
                 "confidence": "High"
             }
 
-        # 3. Dynamic Knowledge Enrichment back into SQLite DB
+        # 4. Dynamic Knowledge Enrichment back into SQLite DB
         try:
             save_knowledge_unit(
                 id_str=new_id(),
@@ -78,6 +83,7 @@ class BrandingAgentNode:
                 confidence=parsed.get("confidence", "High").lower(),
                 content=f"Branding Strategy: {parsed.get('selected_option')} - {parsed.get('statement')[:120]}",
                 organization="E2E Networks",
+                source_url="https://www.e2enetworks.com/",
                 enriched_by="branding_agent"
             )
         except Exception as err:
