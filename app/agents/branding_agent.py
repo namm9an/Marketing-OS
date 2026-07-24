@@ -1,10 +1,13 @@
 """
 Branding Agent Node — Neo-Cloud Design Systems & Tech Stack Specialist
+Dynamically retrieves and enriches Knowledge Units from app/data/marketing_os.db
 """
 
 import json
 from typing import Dict, Any
 from app.services.llm_service import LLMService
+from app.db.database import search_knowledge_units, save_knowledge_unit
+from app.core.primitives import new_id
 
 BRANDING_SYSTEM_PROMPT = """You are the Lead Branding & Positioning Strategist for E2E Networks (NSE: E2E).
 
@@ -36,21 +39,48 @@ Output valid JSON only.
 
 class BrandingAgentNode:
     def process(self, goal_statement: str, provider: str = "gemini-3.6-flash") -> Dict[str, Any]:
+        # 1. Retrieve relevant facts from SQLite Database Knowledge Base
+        db_facts = search_knowledge_units(query=goal_statement, limit=5)
+        facts_context = ""
+        if db_facts:
+            facts_context = "\n\nRELEVANT KNOWLEDGE UNITS FROM SQLITE DB:\n" + "\n".join(
+                [f"- [{f['organization']} / {f['knowledge_class']}]: {f['content']}" for f in db_facts]
+            )
+
+        user_prompt = f"Goal: {goal_statement}{facts_context}\nFormulate a branding strategy, design system alignment, and narrative pivot plan."
+
+        # 2. Call LLM Engine
         result = LLMService.generate(
             system_prompt=BRANDING_SYSTEM_PROMPT,
-            user_prompt=f"Goal: {goal_statement}\nFormulate a branding strategy, design system alignment, and narrative pivot plan.",
+            user_prompt=user_prompt,
             provider=provider
         )
         text = result["text"].strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+
         try:
-            return json.loads(text)
+            parsed = json.loads(text)
         except Exception:
-            return {
+            parsed = {
                 "selected_option": "Branding Strategy Brief",
                 "statement": text,
                 "rationale": "Neo-cloud design system & tech stack analysis.",
                 "risks": "Market positioning trade-offs.",
                 "confidence": "High"
             }
+
+        # 3. Dynamic Knowledge Enrichment back into SQLite DB
+        try:
+            save_knowledge_unit(
+                id_str=new_id(),
+                k_class="positioning",
+                confidence=parsed.get("confidence", "High").lower(),
+                content=f"Branding Strategy: {parsed.get('selected_option')} - {parsed.get('statement')[:120]}",
+                organization="E2E Networks",
+                enriched_by="branding_agent"
+            )
+        except Exception as err:
+            print(f"[DB Warning] Could not enrich knowledge unit: {err}")
+
+        return parsed
