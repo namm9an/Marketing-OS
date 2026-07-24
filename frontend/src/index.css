@@ -1,0 +1,19 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #FBF9F5;
+    color: #1C1917;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+/* Custom scrollbars & print rules */
+@media print {
+  header, form, .no-print { display: none !important; }
+  body { background: white !important; color: black !important; }
+  .print-artifact { background: white !important; border: 1px solid #ddd !important; color: black !important; box-shadow: none !important; }
+  .print-text { color: black !important; }
+}
