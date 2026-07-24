@@ -15,7 +15,7 @@ sys.path.insert(0, str(BASE_DIR))
 from app.db.database import get_connection, init_db
 from app.core.primitives import new_id
 
-DEEP_SCRAPE_PATH = Path("/Users/namanmoudgill13/.gemini/antigravity/brain/b79b81f3-5e03-426f-952f-9680a760e79c/scratch/deep_scrape_results.json")
+DEEP_SCRAPE_PATH = BASE_DIR / "app" / "data" / "deep_scrape_results.json"
 
 def seed_grounded_knowledge():
     if not DEEP_SCRAPE_PATH.exists():
