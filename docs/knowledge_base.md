@@ -2169,3 +2169,129 @@ class SwarmState(TypedDict):
     trace_id: Optional[str]
 
 ```
+
+---
+
+# 🔎 Audit & Remediation Report — 2026-07-24
+
+> Independent engineering audit of Milestones 1–4 against `docs/design_doc.md`, followed by
+> remediation of the correctness/security issues and web research to steer Milestones 5–6.
+> **Scope note:** the LangGraph/LangFuse *architectural* rewrite is intentionally **deferred**
+> (see §D) because the research below is meant to drive that decision before Milestone 5.
+
+## A. Design Doc Verdict — is this the right direction?
+
+**Yes on product direction, no on several architecture claims.** A grounded, multi-role
+competitive-intelligence assistant for E2E Networks is a sound, buildable product, and the
+Flask + SQLite + LLM + React spine that Milestones 1–4 delivered is real and works. The
+problem was **fidelity**: the design doc promised four capabilities the code named but did
+not implement — a LangGraph state machine, LangFuse tracing, human-in-the-loop governance,
+and "zero-hallucination grounding." Those were labels on inert or missing behavior, not
+working machinery. Direction: keep. Claims: make them true or drop them (this pass did both,
+depending on the item).
+
+## B. Findings (design doc says X, code did Y)
+
+| # | Severity | Finding |
+|---|----------|---------|
+| B1 | **Critical (security)** | A live-looking `TIR_API_KEY` was hardcoded as a default in `app/core/config.py` and committed to git. |
+| B2 | **Critical (core value prop)** | "Zero-hallucination grounding" retrieval did `content LIKE '%<entire goal sentence>%'` — a full sentence almost never substring-matches a stored fact, so grounding returned little/nothing. |
+| B3 | **Critical (app broken)** | Frontend calls `/api/login`, `/api/logout`, `/api/me`, `/api/export/markdown`; backend had **none** of them (only a form `/login`). The catch-all route returned `index.html` for those, so login and export silently failed. |
+| B4 | High (app broken) | `/api/history` returned a nested `{decision:{…}}` shape, but the frontend reads flat `item.goal_statement` / `item.rationale` / … → history tab rendered blank fields. |
+| B5 | High (false claim) | **No LangGraph anywhere** — `langgraph` isn't in `requirements.txt`; no `StateGraph`/`add_node`/`add_edge`/`compile`. `workflow.py` was an `if/else` dispatcher; `graph/handoffs.py` was imported by nothing; `graph/state.py` was type-hint-only. |
+| B6 | High (false claim) | **LangFuse observability was dead code** — `get_langfuse_callback()` was never called, and it imports `langfuse.langchain` (a LangChain callback) while the app makes raw `urllib` calls with no LangChain to hook. Zero traces were possible. |
+| B7 | High (false claim) | **Governance never fired** — `workflow.py` hardcoded `escalated=False`; no confidence/risk threshold; the `transfer_to_governance` handoff and `State` enum were unused scaffolding. |
+| B8 | Medium (duplication) | The five agent files (`branding/pr/social/product_marketing/events`) were ~90-line copy-paste, differing only by prompt string and one label. A retrieval fix had to be made in five places — and validation was applied inconsistently (branding/pr validated with Pydantic; the other three did not). |
+| B9 | Medium (dead code) | Three parallel data representations, mostly unused: `primitives.py` dataclasses + `State` enum (only `new_id` used); `schemas.py` had 3 of 4 models never imported; DB layer uses raw dicts. |
+| B10 | Medium (dead code) | Two seed scripts (`grounded_seed.py` + hardcoded `seed_knowledge.py`) did the same job two ways — undercutting the "100% grounded" claim, since half were hand-typed. |
+| B11 | Low (efficiency) | `init_db()` (full `executescript(SCHEMA)`) ran on **every** DB call. |
+
+## C. Fixes applied in this pass
+
+- **B1** — `TIR_API_KEY` / `TIR_LLM_URL` are now env-only (empty default); added `ADMIN_USER`/`ADMIN_PASSWORD` env overrides. ⚠️ **The leaked key is still in git history — rotate it on the TIR side; removing it from source does not un-leak it.**
+- **B2** — `search_knowledge_units` now tokenizes the goal into keywords (drops stopwords), matches ANY keyword, and ranks facts by keyword-hit count. Regression test added (`test_full_sentence_goal_still_retrieves`). *ponytail ceiling: substring OR-match; move to SQLite FTS5 if the KB grows large.*
+- **B3/B4** — Implemented `/api/login`, `/api/logout`, `/api/me`, `/api/export/markdown`; `/api/history` now returns the flat decision rows the frontend expects; a `before_request` guard enforces the session cookie on `/api/run|history|export`. *ceiling: single shared session token; swap for real per-user sessions if multi-user.*
+- **B7** — Real `_governance_check(confidence, risks)`: escalates on `Low` confidence or high-risk terms; `escalated` + `escalation_reason` now flow to the DB and API. Unit tests added.
+- **B8** — All five agents collapsed to `app/agents/base.py` (`run_agent()` + `AGENT_REGISTRY`); the five files are now 8-line adapters. Every agent now validates against `AgentResponseSchema` consistently. ~250 lines and all logic-duplication removed.
+- **B9** — Removed unused `schemas.py` models (kept `AgentResponseSchema`) and `primitives.py` dataclasses/`State` (kept `new_id`/`now_iso`).
+- **B10** — Deleted `app/db/seed_knowledge.py`; `grounded_seed.py` (reads the scrape JSON) is the single seeder.
+- **B11** — `init_db()` guarded to run once per process.
+- **Tests:** 7 → 12, all green (`python3 -m pytest tests/`).
+
+## D. Deferred decision — LangGraph vs. router (and LangFuse) — DO THIS BEFORE MILESTONE 5
+
+B5/B6 are **not** patched blindly, because they're a genuine architectural fork the research
+below is meant to settle. Two honest options:
+
+1. **Adopt a real LangGraph supervisor graph.** Add `langgraph` + `langchain-core`, rebuild
+   `workflow.py` as a `StateGraph` (supervisor node routes to worker agent nodes; `Command`
+   handoffs), and get LangFuse tracing "for free" via `config={"callbacks":[handler]}`. This
+   makes B5, B6, and B7 all real. Cost: real dependency + rewrite; the `graph/` package
+   finally earns its name.
+2. **Keep the deterministic router, drop the labels.** Rename "LangGraph Swarm" → "router" in
+   the docs, delete `graph/handoffs.py` + `graph/state.py`, and either remove
+   `langfuse_service.py` or re-implement tracing with Langfuse's low-level `@observe`/span SDK
+   around the raw LLM calls (works without LangChain). Cheapest; most honest about what it is.
+
+**Recommendation:** the research consensus is *"start with a supervisor, graduate to swarm
+only when latency data demands it."* For 5 well-scoped agents with a UI that picks the agent,
+you don't yet need decentralized swarm handoffs. If the goal is a résumé/portfolio-grade
+"real LangGraph agent," take **Option 1** with the **supervisor** pattern. If the goal is a
+shippable internal tool, **Option 2** is defensible. Either way, the current in-between state
+(LangGraph vocabulary, no LangGraph) should not persist.
+
+## E. Multi-Agent Architecture Research (LangGraph / LangFuse) — 2026-07
+
+### Supervisor vs. Swarm
+- **Supervisor (hierarchical):** a central orchestrator routes each sub-task to a worker
+  agent and synthesizes results. Easier to build, debug, and trace (one routing node, clear
+  control flow); the supervisor can become a bottleneck and adds a round-trip.
+- **Swarm (decentralized):** each agent owns its tools + handoff logic and transfers control
+  directly to a peer. Lower latency / fewer LLM calls (no intermediary), but harder to debug
+  and reason about; the fully-decentralized "network" pattern is generally **not** recommended
+  for production unless you specifically need it (research/simulation).
+- **Consensus guidance:** *start with the supervisor* — routing accuracy matters more than the
+  latency penalty early on — and move to swarm only once data shows routing is reliable and
+  latency is the bottleneck. Benchmarks report ~40% latency reduction from swarm-style direct
+  handoffs, but at debuggability cost.
+- **When multi-agent at all:** use it for specialized roles + multi-step reasoning + cross-tool
+  coordination; a single agent is better for simple, few-tool tasks. Frameworks (LangChain/
+  LangGraph/CrewAI) are great for prototyping; production strain shows up in context limits,
+  error propagation, cost, latency, and **cross-agent observability** — which is exactly why
+  tracing matters.
+
+### LangGraph primitives (what "real" would mean here)
+- **`StateGraph`** — a graph over a shared typed state (our `SwarmState` is already the right
+  idea). **Nodes** are functions that read/return state; **edges** (or conditional edges)
+  define flow; you `.compile()` it and `.invoke(state, config=...)`. **Handoffs** use
+  `Command(goto=..., update=...)` to move control + patch state — the real version of the
+  stubbed `transfer_to_*` functions in `graph/handoffs.py`.
+
+### LangFuse integration (the correct wiring)
+- Callback-based and **out-of-band**: traces are queued/batched in the background, so tracing
+  **adds no latency** to the agent response, and a Langfuse outage doesn't break execution.
+- Minimal (v3): `from langfuse.langchain import CallbackHandler; handler = CallbackHandler()`
+  then pass `config={"callbacks":[handler]}` to the graph/chain `.invoke()`. Env:
+  `LANGFUSE_PUBLIC_KEY`, `LANGFUSE_SECRET_KEY`, `LANGFUSE_HOST` (region-specific).
+- ⚠️ This path **requires LangChain/LangGraph**. Our current code makes raw `urllib` calls, so
+  the `CallbackHandler` has nothing to hook — hence B6. Without adopting LangGraph, tracing
+  must use Langfuse's low-level SDK (`@observe` / manual spans) around `LLMService.generate`.
+- Note: `requirements.txt` pins `langfuse>=2.0.0` but the code uses the v3 `langfuse.langchain`
+  import path, and neither `langchain` nor `langgraph` is installed. Reconcile this when §D is
+  decided.
+
+### Sources
+- LangChain — [Benchmarking Multi-Agent Architectures](https://blog.langchain.com/benchmarking-multi-agent-architectures/)
+- Augment Code — [Swarm vs. Supervisor: Multi-Agent Architecture Guide](https://www.augmentcode.com/guides/swarm-vs-supervisor)
+- DEV — [Multi-Agent Orchestration in LangGraph: Supervisor vs Swarm](https://dev.to/focused_dot_io/multi-agent-orchestration-in-langgraph-supervisor-vs-swarm-tradeoffs-and-architecture-1b7e)
+- Databricks — [Agent system design patterns](https://docs.databricks.com/aws/en/generative-ai/guide/agent-system-design-patterns)
+- Towards Data Science — [Single Agent vs Multi-Agent: When to Build a Multi-Agent System](https://towardsdatascience.com/single-agent-vs-multi-agent-when-to-build-a-multi-agent-system/)
+- Langfuse — [Observability for LangChain & LangGraph](https://langfuse.com/integrations/frameworks/langchain)
+- Langfuse — [Open Source Observability for LangGraph (cookbook)](https://langfuse.com/guides/cookbook/integration_langgraph)
+
+## F. Recommendation for Milestones 5 & 6
+
+Before adding the CMO Digest (M5) and multimodal ingestion (M6): **settle §D first.** M5's
+"cross-agent digest" and interactive graph are far cleaner on top of a real supervisor graph
+with LangFuse traces than on the current router — and building M5/M6 on the in-between state
+just adds more surface that says one thing and does another. Fix the foundation, then extend.

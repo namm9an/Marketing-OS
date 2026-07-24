@@ -12,6 +12,17 @@ sys.path.insert(0, str(BASE_DIR))
 from app.agents.branding_agent import BrandingAgentNode
 from app.agents.pr_agent import PRAgentNode
 from app.core.schemas import AgentResponseSchema
+from app.graph.workflow import _governance_check
+
+class TestGovernanceGate(unittest.TestCase):
+    def test_low_confidence_escalates(self):
+        self.assertTrue(_governance_check("Low", "minor")[0])
+
+    def test_high_risk_term_escalates(self):
+        self.assertTrue(_governance_check("High", "possible lawsuit here")[0])
+
+    def test_normal_decision_does_not_escalate(self):
+        self.assertFalse(_governance_check("High", "standard market risk")[0])
 
 class TestAgentNodes(unittest.TestCase):
     def test_branding_agent_node_execution(self):
