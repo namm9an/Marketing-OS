@@ -7,6 +7,9 @@ from typing import Dict, Any
 from app.graph.state import SwarmState
 from app.agents.branding_agent import BrandingAgentNode
 from app.agents.pr_agent import PRAgentNode
+from app.agents.social_agent import SocialAgentNode
+from app.agents.product_marketing_agent import ProductMarketingAgentNode
+from app.agents.events_agent import EventsAgentNode
 from app.db.database import save_decision, save_knowledge_unit
 from app.core.primitives import new_id
 
@@ -16,6 +19,9 @@ class SwarmWorkflowEngine:
     def __init__(self):
         self.branding_node = BrandingAgentNode()
         self.pr_node = PRAgentNode()
+        self.social_node = SocialAgentNode()
+        self.pmm_node = ProductMarketingAgentNode()
+        self.events_node = EventsAgentNode()
 
     def run(self, goal_statement: str, agent_type: str = "branding", provider: str = "gemini-3.6-flash") -> Dict[str, Any]:
         agent_type_clean = agent_type.lower().strip()
@@ -25,6 +31,18 @@ class SwarmWorkflowEngine:
             log.info(f"[Swarm Engine] Executing PRAgentNode via {provider}")
             parsed = self.pr_node.process(goal_statement, provider=provider)
             source = f"agent:pr:{provider}"
+        elif agent_type_clean == "social":
+            log.info(f"[Swarm Engine] Executing SocialAgentNode via {provider}")
+            parsed = self.social_node.process(goal_statement, provider=provider)
+            source = f"agent:social:{provider}"
+        elif agent_type_clean in ["product_marketing", "pmm", "product"]:
+            log.info(f"[Swarm Engine] Executing ProductMarketingAgentNode via {provider}")
+            parsed = self.pmm_node.process(goal_statement, provider=provider)
+            source = f"agent:product_marketing:{provider}"
+        elif agent_type_clean == "events":
+            log.info(f"[Swarm Engine] Executing EventsAgentNode via {provider}")
+            parsed = self.events_node.process(goal_statement, provider=provider)
+            source = f"agent:events:{provider}"
         else:
             log.info(f"[Swarm Engine] Executing BrandingAgentNode via {provider}")
             parsed = self.branding_node.process(goal_statement, provider=provider)
