@@ -26,6 +26,15 @@ class TestDatabaseLayer(unittest.TestCase):
             self.assertIn("source_url", f)
             self.assertIsNotNone(f["source_url"])
 
+    def test_full_sentence_goal_still_retrieves(self):
+        # Regression: the old whole-sentence LIKE returned nothing for realistic goals.
+        # Keyword extraction should still surface B200/pricing facts from a full goal.
+        seed_grounded_knowledge()
+        facts = search_knowledge_units(
+            query="Formulate a branding strategy for our B200 pricing against Nebius", limit=10
+        )
+        self.assertTrue(len(facts) > 0, "Keyword search must match facts inside a full goal sentence")
+
     def test_decision_record_persistence(self):
         dec_id = new_id()
         save_decision(

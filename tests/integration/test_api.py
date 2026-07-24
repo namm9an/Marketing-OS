@@ -15,6 +15,17 @@ from app.main import app
 class TestAPIRoutes(unittest.TestCase):
     def setUp(self):
         self.client = app.test_client()
+        # Protected routes now require the session cookie; the test client persists it.
+        self.client.post(
+            '/api/login',
+            data=json.dumps({"username": "admin", "password": "marketing2026"}),
+            content_type='application/json',
+        )
+
+    def test_run_requires_auth(self):
+        anon = app.test_client()
+        res = anon.post('/api/run', data=json.dumps({"goal": "x"}), content_type='application/json')
+        self.assertEqual(res.status_code, 401)
 
     def test_health_check(self):
         res = self.client.get('/api/health')

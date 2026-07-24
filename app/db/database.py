@@ -2,6 +2,7 @@
 SQLite Database Layer & Persistence Service
 """
 
+import re
 import sqlite3
 import json
 import logging
@@ -9,6 +10,30 @@ from typing import List, Dict, Any, Optional
 from app.core.config import settings
 
 log = logging.getLogger(__name__)
+
+# Words too generic to help retrieval — dropped before matching.
+_STOPWORDS = {
+    "the", "and", "for", "our", "with", "into", "from", "that", "this", "your",
+    "against", "formulate", "develop", "create", "plan", "strategy", "goal",
+    "position", "positioning", "marketing", "campaign", "brief", "about", "using",
+    "make", "build", "help", "need", "want", "how", "what", "why", "give",
+}
+
+
+def _keywords(text: str) -> List[str]:
+    """Extract meaningful search terms from a goal sentence.
+
+    The old code did `content LIKE '%<entire goal sentence>%'`, which almost never
+    matched a stored fact. We tokenize instead and match on individual terms
+    (GPU names, competitor names, 'pricing', 'B200', ...).
+    """
+    words = re.findall(r"[A-Za-z0-9]+", text.lower())
+    seen, out = set(), []
+    for w in words:
+        if len(w) > 2 and w not in _STOPWORDS and w not in seen:
+            seen.add(w)
+            out.append(w)
+    return out
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
@@ -42,11 +67,18 @@ def get_connection():
     conn.row_factory = sqlite3.Row
     return conn
 
-def init_db():
+_INITIALIZED = False
+
+
+def init_db(force: bool = False):
+    global _INITIALIZED
+    if _INITIALIZED and not force:
+        return
     conn = get_connection()
     try:
         conn.executescript(SCHEMA)
         conn.commit()
+        _INITIALIZED = True
         log.info(f"[SQLite DB] Initialized at {settings.DB_PATH}")
     finally:
         conn.close()
@@ -121,17 +153,31 @@ def save_knowledge_unit(
 
 def search_knowledge_units(query: str = "", limit: int = 15) -> List[Dict[str, Any]]:
     init_db()
+    keywords = _keywords(query) if query else []
     conn = get_connection()
     try:
-        if query:
-            cursor = conn.execute(
-                "SELECT * FROM knowledge_units WHERE content LIKE ? OR organization LIKE ? ORDER BY created_at DESC LIMIT ?",
-                (f"%{query}%", f"%{query}%", limit)
-            )
-        else:
+        if not keywords:
             cursor = conn.execute("SELECT * FROM knowledge_units ORDER BY created_at DESC LIMIT ?", (limit,))
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+            return [dict(row) for row in cursor.fetchall()]
+
+        # Match ANY keyword, then rank by how many keywords each fact hits.
+        # ponytail: substring OR-match is fine at this volume; move to SQLite FTS5 if the KB grows large.
+        where = " OR ".join(["content LIKE ? OR organization LIKE ?"] * len(keywords))
+        params: List[Any] = []
+        for k in keywords:
+            params.extend([f"%{k}%", f"%{k}%"])
+        params.append(limit * 3)
+        cursor = conn.execute(
+            f"SELECT * FROM knowledge_units WHERE {where} ORDER BY created_at DESC LIMIT ?", params
+        )
+        rows = [dict(row) for row in cursor.fetchall()]
+
+        def score(row: Dict[str, Any]) -> int:
+            blob = f"{row['content']} {row['organization']}".lower()
+            return sum(1 for k in keywords if k in blob)
+
+        rows.sort(key=score, reverse=True)
+        return rows[:limit]
     finally:
         conn.close()
 

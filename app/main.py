@@ -3,74 +3,65 @@ Marketing OS v2.0 Application Server Entrypoint
 """
 
 import os
-from flask import Flask, request, jsonify, send_from_directory, render_template_string
+from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from app.core.config import settings
 from app.graph.workflow import swarm_engine
-from app.db.database import get_all_decisions, get_all_knowledge_units, init_db
+from app.db.database import get_all_decisions, init_db
 
-# Initialize database
 init_db()
 
 FRONTEND_DIST = settings.BASE_DIR / "frontend" / "dist"
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path="")
-CORS(app)
+CORS(app, supports_credentials=True)
 
-LOGIN_PAGE = """
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Marketing OS v2.0 | Authentication</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-</head>
-<body class="bg-[#FAF8F5] text-[#1C1917] flex items-center justify-center min-h-screen font-sans">
-  <div class="w-full max-w-md p-8 bg-white/90 backdrop-blur-xl border border-[#E7E2D8] rounded-3xl shadow-xl space-y-6">
-    <div class="text-center space-y-2">
-      <h1 class="text-2xl font-bold tracking-tight text-[#1C1917]">Marketing OS v2.0</h1>
-      <p class="text-xs text-[#78716C]">Governed Multi-Agent Swarm for E2E Networks</p>
-    </div>
+# ponytail: single shared session token; swap for real per-user sessions if this ever
+# serves more than the one admin. The point of this pass was that login/logout/me were
+# called by the frontend but did not exist on the backend at all.
+SESSION_COOKIE = "auth_session"
+SESSION_TOKEN = "authenticated_admin"
+_OPEN_API_PATHS = {"/api/health", "/api/login", "/api/logout", "/api/me"}
 
-    {% if error %}
-    <div class="p-3 bg-red-500/10 border border-red-500/20 text-red-700 text-xs rounded-xl text-center font-medium">
-      {{ error }}
-    </div>
-    {% endif %}
 
-    <form method="POST" action="/login" class="space-y-4">
-      <div>
-        <label class="block text-xs font-semibold text-[#44403C] mb-1">Username</label>
-        <input type="text" name="username" required placeholder="admin" className="w-full px-4 py-2.5 bg-[#F7F5F0] border border-[#E0DACE] rounded-xl text-sm outline-none focus:border-[#D97757]" />
-      </div>
-      <div>
-        <label class="block text-xs font-semibold text-[#44403C] mb-1">Password</label>
-        <input type="password" name="password" required placeholder="••••••••" className="w-full px-4 py-2.5 bg-[#F7F5F0] border border-[#E0DACE] rounded-xl text-sm outline-none focus:border-[#D97757]" />
-      </div>
-      <button type="submit" class="w-full py-3 bg-[#D97757] hover:bg-[#C15C3D] text-white font-semibold text-xs rounded-xl transition-all shadow-md">
-        Authenticate Session
-      </button>
-    </form>
-  </div>
-</body>
-</html>
-"""
+def _is_authed() -> bool:
+    return request.cookies.get(SESSION_COOKIE) == SESSION_TOKEN
 
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        u = request.form.get("username")
-        p = request.form.get("password")
-        if u == "admin" and p == "marketing2026":
-            resp = jsonify({"success": True, "message": "Authenticated"})
-            resp.set_cookie("auth_session", "authenticated_admin", max_age=86400)
-            return resp
-        return render_template_string(LOGIN_PAGE, error="Invalid credentials")
-    return render_template_string(LOGIN_PAGE)
+
+@app.before_request
+def _require_auth():
+    path = request.path
+    if path.startswith("/api/") and path not in _OPEN_API_PATHS and not _is_authed():
+        return jsonify({"error": "Authentication required"}), 401
+
+
+@app.route("/api/me", methods=["GET"])
+def api_me():
+    if _is_authed():
+        return jsonify({"authenticated": True, "username": settings.ADMIN_USER})
+    return jsonify({"authenticated": False})
+
+
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    data = request.get_json(silent=True) or {}
+    if data.get("username") == settings.ADMIN_USER and data.get("password") == settings.ADMIN_PASSWORD:
+        resp = jsonify({"success": True, "username": settings.ADMIN_USER})
+        resp.set_cookie(SESSION_COOKIE, SESSION_TOKEN, max_age=86400, httponly=True, samesite="Lax")
+        return resp
+    return jsonify({"error": "Invalid credentials"}), 401
+
+
+@app.route("/api/logout", methods=["POST"])
+def api_logout():
+    resp = jsonify({"success": True})
+    resp.delete_cookie(SESSION_COOKIE)
+    return resp
+
 
 @app.route("/api/health", methods=["GET"])
 def health():
     return jsonify({"status": "healthy", "version": settings.VERSION, "project": settings.PROJECT_NAME})
+
 
 @app.route("/api/run", methods=["POST"])
 def api_run():
@@ -88,30 +79,37 @@ def api_run():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @app.route("/api/history", methods=["GET"])
 def api_history():
-    decisions = get_all_decisions()
-    history_records = []
-    for d in decisions:
-        history_records.append({
-            "goalStatement": d["goal_statement"],
-            "timestamp": d["created_at"],
-            "positioning": {
-                "statement": d["rationale"][:150] + "...",
-                "differentiation_basis": "Sovereign Neo-Cloud Platform",
-                "state": "ACTIVE"
-            },
-            "decision": {
-                "id": d["id"],
-                "selected_option": d["selected_option"],
-                "confidence": d["confidence"],
-                "escalated": bool(d["escalated"]),
-                "reasoning_source": d["reasoning_source"],
-                "rationale": d["rationale"],
-                "risks": d["risks"]
-            }
-        })
-    return jsonify({"success": True, "history": history_records})
+    # Return the raw decision rows — their columns (id, goal_statement, selected_option,
+    # confidence, reasoning_source, rationale, risks, created_at) are exactly the flat
+    # fields the frontend history view reads.
+    return jsonify({"success": True, "history": get_all_decisions()})
+
+
+@app.route("/api/export/markdown", methods=["POST"])
+def api_export_markdown():
+    d = request.get_json() or {}
+    decision = d.get("decision", {})
+    positioning = d.get("positioning", {})
+    md = (
+        f"# Positioning Strategy Brief\n\n"
+        f"**Strategy:** {decision.get('selected_option', 'N/A')}\n"
+        f"**Confidence:** {decision.get('confidence', 'N/A')}\n"
+        f"**Escalated to CMO:** {decision.get('escalated', False)}\n\n"
+        f"## Business Goal\n{d.get('goalStatement', '')}\n\n"
+        f"## Positioning Statement\n{positioning.get('statement', '')}\n\n"
+        f"## Strategic Rationale\n{decision.get('rationale', '')}\n\n"
+        f"## Identified Risks\n{decision.get('risks', '')}\n"
+    )
+    filename = f"positioning-brief-{decision.get('id', 'export')}.md"
+    return Response(
+        md,
+        mimetype="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
+    )
+
 
 @app.route("/", defaults={"path": ""})
 @app.route("/<path:path>")
@@ -121,6 +119,7 @@ def serve(path):
     if (FRONTEND_DIST / "index.html").exists():
         return send_from_directory(str(FRONTEND_DIST), "index.html")
     return "Marketing OS v2.0 Server Running. Build frontend with 'npm run build' inside frontend/."
+
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))
