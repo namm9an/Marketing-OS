@@ -444,17 +444,30 @@ export default function App() {
                 </div>
 
                 <div className="px-4 py-3 bg-[#F7F5F0]/90 border-t border-[#E7E2D8] flex items-center justify-between gap-3">
-                  <div className="relative max-w-xs">
-                    <select
-                      value={provider}
-                      onChange={(e) => setProvider(e.target.value)}
-                      className="appearance-none bg-white border border-[#E0DACE] rounded-xl px-3 py-1.5 text-[11px] font-medium text-[#44403C] focus:outline-none focus:border-[#D97757] transition-colors pr-8 cursor-pointer shadow-xs"
-                    >
-                      <option value="gemini-3.6-flash">Google Gemini 3.6 Flash</option>
-                      <option value="gemini-3.5-flash">Google Gemini 3.5 Flash</option>
-                      <option value="gemini-3.1-flash-lite">Google Gemini 3.1 Flash Lite</option>
-                    </select>
-                    <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A8A29E] pointer-events-none" />
+                  <div className="flex items-center gap-2">
+                    <div className="relative max-w-xs">
+                      <select
+                        value={provider}
+                        onChange={(e) => setProvider(e.target.value)}
+                        className="appearance-none bg-white border border-[#E0DACE] rounded-xl px-3 py-1.5 text-[11px] font-medium text-[#44403C] focus:outline-none focus:border-[#D97757] transition-colors pr-8 cursor-pointer shadow-xs"
+                      >
+                        <option value="gemini-3.6-flash">Google Gemini 3.6 Flash</option>
+                        <option value="gemini-3.5-flash">Google Gemini 3.5 Flash</option>
+                        <option value="gemini-3.1-flash-lite">Google Gemini 3.1 Flash Lite</option>
+                      </select>
+                      <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A8A29E] pointer-events-none" />
+                    </div>
+
+                    {/* ChatGPT-Style File & Image Attachment Button */}
+                    <label className="p-2 rounded-xl bg-white hover:bg-[#F2EEE7] border border-[#E0DACE] text-[#78716C] hover:text-[#1C1917] cursor-pointer transition-colors flex items-center gap-1 shadow-xs" title="Attach PDF or Image for Analysis">
+                      <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
+                        if (e.target.files[0]) {
+                          alert(`Attached file: ${e.target.files[0].name} for multi-modal analysis.`);
+                        }
+                      }} />
+                      <span className="text-xs">📎</span>
+                      <span className="text-[10px] font-medium text-[#44403C] hidden sm:inline">Attach PDF / Image</span>
+                    </label>
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -471,7 +484,7 @@ export default function App() {
                       ) : (
                         <Sparkles className="w-3.5 h-3.5" />
                       )}
-                      <span>{loading ? 'Running...' : 'Run Pipeline'}</span>
+                      <span>{loading ? 'Running...' : 'Run Agent'}</span>
                     </button>
                   </div>
                 </div>
@@ -479,11 +492,11 @@ export default function App() {
 
               {/* Agent Swarm Selector Box */}
               <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-                <span className="text-[11px] font-mono text-[#78716C] shrink-0 font-semibold uppercase">Swarm Agents:</span>
+                <span className="text-[11px] font-mono text-[#78716C] shrink-0 font-semibold uppercase">Active Agents:</span>
                 <button
                   type="button"
                   onClick={() => setSelectedAgent('branding')}
-                  className={`px-3 py-1 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                     selectedAgent === 'branding' 
                       ? 'bg-[#D97757] text-white border-[#D97757] shadow-xs' 
                       : 'bg-white/80 hover:bg-white text-[#44403C] border-[#E0DACE]'
@@ -496,7 +509,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setSelectedAgent('pr')}
-                  className={`px-3 py-1 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
+                  className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                     selectedAgent === 'pr' 
                       ? 'bg-[#D97757] text-white border-[#D97757] shadow-xs' 
                       : 'bg-white/80 hover:bg-white text-[#44403C] border-[#E0DACE]'
@@ -506,17 +519,23 @@ export default function App() {
                   <span>📰 PR Agent</span>
                 </button>
 
-                <button type="button" disabled className="px-3 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[11px] font-medium shrink-0 cursor-not-allowed opacity-60">
-                  <span>🔮 Social Agent (Phase 2)</span>
-                </button>
+                {/* Coming Soon Agents */}
+                <div className="flex items-center gap-2 border-l border-[#E7E2D8] pl-2">
+                  <button type="button" disabled className="px-2.5 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[10px] font-medium shrink-0 cursor-not-allowed flex items-center gap-1">
+                    <span>🔮 Social Agent</span>
+                    <span className="text-[9px] bg-[#E0DACE] text-[#78716C] px-1 rounded font-semibold">Coming Soon</span>
+                  </button>
 
-                <button type="button" disabled className="px-3 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[11px] font-medium shrink-0 cursor-not-allowed opacity-60">
-                  <span>🚀 Product Marketing (Phase 2)</span>
-                </button>
+                  <button type="button" disabled className="px-2.5 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[10px] font-medium shrink-0 cursor-not-allowed flex items-center gap-1">
+                    <span>🚀 Product Marketing</span>
+                    <span className="text-[9px] bg-[#E0DACE] text-[#78716C] px-1 rounded font-semibold">Coming Soon</span>
+                  </button>
 
-                <button type="button" disabled className="px-3 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[11px] font-medium shrink-0 cursor-not-allowed opacity-60">
-                  <span>🎪 Events Agent (Phase 2)</span>
-                </button>
+                  <button type="button" disabled className="px-2.5 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[10px] font-medium shrink-0 cursor-not-allowed flex items-center gap-1">
+                    <span>🎪 Events Agent</span>
+                    <span className="text-[9px] bg-[#E0DACE] text-[#78716C] px-1 rounded font-semibold">Coming Soon</span>
+                  </button>
+                </div>
               </div>
             </div>
 

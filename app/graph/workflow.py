@@ -31,18 +31,16 @@ class SwarmWorkflowEngine:
             log.info(f"[Swarm Engine] Executing PRAgentNode via {provider}")
             parsed = self.pr_node.process(goal_statement, provider=provider)
             source = f"agent:pr:{provider}"
-        elif agent_type_clean == "social":
-            log.info(f"[Swarm Engine] Executing SocialAgentNode via {provider}")
-            parsed = self.social_node.process(goal_statement, provider=provider)
-            source = f"agent:social:{provider}"
-        elif agent_type_clean in ["product_marketing", "pmm", "product"]:
-            log.info(f"[Swarm Engine] Executing ProductMarketingAgentNode via {provider}")
-            parsed = self.pmm_node.process(goal_statement, provider=provider)
-            source = f"agent:product_marketing:{provider}"
-        elif agent_type_clean == "events":
-            log.info(f"[Swarm Engine] Executing EventsAgentNode via {provider}")
-            parsed = self.events_node.process(goal_statement, provider=provider)
-            source = f"agent:events:{provider}"
+        # --- FUTURE AGENTS (Preserved Architecture, Currently Commented Out) ---
+        # elif agent_type_clean == "social":
+        #     parsed = self.social_node.process(goal_statement, provider=provider)
+        #     source = f"agent:social:{provider}"
+        # elif agent_type_clean in ["product_marketing", "pmm"]:
+        #     parsed = self.pmm_node.process(goal_statement, provider=provider)
+        #     source = f"agent:product_marketing:{provider}"
+        # elif agent_type_clean == "events":
+        #     parsed = self.events_node.process(goal_statement, provider=provider)
+        #     source = f"agent:events:{provider}"
         else:
             log.info(f"[Swarm Engine] Executing BrandingAgentNode via {provider}")
             parsed = self.branding_node.process(goal_statement, provider=provider)
