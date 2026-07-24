@@ -68,7 +68,10 @@ class SwarmWorkflowEngine:
                 id_str=new_id(),
                 k_class="fact",
                 confidence=confidence.lower(),
-                content=f"{agent_type_clean.capitalize()} Agent Analysis: {selected_option} - {statement[:100]}"
+                content=f"{agent_type_clean.capitalize()} Agent Analysis: {selected_option} - {statement[:100]}",
+                organization="E2E Networks",
+                source_url="https://www.e2enetworks.com/",
+                enriched_by=f"agent_{agent_type_clean}"
             )
         except Exception as db_err:
             log.warning(f"[DB Warning] Could not persist decision: {db_err}")

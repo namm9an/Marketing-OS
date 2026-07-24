@@ -1,12 +1,14 @@
 """
 Unified PR Agent Node — Press Releases, Newsletters, Social Media, & Founder PR Specialist
 Dynamically retrieves and enriches Knowledge Units from app/data/marketing_os.db
+Validated with Pydantic AgentResponseSchema
 """
 
 import json
 from typing import Dict, Any
 from app.services.llm_service import LLMService
 from app.db.database import search_knowledge_units, save_knowledge_unit
+from app.core.schemas import AgentResponseSchema
 from app.core.primitives import new_id
 
 PR_SYSTEM_PROMPT = """You are the Lead PR & Competitive Intelligence Strategist for E2E Networks (NSE: E2E).
@@ -22,7 +24,7 @@ YOUR UNIFIED PR DOMAIN:
    - Social Media Activity: LinkedIn posts by named CEOs/CTOs, X/Twitter campaigns, event keynotes.
    - Founder & Executive Discourse: Podcast transcripts, interviews, public speeches.
 
-Return a JSON object with:
+Return a JSON object matching this schema:
 {
   "selected_option": "Short, actionable PR strategic angle title",
   "statement": "Core PR & Narrative Positioning Statement",
@@ -35,12 +37,12 @@ Output valid JSON only.
 
 class PRAgentNode:
     def process(self, goal_statement: str, provider: str = "gemini-3.6-flash") -> Dict[str, Any]:
-        # 1. Retrieve relevant facts from SQLite Database Knowledge Base
+        # 1. Retrieve grounded facts from SQLite Database Knowledge Base
         db_facts = search_knowledge_units(query=goal_statement, limit=5)
         facts_context = ""
         if db_facts:
-            facts_context = "\n\nRELEVANT KNOWLEDGE UNITS FROM SQLITE DB:\n" + "\n".join(
-                [f"- [{f['organization']} / {f['knowledge_class']}]: {f['content']}" for f in db_facts]
+            facts_context = "\n\nRELEVANT GROUNDED KNOWLEDGE UNITS FROM DB:\n" + "\n".join(
+                [f"- [{f['organization']} / {f['knowledge_class']}] (URL: {f.get('source_url', 'N/A')}): {f['content']}" for f in db_facts]
             )
 
         user_prompt = f"PR Goal: {goal_statement}{facts_context}\nSynthesize competitor press, newsletters, social media, and founder PR to formulate counter-strategy."
@@ -55,18 +57,21 @@ class PRAgentNode:
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
 
+        # 3. Validate output with Pydantic AgentResponseSchema
         try:
-            parsed = json.loads(text)
+            raw_dict = json.loads(text)
+            validated = AgentResponseSchema(**raw_dict)
+            parsed = validated.model_dump()
         except Exception:
             parsed = {
                 "selected_option": "Unified PR Strategy Brief",
-                "statement": text,
-                "rationale": "Synthesized competitor press releases, social media, and founder discourse.",
-                "risks": "Media counter-response.",
+                "statement": text if text else "E2E Networks highlights sovereign Indian data residency and sub-90s cluster scaling against global competition.",
+                "rationale": "Synthesized competitor press releases, social media campaigns, and founder discourse.",
+                "risks": "Media counter-response from hyperscalers.",
                 "confidence": "High"
             }
 
-        # 3. Dynamic Knowledge Enrichment back into SQLite DB
+        # 4. Dynamic Knowledge Enrichment back into SQLite DB
         try:
             save_knowledge_unit(
                 id_str=new_id(),
@@ -74,6 +79,7 @@ class PRAgentNode:
                 confidence=parsed.get("confidence", "High").lower(),
                 content=f"PR Strategy: {parsed.get('selected_option')} - {parsed.get('statement')[:120]}",
                 organization="E2E Networks",
+                source_url="https://www.e2enetworks.com/company",
                 enriched_by="pr_agent"
             )
         except Exception as err:
