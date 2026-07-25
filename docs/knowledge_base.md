@@ -447,8 +447,11 @@ class Settings:
     DEFAULT_MODEL: str = os.environ.get("DEFAULT_MODEL", "gemini-3.6-flash")
     
     # TIR Llama 3.3 70B Managed Endpoint
-    TIR_LLM_URL: str = os.environ.get("TIR_LLM_URL", "http://164.52.194.136:8000/v1/chat/completions")
-    TIR_API_KEY: str = os.environ.get("TIR_API_KEY", "e2e-a40-48fbd0fd88076c77f62e730d38aa5370")
+    # [REDACTED 2026-07-25] This historical snapshot contained a hardcoded live TIR_API_KEY.
+    # The value has been removed from this file, but it REMAINS IN GIT HISTORY on a public
+    # repo — redaction is not revocation. The key must be rotated on the TIR provider side.
+    TIR_LLM_URL: str = os.environ.get("TIR_LLM_URL", "<REDACTED-TIR-URL>")
+    TIR_API_KEY: str = os.environ.get("TIR_API_KEY", "<REDACTED-ROTATE-THIS-KEY>")
     
     # LangFuse Observability Settings
     LANGFUSE_PUBLIC_KEY: str = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
@@ -2551,27 +2554,31 @@ written** — the user explicitly asked for research and back-and-forth before b
 
 **Test suite: 25 passing** (unchanged — no code touched in this session).
 
-### 🔴 Open / blocked — carry forward
+### ✅ Resolved since first writing (verified 2026-07-25)
 
-1. **Three commits staged but UNPUSHED**, all blocked by the Claude Code permission classifier
-   (not a git/repo/credential problem). Branch `fix/audit-remediation-m1-4`, target
-   `https://github.com/namm9an/Marketing-OS`. Prepared commit messages live in the session
-   scratchpad (`commit_msg.txt` = audit remediation, `commit_msg_langgraph.txt` = Option 1
-   migration, `commit_msg_m5.txt` = Milestone 5). Resolution requires either the user running
-   `git commit`/`git push` themselves, or adding `Bash(git commit:*)` / `Bash(git push:*)`
-   permission rules.
-2. **🔑 The leaked `TIR_API_KEY` is still in git history and MUST be rotated on the TIR provider
-   side.** Removing it from source did **not** un-leak it.
-3. **Sequencing undecided:** Phase 6 (multimodal ingestion) and Phase 9 are **both** marked
-   🎯 Next. They are independent — Phase 6 writes to L0, which the memory work does not touch.
-   *Recommendation on record: Phase 9 first* (it is what makes the product feel alive; Phase 6
-   uploads are more valuable once there is a conversation to attach them to).
-4. **Build approach recommended but not chosen:** thin slice — branding agent end-to-end
+- **Commits are DONE and PUSHED.** The permission-classifier block is no longer relevant — the
+  user committed and pushed. Branch `fix/audit-remediation-m1-4` == `origin/…` at `40b1676`.
+  History: `ca0592e` (audit remediation) → `7d81520` (remove all TIR references, Gemini-only) →
+  `40b1676` (M5 digest + LangGraph supervisor). Working tree clean. The Phase 9 design-doc and
+  knowledge-base work is committed too.
+- **Build order settled:** **Phase 9 is next**; Phases 6 and 7 deferred behind it.
+- **`TIR_API_KEY` — NOT a security issue. Closed.** The user confirmed (2026-07-25) the key is
+  **dead**: it exists on no platform, and originated from a personal app that was decommissioned
+  by the organisation. **No rotation is needed; do not re-raise this as an incident.** The value
+  was still redacted from `docs/knowledge_base.md` line 451 purely as repo hygiene (a live-looking
+  credential in a public repo trips secret scanners and reads badly in a portfolio project), and
+  application source is TIR-free since `7d81520`.
+
+### 🔴 Open — carry forward
+
+1. **`main` is 3 commits behind.** `main` sits at `2255863` — every fix (security, retrieval,
+   API contract, LangGraph migration, M5) exists **only on the branch**. `main` still contains
+   the old pre-audit code. Needs a merge/PR.
+2. **Build approach recommended but not chosen:** thin slice — branding agent end-to-end
    (chat + namespace + gate + graph), proving the isolation rule **before** replicating it five
    times.
-5. **Stray file:** `Marketing-OS/.claude/launch.json` was created during a failed browser-preview
-   attempt (`preview_start` and `rm -rf` were both blocked by the classifier). Harmless; delete
-   or gitignore.
-6. **UI never visually verified.** The M5 Digest tab and `CompetitorNetwork.jsx` compile and
-   their API contract is test-asserted, but the browser preview was blocked — **no one has seen
-   the digest tab render.** Worth a look on the next run.
+3. **UI never visually verified.** The M5 Digest tab and `CompetitorNetwork.jsx` compile and
+   their API contract is test-asserted, but the browser preview was blocked by the permission
+   classifier — **no one has seen the digest tab render.** Verify on the next run.
+4. **Stray file:** `Marketing-OS/.claude/launch.json` — an unused browser-preview config created
+   during that blocked attempt. Does nothing; delete or gitignore.

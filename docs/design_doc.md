@@ -661,7 +661,25 @@ re-based at the same time: replace the hand-written three.js simplex shader in
 `ShaderGradient`. Per-agent accent colours can key off the same gradient config so each agent's
 session is visually distinct.
 
-### 9.13 Explicitly out of scope (deferred ceilings)
+### 9.13 Build Milestones
+
+Phase 9 ships as six atomic commits, bottom-up. Each is independently testable and leaves
+the suite green; nothing is half-wired between commits.
+
+| # | Milestone | Deliverable | Proves |
+|---|---|---|---|
+| **M9.1** | Memory store | `memories` / `threads` / `turns` tables, `app/memory/store.py`, namespace algebra | **The isolation rule** — an agent reads shared ∪ own private ∪ own joint, nothing else |
+| **M9.2** | Promotion gate | `app/memory/gate.py` — admission classifier, provenance, episodic→semantic on repetition | Model prose never becomes memory |
+| **M9.3** | Conversation layer | `POST /api/chat`, per-agent threads, memory-aware `run_agent`, visible recall | Agents are multi-turn and stateful |
+| **M9.4** | Graph & scoped traversal | `edges` table, deterministic corpus extraction, recursive-CTE traversal | Traversal cannot hop into another agent's private memory |
+| **M9.5** | `/triage` bridge | `POST /api/triage`, 2-agent parallel fan-out, attributed merge, joint-namespace write | Neither private namespace is touched |
+| **M9.6** | UI | Per-agent chat panel, `/triage` composer, `@shadergradient/react` swap | The CMO can actually use it |
+
+Order rationale: the isolation rule is the part most likely to have a subtle flaw, so it is
+built and tested **first, once, in one place** rather than discovered after five agents and a
+bridge already depend on it. M9.3 is the first commit that is user-visible end to end.
+
+### 9.14 Explicitly out of scope (deferred ceilings)
 
 - **No embeddings / vector search.** Keyword entry + graph traversal first; add vectors only
   when keyword recall measurably fails. FTS5 is the cheaper next step.
@@ -683,7 +701,11 @@ session is visually distinct.
 | **Phase 3** | Core Swarm Agent Nodes | ✅ Complete | Active Branding & PR Agents with Pydantic schema validation |
 | **Phase 4** | Senior Engineering Layout & Deployment | ✅ Complete | Clean `app/` root, 7 Pytest cases, deployed on VM (`164.52.203.81`) |
 | **Phase 5** | CMO Weekly Executive Digest UI | ✅ Complete | LangGraph fan-out digest across all 5 agents, interactive link graph, print-to-PDF report with cited sources |
-| **Phase 6** | Multimodal Image & PDF Ingestion | 🎯 Next | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
+| **Phase 6** | Multimodal Image & PDF Ingestion | 📍 Planned | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
 | **Phase 7** | Automated Change Tracking (CompTrack) | 📍 Planned | Background re-crawler, competitor delta engine, CMO contradiction alerts |
 | **Phase 8** | Full Activation of Swarm Agents | ✅ Complete | All 5 agents live in `AGENT_REGISTRY`; all five run in the M5 digest fan-out |
-| **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🎯 Next | Per-agent chat + private memory namespaces, promotion gate, scoped knowledge graph, `/triage` bridge, shadergradient UI |
+| **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🎯 **NEXT — BUILD ORDER CONFIRMED** | Per-agent chat + private memory namespaces, promotion gate, scoped knowledge graph, `/triage` bridge, shadergradient UI |
+
+> **Build order (user decision, 2026-07-25): Phase 9 is next.** Phases 6 and 7 are deferred
+> behind it. They are independent of Phase 9 (both write to the L0 shared corpus, which the
+> memory work does not touch), so they can follow in any order afterwards.
