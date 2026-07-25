@@ -51,5 +51,44 @@ class TestAPIRoutes(unittest.TestCase):
         data = json.loads(res.data)
         self.assertIn("history", data)
 
+    def test_digest_network_endpoint(self):
+        """Shape must match what CompetitorNetwork.jsx reads — a contract break here
+        renders an empty graph silently (the B3/B4 failure mode)."""
+        res = self.client.get('/api/digest/network')
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        self.assertIn("nodes", data)
+        self.assertIn("links", data)
+        self.assertIn("total_facts", data)
+        competitor = next(n for n in data["nodes"] if n["group"] == "competitor")
+        for key in ("id", "fact_count", "classes", "citations"):
+            self.assertIn(key, competitor)
+        for key in ("content", "source_url"):
+            self.assertIn(key, competitor["citations"][0])
+
+    def test_digest_endpoint(self):
+        res = self.client.post(
+            '/api/digest', data=json.dumps({"provider": "gemini-3.6-flash"}),
+            content_type='application/json',
+        )
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        # Every field the Weekly Digest tab renders.
+        for key in ("headline", "executive_summary", "competitor_movements",
+                    "recommended_actions", "agent_briefs", "network", "citations",
+                    "generated_at"):
+            self.assertIn(key, data)
+        self.assertEqual(len(data["agent_briefs"]), 5)
+        for key in ("agent", "headline", "finding", "confidence"):
+            self.assertIn(key, data["agent_briefs"][0])
+
+    def test_digest_requires_auth(self):
+        anon = app.test_client()
+        self.assertEqual(anon.get('/api/digest/network').status_code, 401)
+        self.assertEqual(
+            anon.post('/api/digest', data=json.dumps({}), content_type='application/json').status_code,
+            401,
+        )
+
 if __name__ == "__main__":
     unittest.main()

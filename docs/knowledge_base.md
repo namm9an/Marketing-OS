@@ -2176,8 +2176,8 @@ class SwarmState(TypedDict):
 
 > Independent engineering audit of Milestones 1–4 against `docs/design_doc.md`, followed by
 > remediation of the correctness/security issues and web research to steer Milestones 5–6.
-> **Scope note:** the LangGraph/LangFuse *architectural* rewrite is intentionally **deferred**
-> (see §D) because the research below is meant to drive that decision before Milestone 5.
+> **Scope note:** the LangGraph/LangFuse architectural fork (§D) is now **RESOLVED** — the user
+> chose **Option 1 (real LangGraph supervisor)**; it is implemented and tested (see §D.1).
 
 ## A. Design Doc Verdict — is this the right direction?
 
@@ -2218,10 +2218,10 @@ depending on the item).
 - **B11** — `init_db()` guarded to run once per process.
 - **Tests:** 7 → 12, all green (`python3 -m pytest tests/`).
 
-## D. Deferred decision — LangGraph vs. router (and LangFuse) — DO THIS BEFORE MILESTONE 5
+## D. Architecture decision — LangGraph vs. router (and LangFuse) — ✅ RESOLVED: Option 1
 
-B5/B6 are **not** patched blindly, because they're a genuine architectural fork the research
-below is meant to settle. Two honest options:
+B5/B6 were **not** patched blindly, because they're a genuine architectural fork the research
+below settled. Two honest options were on the table:
 
 1. **Adopt a real LangGraph supervisor graph.** Add `langgraph` + `langchain-core`, rebuild
    `workflow.py` as a `StateGraph` (supervisor node routes to worker agent nodes; `Command`
@@ -2239,6 +2239,46 @@ you don't yet need decentralized swarm handoffs. If the goal is a résumé/portf
 "real LangGraph agent," take **Option 1** with the **supervisor** pattern. If the goal is a
 shippable internal tool, **Option 2** is defensible. Either way, the current in-between state
 (LangGraph vocabulary, no LangGraph) should not persist.
+
+## D.1 Resolution — Option 1 implemented (2026-07-24)
+
+**Decision:** the user chose **Option 1 — official LangGraph supervisor.** B5/B6/B7 are now
+real, not labels.
+
+**What changed:**
+- **Deps** (`requirements.txt`): added `langgraph`, `langchain-core`, `langchain` (required by
+  the LangFuse callback), bumped `langfuse` → `>=3.0.0`, added `langsmith`. Installed:
+  langgraph 1.2.9, langchain-core 1.5.1, langfuse 4.14.1, langsmith 0.10.10.
+- **`app/graph/workflow.py`** rewritten as a compiled `StateGraph`:
+  `START → supervisor → {branding|pr|social|product_marketing|events} → governance → END`.
+  The supervisor routes deterministically off the caller's `agent_type` via
+  `add_conditional_edges` (no LLM hop — nothing to decide for a single-agent request). The
+  five worker nodes are generated from `AGENT_REGISTRY` (distinct traced node, shared
+  `run_agent` body). **Governance is now a graph node** (runs `_governance_check` + persists
+  the decision). Graph is compiled once at import; `swarm_engine.run(...)` keeps its old
+  signature and response shape, so `main.py` is untouched.
+- **`app/graph/state.py`**: `SwarmState` extended with `escalated` / `escalation_reason` /
+  `decision_id` (written by the governance node).
+- **`app/graph/handoffs.py`**: **deleted** — dead scaffolding; the conditional-edge supervisor
+  doesn't use `Command` handoffs. (Those return when a request must fan out across agents,
+  e.g. the M5 CMO digest — that's the swarm upgrade path.)
+- **Observability, both wired:**
+  - **LangSmith** (what the user named for testing all agents): automatic — set
+    `LANGSMITH_TRACING=true` + `LANGSMITH_API_KEY` (+ optional `LANGSMITH_PROJECT`) in the env;
+    LangGraph emits with **zero code**.
+  - **LangFuse** (design-doc named): `_langfuse_handler()` attaches a `CallbackHandler` per run
+    when `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` are set; absent keys → no handler, no
+    error. B6 is now real.
+- **Tests:** `tests/unit/test_workflow_graph.py` added (graph has all nodes; routes to the
+  requested agent + persists; unknown agent → branding fallback). Suite **12 → 15, all green**.
+
+**Verified:** `_GRAPH.get_graph().draw_mermaid()` renders the supervisor topology; end-to-end
+`login → /api/run → /api/history` returns `reasoning_source: langgraph:<agent>:<provider>` and
+persists the decision. Env keys are **not** committed (consistent with B1).
+
+*ponytail ceilings:* (1) supervisor routing is deterministic; add an LLM-supervisor only for the
+M5 fan-out/aggregate digest. (2) no checkpointer/persistence layer on the graph yet — add
+`MemorySaver`/a checkpointer when a run needs to pause for human CMO input mid-graph.
 
 ## E. Multi-Agent Architecture Research (LangGraph / LangFuse) — 2026-07
 
@@ -2295,3 +2335,243 @@ Before adding the CMO Digest (M5) and multimodal ingestion (M6): **settle §D fi
 "cross-agent digest" and interactive graph are far cleaner on top of a real supervisor graph
 with LangFuse traces than on the current router — and building M5/M6 on the in-between state
 just adds more surface that says one thing and does another. Fix the foundation, then extend.
+
+*Followed: §D was settled (Option 1), then M5 was built on top of it — see below.*
+
+---
+
+# 🚩 Milestone 5 — CMO Weekly Executive Digest (2026-07-25) ✅
+
+Built on the LangGraph foundation from §D.1. Design doc §5.1 asked for four things; all four
+are implemented and grounded.
+
+## 5.1 What was built
+
+| Deliverable (design doc §5.1) | Implementation |
+|---|---|
+| Cross-agent digest over **all 5 agents** | `app/graph/digest.py` — a LangGraph **fan-out/aggregate** subgraph |
+| **Competitor-only** focus (no internal E2E noise) | `get_competitor_facts()` in `app/db/database.py` |
+| **Interactive link network** with clickable competitor nodes | `frontend/src/components/CompetitorNetwork.jsx` |
+| **Downloadable PDF** citing explicit source URLs | Print stylesheet + `window.print()` on the Digest tab |
+
+## 5.2 The digest graph (where LangGraph actually earns its keep)
+
+```
+START → load_facts → [branding | pr | social | product_marketing | events]  (parallel)
+                        → synthesize → END
+```
+
+This is the first genuinely multi-agent path in the system. The single-agent supervisor graph
+routes to *one* worker; here all five read the same competitor evidence **concurrently** and a
+synthesizer merges their briefs.
+
+- `briefs` uses an `Annotated[List[...], operator.add]` reducer — required because five nodes
+  write the same channel in one superstep (without it LangGraph raises `InvalidUpdateError`).
+- **Parallelism verified empirically**, not assumed: with a 1s-per-call mock, 6 LLM calls
+  complete in **2.02s** (5 agents in one superstep + 1 synthesizer) vs ~6s serial.
+- Agents are reused, not re-implemented: `run_agent()` gained one optional `extra_context`
+  parameter so the digest can inject competitor-only grounding. (Duplicating the agent pipeline
+  would have re-created audit finding B8.)
+
+## 5.3 The grounding guarantee (the core of the product)
+
+**The LLM writes prose; the database provides citations.** `citations` and the network map are
+pure SQL projections — a synthesized sentence can never re-enter as a cited source. Three
+filters enforce this in `get_competitor_facts()`:
+
+1. `organization NOT LIKE '%E2E%'` — the design doc's "excludes internal E2E noise".
+2. `enriched_by NOT LIKE '%agent%'` — **an agent's own earlier output is not a citable fact.**
+   Without this, agent enrichments accumulate in `knowledge_units` and would be laundered into
+   "grounded" citations. This is the subtle failure the zero-hallucination claim depends on.
+3. `source_url IS NOT NULL` — no citation without a source.
+
+Verified: 74 grounded competitor facts across 12 rivals, **100% carrying source URLs, 0 E2E
+rows, 0 agent-generated rows**.
+
+## 5.4 Deliberate simplifications (ponytail ceilings)
+
+| Choice | Why | Upgrade when |
+|---|---|---|
+| **Hand-rolled radial SVG** instead of d3/cytoscape/react-force-graph | ~100KB+ of physics engine for 13 nodes that never move | rival↔rival edges land and layout needs real force simulation |
+| **Hub-and-spoke edges only** (E2E ↔ each rival) | We hold no rival↔rival relationship data; inventing edges is exactly the fabrication this project exists to avoid | a real shared-attribute join exists (e.g. same GPU SKU) |
+| **Browser print-to-PDF** instead of server-side reportlab/weasyprint | Same cited PDF, zero new dependency | the report must generate headlessly, e.g. emailed on a schedule |
+| **No time window** on "weekly" facts | A weekly *delta* needs Phase 7 (CompTrack) writing dated re-crawl rows; filtering a one-shot seed by date returns noise | Phase 7 lands |
+| Two endpoints (`GET /api/digest/network`, `POST /api/digest`) | The map is an instant DB projection; the digest costs 5 LLM calls. Bundling would make the graph tab wait on synthesis it doesn't need | — |
+
+**Graceful degradation:** with no API key (or off-contract LLM output), `_fallback_digest()`
+builds the digest deterministically from the grounded facts — it degrades to something *true*
+rather than something invented.
+
+## 5.5 Files & verification
+
+- New: `app/graph/digest.py`, `frontend/src/components/CompetitorNetwork.jsx`,
+  `tests/unit/test_digest.py`
+- Changed: `app/db/database.py` (+`get_competitor_facts`), `app/agents/base.py`
+  (+`extra_context`), `app/core/schemas.py` (+`DigestSchema`), `app/main.py` (2 endpoints),
+  `frontend/src/App.jsx` (Digest tab), `frontend/src/index.css` (print rules),
+  `tests/integration/test_api.py` (+3 contract tests)
+- **Tests: 15 → 25, all green.** Frontend builds clean. Endpoints verified end-to-end behind
+  auth (anon → 401). Integration tests assert the exact response shape the React tab reads —
+  the B3/B4 contract-break failure mode is now covered by tests.
+
+---
+
+# 🧭 Phase 9 Design Session — Agent Memory Hub (2026-07-25)
+
+> **Handoff record.** Written before a context compaction. Everything below — the user's
+> questions, the verified answers, every web search performed, every decision the user made
+> (verbatim), and all open/blocked items — is captured here so a fresh session can resume
+> without re-deriving anything. **The full Phase 9 specification lives in
+> `docs/design_doc.md` §9** (327 lines, 3 mermaid diagrams). This section records *how the
+> design was arrived at* and *what was decided*, not the spec itself.
+
+## 9.A The user's questions and the verified answers
+
+**Q1 — "What is the knowledge base currently doing in the agent? What is its task?"**
+
+Verified against the code and live DB, not assumed:
+
+- One **global pool**: a single `knowledge_units` table, **94 rows**.
+- Its task is retrieval-augmented grounding:
+  `goal → _keywords() → match ALL rows → top 5 by keyword-hit count → paste into the prompt`.
+- Row provenance at the time of audit:
+
+| Written by | Rows |
+|---|---|
+| `grounded_crawler` | 91 (documentation 32, positioning 32, hardware 23, pricing 4) |
+| the 5 agents (`branding_agent`, `pr_agent`, …) | 8 |
+
+- **Verdict:** it is a *shared RAG corpus + an append-only write log*. Nothing more.
+
+**Q2 — "When I click branding / PR, will they talk to me in that perspective and adapt that
+persona from the knowledge base?"**
+
+Three-part answer, all verified:
+
+1. **Persona: YES — but it comes from the system prompt, not the knowledge base.**
+   `AGENT_REGISTRY` in `app/agents/base.py` gives each agent a genuinely distinct identity.
+2. **Memory: NO.** `search_knowledge_units()` has **no agent filter**. Every agent retrieves
+   from the same 94 rows, *including the other agents' past outputs*. **The cross-agent
+   pollution the user wants to prevent was already happening.**
+3. **There is no conversation at all.** `/api/run` is a **stateless one-shot** — form in, one
+   JSON verdict out. `SwarmState.messages` is initialized to `[]` and **never written to**.
+   No turns, no follow-ups, no memory of the user.
+
+> This third point is the crux: the user's vision requires a **conversation layer that does not
+> exist**. It is the foundation everything else in Phase 9 sits on.
+
+**Q3 — shadergradient.** The user believed `ruucm/shadergradient` was already in use.
+**It is not.** `frontend/src/components/ShaderCanvas.jsx` is a **hand-rolled three.js
+simplex-noise plane shader** (~150 lines of raw GLSL). `@shadergradient/react` is **not in
+`package.json`**. Correct install is
+`npm i @shadergradient/react @react-three/fiber three three-stdlib camera-controls`,
+components `ShaderGradientCanvas` + `ShaderGradient`.
+
+## 9.B The user's vision (as stated)
+
+1. The knowledge base should become a **5-agent knowledge hub**.
+2. It **updates with each interaction** and the agent **gets smarter** over time.
+3. Clicking an agent means **talking to that agent and its memory only**.
+4. **`/triage`** (slash command) bridges two agents so the user talks to them as one…
+5. …**without either agent's context being polluted by the other's knowledge base.**
+
+## 9.C Web research performed (10 searches + 5 page fetches)
+
+**Searches:** LangGraph Store namespaces & per-agent isolation · multi-agent memory isolation /
+context pollution · episodic-semantic-procedural memory (2026) · multi-agent handoff & bridge
+patterns · memory poisoning / self-writing degradation · memory consolidation & promotion
+criteria · GraphRAG vs vector multi-hop retrieval · lightweight KG in SQLite without Neo4j ·
+supermemory reviews & self-hosting · supermemory vs mem0 vs zep.
+**Fetches:** `ruucm/shadergradient` · `supermemoryai/supermemory` · supermemory docs
+(introduction, container-tags) · **supermemory issue #27**.
+
+### Key findings
+
+| # | Finding | Why it mattered |
+|---|---|---|
+| R1 | **Hybrid private+shared is the production default** — centralized / distributed / hybrid, and "hybrid is what most production systems use" | Validated the user's plan as the mainstream architecture |
+| R2 | **Context isolation is a named critical property.** The documented failure mode: "a shared message list accumulates context from all agents indiscriminately" | The user's fear is a real, named failure |
+| R3 | Production memory scoping uses `user_id` / **`agent_id`** / `run_id` / `app_id` | "Each agent his own memory" = `agent_id` scoping |
+| R4 | LangGraph `Store` namespaces are **tuples** — `("mem","branding")` is native. LangGraph already installed | No new dependency needed for namespacing |
+| R5 | **Temporal memory contamination**: "each decision made on poisoned memory generates new memories, further contaminating the store"; "agent safety degrades as memory accumulates" | **The reason a promotion gate is mandatory.** Already hit in M5 (needed `enriched_by NOT LIKE '%agent%'`) |
+| R6 | Safeguards: validate before store, **provenance tracking**, TTL/decay, promote on repetition ("appears 3+ times → long-term") | Became §9.5 |
+| R7 | Bridges should pass **structured/typed context objects**, "only relevant fields", not merged history | Validated `/triage` = merge outputs, not memories |
+| R8 | Field converged on **episodic / semantic / procedural** three-tier taxonomy | Became the L1 tier split |
+| R9 | **GraphRAG improves precision up to 35%** over vector-only; multi-hop traversal; "explainable retrieval tracing every answer through a specific path of nodes and edges" | Justified the graph layer + gave it a *governance* benefit (auditable paths) |
+| R10 | **SQLite is a legitimate graph backend** via recursive CTEs — "ideal for small-to-medium datasets that don't require Neo4j" | Justified staying on SQLite |
+| R11 | **supermemory `containerTag`** = "bucket memories by user, project, **agent**, workspace"; each maps to its own vector namespace so "retrieval never leaks across boundaries"; isolation is **"strict rather than probabilistic"** | The user's design, productized. Hierarchical tags (`org:acme:user:john`) → `agent:branding`, `triage:branding+pr` |
+| R12 | **supermemory `entityContext`** — a per-container custom extraction prompt | Upgrade to the plan: each agent extracts memory **through its own persona's lens** |
+| R13 | **supermemory v4 CANNOT query across containers**: "you must make separate queries and merge results in your application logic" | **The industry constraint is literally the `/triage` design** |
+| R14 | **supermemory issue #27 (OPEN, filed 2026-03-15)** — "per-agent memory isolation via allowedAgents". Current behavior with 10+ agents: "memories meant for one agent context bleed into unrelated agent sessions" | **The user's exact problem is an open, unsolved issue in the SOTA vendor's own agent plugin.** Their instinct is at the frontier |
+| R15 | SOTA split: **ChatGPT** auto-injects memory every conversation; **Claude** is the opposite — blank slate, memory via **visible tool calls**, raw history, "no AI-generated summaries"; **Cursor** = tree-sitter AST → embeddings in Turbopuffer + Merkle change detection; **Claude Code** = plain markdown, 25KB cap | Chose Claude's **visible recall** for auditability |
+| R16 | Anthropic "invested in the **maintenance loop** instead of the storage layer" | The promotion gate matters more than exotic storage |
+| R17 | supermemory perf: 95% Recall@15 at ~720 tokens ("99.4% context reduction"), sub-300ms, 10× faster than Zep / 25× than Mem0, 100B+ tokens/month | Scale mismatch vs our **94 facts** → don't adopt yet |
+| R18 | ⚠️ **Contradiction in sources:** supermemory's repo claims an "embedded graph engine"; a third-party comparison says it is "vector-first" while "Mem0 and Zep use vector + graph" | Vendor claim vs outside assessment — trust neither without testing. Our SQLite graph sidesteps it |
+| R19 | supermemory ships multi-modal extractors (PDF, image OCR, video, code AST) | That is **Phase 6**. Relevant if supermemory is ever adopted |
+
+## 9.D DECISIONS — all made by the user (definitive)
+
+| # | Question | **User's decision** |
+|---|---|---|
+| D1 | Chat layer depth | **Full multi-turn chat per agent.** Clicking an agent opens a real ongoing conversation with its own memory |
+| D2 | Corpus organization | **Shared read-only corpus + private per-agent memory.** (*Not* 5 duplicated copies — facts are shared, interpretations are private) |
+| D3 | What earns long-term memory | **User-sourced signal only** (corrections, stated preferences, ratified decisions) — **PLUS**, verbatim: *"with option one can we do graph in knowledge base as extra layer to let it contaminate and be better in memory context retention"* → **graph layer added on top of the gate.** "Contaminate" was read as **interlink / cross-connect**, not "allow poisoning" (confirmation requested; user did not object) |
+| D4 | `/triage` write destination | **Joint namespace only** — `triage:branding+pr`. Neither private memory is touched |
+| D5 | Memory backend | **SQLite with a `containerTag`-shaped API.** Do *not* adopt supermemory now; keep it a drop-in backend swap |
+| D6 | Shader UI | **Swap in `@shadergradient/react`** (folded into the Phase 9 UI work, not done standalone) |
+| D7 | Next step | **Write the Phase 9 design doc section** — done. No code written |
+
+### Key architectural rulings that fell out of D3
+
+- **The gate and the graph are orthogonal**: the gate controls *admission* ("is this worth
+  remembering?"); the graph controls *structure* ("what else is relevant?"). The graph does
+  **not** lower the admission bar — it raises recall on what already passed.
+- **Scoped traversal is mandatory.** A graph spanning everything would let a branding query hop
+  through a shared node into PR's private memory — re-opening the exact leak `/triage` prevents.
+  Rule: an agent traverses **shared ∪ own private ∪ own joint**, never another agent's private
+  edges. Memory→corpus anchors are **one-directional**.
+- **Corpus entities are extracted deterministically** from the known taxonomy (13 competitors;
+  B200/H200/H100/A100/L40S/HGX) — never by an LLM. *A fabricated edge is worse than a missing
+  one because a graph path looks like evidence.*
+- The graph also completes the M5 ceiling: the competitor network stops being hub-and-spoke and
+  becomes a real network once shared-SKU relations exist.
+
+## 9.E Phase numbering correction
+
+`docs/design_doc.md` Phase 8 ("Full Activation of Extended Swarm Agents") was **not** overwritten.
+On inspection all three agents it specifies (social, product_marketing, events) are **built and
+running** — they execute in the M5 digest fan-out. Phase 8 was therefore marked **✅ Complete**
+and the new work added as **Phase 9**. Doc title updated to "Phases 1 – 9".
+
+## 9.F State at the end of this session
+
+**Written this session:** `docs/design_doc.md` §9 (full spec + 3 mermaid diagrams), roadmap
+table updated, doc title updated, and this knowledge-base section. **No application code was
+written** — the user explicitly asked for research and back-and-forth before building.
+
+**Test suite: 25 passing** (unchanged — no code touched in this session).
+
+### 🔴 Open / blocked — carry forward
+
+1. **Three commits staged but UNPUSHED**, all blocked by the Claude Code permission classifier
+   (not a git/repo/credential problem). Branch `fix/audit-remediation-m1-4`, target
+   `https://github.com/namm9an/Marketing-OS`. Prepared commit messages live in the session
+   scratchpad (`commit_msg.txt` = audit remediation, `commit_msg_langgraph.txt` = Option 1
+   migration, `commit_msg_m5.txt` = Milestone 5). Resolution requires either the user running
+   `git commit`/`git push` themselves, or adding `Bash(git commit:*)` / `Bash(git push:*)`
+   permission rules.
+2. **🔑 The leaked `TIR_API_KEY` is still in git history and MUST be rotated on the TIR provider
+   side.** Removing it from source did **not** un-leak it.
+3. **Sequencing undecided:** Phase 6 (multimodal ingestion) and Phase 9 are **both** marked
+   🎯 Next. They are independent — Phase 6 writes to L0, which the memory work does not touch.
+   *Recommendation on record: Phase 9 first* (it is what makes the product feel alive; Phase 6
+   uploads are more valuable once there is a conversation to attach them to).
+4. **Build approach recommended but not chosen:** thin slice — branding agent end-to-end
+   (chat + namespace + gate + graph), proving the isolation rule **before** replicating it five
+   times.
+5. **Stray file:** `Marketing-OS/.claude/launch.json` was created during a failed browser-preview
+   attempt (`preview_start` and `rm -rf` were both blocked by the classifier). Harmless; delete
+   or gitignore.
+6. **UI never visually verified.** The M5 Digest tab and `CompetitorNetwork.jsx` compile and
+   their API contract is test-asserted, but the browser preview was blocked — **no one has seen
+   the digest tab render.** Worth a look on the next run.

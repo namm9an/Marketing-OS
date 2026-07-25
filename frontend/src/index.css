@@ -16,4 +16,18 @@
   body { background: white !important; color: black !important; }
   .print-artifact { background: white !important; border: 1px solid #ddd !important; color: black !important; box-shadow: none !important; }
   .print-text { color: black !important; }
+
+  /* Weekly Digest -> "Save as PDF" produces the executive report.
+     ponytail: the browser's own print-to-PDF instead of a server-side renderer
+     (reportlab/weasyprint) — same cited PDF, no extra dependency. Move it server-side
+     only when the report must be generated headlessly, e.g. emailed on a schedule. */
+  aside, canvas { display: none !important; }
+  main { padding-left: 0 !important; }
+  #digest-report { max-width: 100% !important; }
+  /* Scroll panes must print in full, not clipped to their on-screen height. */
+  #digest-report .print-expand,
+  #digest-report .overflow-y-auto { max-height: none !important; overflow: visible !important; }
+  #digest-report a { color: #000 !important; text-decoration: underline; }
+  #digest-report .rounded-2xl, #digest-report .rounded-xl { break-inside: avoid; }
+  @page { margin: 14mm; }
 }

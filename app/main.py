@@ -7,6 +7,7 @@ from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from app.core.config import settings
 from app.graph.workflow import swarm_engine
+from app.graph.digest import run_digest, build_network
 from app.db.database import get_all_decisions, init_db
 
 init_db()
@@ -109,6 +110,26 @@ def api_export_markdown():
         mimetype="text/markdown",
         headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
+
+
+# --- Milestone 5: CMO Weekly Executive Digest ---------------------------------------
+# Split in two on purpose: the network map is an instant DB projection, while the digest
+# fans out to five agents (5 LLM calls). Bundling them would make the graph tab wait on
+# synthesis it does not need.
+
+@app.route("/api/digest/network", methods=["GET"])
+def api_digest_network():
+    return jsonify({"success": True, **build_network()})
+
+
+@app.route("/api/digest", methods=["POST"])
+def api_digest():
+    data = request.get_json(silent=True) or {}
+    provider = (data.get("provider") or "gemini-3.6-flash").strip()
+    try:
+        return jsonify(run_digest(provider=provider))
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/", defaults={"path": ""})

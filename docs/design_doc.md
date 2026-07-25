@@ -1,4 +1,4 @@
-# 📐 Master System Design Document (Phases 1 – 8)
+# 📐 Master System Design Document (Phases 1 – 9)
 ## Marketing OS v2.0 for E2E Networks & TIR AI Platform
 
 > **Document Purpose**: Production-grade architectural blueprint detailing the end-to-end multi-agent intelligence ecosystem for E2E Networks. Formatted for Claude model ingestion, developer onboarding, and executive review.
@@ -347,6 +347,333 @@ flowchart TD
 
 ---
 
+## 🚩 Phase 9: Agent Memory Hub — Per-Agent Memory, Graph Retention & `/triage` Bridging
+
+### 9.1 Business Objective
+
+Today every agent is **amnesiac and promiscuous**: `/api/run` is a stateless one-shot (no
+conversation), and retrieval is global — the branding agent reads the PR agent's notes because
+`search_knowledge_units()` has no agent filter. Phase 9 converts Marketing OS from a
+*form that returns a verdict* into **five specialists you can actually talk to**, each with its
+own persistent memory that sharpens over time, plus a controlled way to put two of them in a
+room together without merging their heads.
+
+Three user-facing promises:
+
+1. **Click an agent → talk to that agent and its memory only.** Multi-turn, persistent.
+2. **It gets smarter every session** — but only from signal that came from *you*.
+3. **`/triage branding pr` bridges two agents** into one answer while their memories stay
+   strictly separate.
+
+### 9.2 The gap this closes
+
+| Capability | Today | After Phase 9 |
+|---|---|---|
+| Conversation | None — one-shot form, `messages[]` never written | Multi-turn threads per agent |
+| Memory scope | One global pool, all agents read everything | One namespace per agent, no cross-reads |
+| Learning | Agents append output; it re-enters as "grounded fact" | Promotion gate admits only user-sourced signal |
+| Retrieval | Keyword top-5 over a flat table | Keyword entry + scoped graph traversal |
+| Multi-agent | Digest fan-out only (M5) | `/triage` interactive bridge |
+
+### 9.3 Four-Layer Memory Model
+
+The governing rule: **facts are shared, interpretations are private.** Splitting the sourced
+corpus five ways would produce five agents that slowly disagree about reality and would destroy
+the zero-hallucination guarantee. Splitting *interpretation* is exactly what isolation means.
+
+| Layer | Contents | Scope | Writers |
+|---|---|---|---|
+| **L0 — Grounded Corpus** | Scraped competitor facts, every row `source_url`-backed | Shared, **read-only to agents** | Crawler + Phase 6 ingestion only |
+| **L0.5 — Corpus Graph** | Entities (competitors, GPU SKUs) + relations | Shared, read-only | Deterministic extractor |
+| **L1 — Private Agent Memory** | Episodic turns + distilled semantic facts | **One namespace per agent** | That agent, via the promotion gate |
+| **L2 — Joint Triage Memory** | What an agent *pair* agreed | Namespace per pair | `/triage` sessions only |
+
+Memory tiers inside L1 follow the episodic → semantic → procedural taxonomy the field converged
+on: **episodic** (raw turns, decays), **semantic** (distilled preferences, persists),
+**procedural** (the agent's persona/prompt — evolves only with human approval).
+
+### 9.4 Namespace Convention (`containerTag`-shaped)
+
+Namespaces are deterministic strings derived from IDs we already hold, so the right namespace is
+always reconstructible at query time without a lookup:
+
+```
+agent:branding                  → branding's private memory
+agent:pr                        → PR's private memory
+triage:branding+pr              → joint memory for that pair (members sorted, so the tag is stable)
+corpus:global                   → the shared grounded layer
+```
+
+Pattern `^[a-zA-Z0-9_:+-]+$`. This mirrors supermemory's `containerTag` deliberately: the
+storage layer stays SQLite, but the *interface* (`add(namespace, …)` / `search(namespace, …)`)
+is shaped so an external memory engine becomes a backend swap rather than a redesign.
+
+### 9.5 The Promotion Gate (what is allowed to become memory)
+
+Not everything an agent says is worth remembering. Unfiltered self-write is the documented
+failure mode — *temporal memory contamination*, where each decision made on poisoned memory
+generates further poisoned memories. **This project has already hit that bug once:** M5 required
+`enriched_by NOT LIKE '%agent%'` to stop agent output being cited back as grounded fact.
+
+| Admitted → written to L1 | Rejected → discarded |
+|---|---|
+| User corrections ("no, never frame it as a price war") | Model prose and restated summaries |
+| Stated preferences ("developer-first tone") | Unsourced factual claims |
+| CMO-ratified decisions | One-off chatter |
+
+Every admitted memory carries `provenance` (which turn produced it), `tier`
+(episodic/semantic), and `confidence`. Promotion from episodic → semantic requires
+**repetition** (the standard heuristic: recurring across 3+ sessions), never a single mention.
+Agents may **never** write to L0 — that boundary is what keeps "100% grounded" true.
+
+### 9.6 Graph Layer & Scoped Traversal
+
+The graph is a **retrieval** structure, not an admission policy — it raises recall on what
+already passed the gate, it does not lower the bar. Graph retrieval also brings a governance
+benefit: a traversal path is *auditable evidence*, which similarity scores are not.
+
+Three edge classes, and traversal is scoped by namespace:
+
+| Edge class | Example | Who may traverse |
+|---|---|---|
+| **Corpus** | `Nebius --offers--> H100` | Every agent |
+| **Private** | `"CMO rejected price-war framing" --anchored_to--> Nebius` | Owning agent only |
+| **Joint** | created during `/triage` | The pair only |
+
+An agent traverses **shared ∪ its own private ∪ its own joint**. It never traverses another
+agent's private edges. Memory→corpus anchors are **one-directional**: you can walk from your own
+memory into a shared fact, never from a shared fact into someone else's memory. Without this
+rule the graph silently re-opens the exact leak `/triage` exists to prevent.
+
+**Corpus entities are extracted deterministically** from the known taxonomy (13 tracked
+competitors; GPU SKUs B200/H200/H100/A100/L40S/HGX) — *not* by an LLM. A fabricated edge is
+worse than a missing one, because a graph path *looks* like evidence. LLM extraction is
+permitted only for L1 memory nodes, which are gated anyway.
+
+This also completes the M5 ceiling: the competitor network stops being hub-and-spoke and becomes
+a real network once shared-SKU relations exist.
+
+### 9.7 `/triage` Protocol — merge the answers, never the memories
+
+```
+/triage branding pr   How do we answer the Nebius price cut?
+```
+
+1. Bridge fans the question out to **only** the two named agents.
+2. Each reasons **privately**: own namespace + shared corpus. Neither sees the other's memory.
+3. Bridge merges the two **views** (structured outputs), attributing each contribution.
+4. The turn is written to `triage:branding+pr` — **neither private namespace is touched.**
+
+Step 4 is the load-bearing decision. Writing back into both private memories would create the
+cross-contamination `/triage` exists to prevent, merely delayed by one turn. The pair instead
+accumulates its own shared history over time.
+
+> Industry corroboration: supermemory's v4 API **cannot** query across containers in one request
+> — *"you must make separate queries and merge results in your application logic."* The
+> constraint and this design are the same shape.
+
+### 9.8 Conversation Layer
+
+- `POST /api/chat` — `{namespace, thread_id, message}` → agent reply, multi-turn.
+- Threads persist per agent; `SwarmState.messages` finally carries real turns.
+- **Recall is visible, not silent.** Each reply reports which memories and which grounded facts
+  it drew on — following Claude's memory design (explicit tool-call recall) over ChatGPT's
+  implicit always-on injection. For a CMO-facing product that must defend where a
+  recommendation came from, visible recall is a governance feature, consistent with the
+  escalation gate already in the graph.
+
+### 9.9 Mermaid Architecture Diagrams
+
+**9.9.1 — Memory architecture**
+
+```mermaid
+flowchart TB
+    User(["CMO"])
+    User --> Sel{"How is the user talking?"}
+    Sel -->|"clicks one agent"| Solo["SOLO SESSION"]
+    Sel -->|"types /triage branding pr"| Bridge["TRIAGE BRIDGE"]
+
+    subgraph AL ["AGENT LAYER - persona lives in the system prompt"]
+        direction LR
+        A1["Branding"]
+        A2["PR"]
+        A3["Social"]
+        A4["Product Marketing"]
+        A5["Events"]
+    end
+
+    Solo --> AL
+    Bridge -.->|"fans out to only the 2 named agents"| AL
+
+    subgraph PM ["L1 PRIVATE MEMORY - one namespace per agent - NO cross-reads"]
+        direction LR
+        M1[("agent:branding<br/>episodic + semantic")]
+        M2[("agent:pr")]
+        M3[("agent:social")]
+        M4[("agent:product_marketing")]
+        M5[("agent:events")]
+    end
+
+    subgraph GC ["L0 GROUNDED CORPUS - SHARED, READ-ONLY to every agent"]
+        C[("competitor facts<br/>every row carries a source_url")]
+    end
+
+    Ingest[/"crawler · PDF · image ingestion"/] ==>|"the only writer"| C
+    AL -.->|"retrieve - read only"| C
+    PM -.->|"recall - own namespace only"| AL
+
+    AL --> PG{{"PROMOTION GATE<br/>what may become memory?"}}
+    PG -->|"corrections · preferences · ratified decisions"| PM
+    PG -->|"model prose · unsourced claims"| Drop["discarded"]
+
+    style GC fill:#e8f5e9
+    style PM fill:#fff3e0
+    style PG fill:#ffebee
+    style Drop fill:#eeeeee
+```
+
+**9.9.2 — Scoped graph traversal**
+
+```mermaid
+flowchart TB
+    Q(["Branding agent answers a question"]) --> T{"traversal scope"}
+
+    subgraph SG ["SHARED CORPUS GRAPH - every agent may traverse"]
+        direction LR
+        N1(("Nebius"))
+        N2(("H100"))
+        N3(("RunPod"))
+        N4(("Yotta"))
+        N1 -->|offers| N2
+        N3 -->|offers| N2
+        N4 -->|competes_with| N1
+    end
+
+    subgraph MB ["agent:branding - PRIVATE"]
+        B1["CMO rejected price-war framing"]
+        B2["tone: developer-first"]
+        B1 -->|generalizes_to| B2
+    end
+
+    subgraph MJ ["triage:branding+pr - JOINT"]
+        J1["agreed launch narrative"]
+    end
+
+    subgraph MP ["agent:pr - PRIVATE - other agent"]
+        P1["Q2 counter-narrative angle"]
+    end
+
+    T ==> SG
+    T ==> MB
+    T ==> MJ
+    T -.->|"BLOCKED - never traversed"| MP
+
+    B1 -->|anchored_to| N1
+    J1 -->|anchored_to| N1
+    P1 -->|anchored_to| N3
+
+    style SG fill:#e8f5e9
+    style MB fill:#fff3e0
+    style MJ fill:#e3f2fd
+    style MP fill:#ffebee
+```
+
+**9.9.3 — `/triage` interaction**
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as CMO
+    participant B as Triage Bridge
+    participant BA as Branding Agent
+    participant PA as PR Agent
+    participant MB as agent:branding
+    participant MP as agent:pr
+    participant C as Grounded Corpus
+
+    U->>B: /triage branding pr<br/>"How do we answer the Nebius price cut?"
+
+    par Branding reasons privately
+        B->>BA: question + shared task frame
+        BA->>MB: recall own memory
+        BA->>C: retrieve sourced facts
+        BA-->>B: branding view
+    and PR reasons privately
+        B->>PA: question + shared task frame
+        PA->>MP: recall own memory
+        PA->>C: retrieve sourced facts
+        PA-->>B: PR view
+    end
+
+    Note over MB,MP: neither agent ever reads the other's memory
+    B->>B: merge the two VIEWS, not the two MEMORIES
+    B-->>U: one joint answer, each contribution attributed
+    B->>B: write turn to triage:branding+pr only
+```
+
+### 9.10 Data Model (additive — no existing table changes)
+
+```
+memories(id, namespace, tier, content, provenance, confidence,
+         source_turn_id, hit_count, created_at, last_used_at)
+
+edges(id, src, rel, dst, namespace, provenance, created_at)
+      -- namespace 'corpus:global' = shared; 'agent:*' / 'triage:*' = scoped
+
+threads(id, namespace, title, created_at)
+turns(id, thread_id, role, content, recalled_ids, created_at)
+```
+
+Graph traversal uses SQLite **recursive CTEs** — no Neo4j. At this scale (94 corpus facts, 13
+organizations, hundreds of memories) a dedicated graph database is pure ceremony, and SQLite is
+documented as appropriate for small-to-medium graph workloads.
+
+### 9.11 Design decisions & rationale
+
+| Decision | Why | Rejected alternative |
+|---|---|---|
+| Shared corpus + private memory | Hybrid private/shared is the production default; facts are objective, interpretations are not | 5 full copies → 5x duplication, guaranteed drift |
+| Namespace isolation, not filtered index | Separate namespaces are structural; filtering a shared index is a policy you can get wrong | one table + `WHERE agent = ?` |
+| Gate admits user-sourced signal only | Prevents temporal memory contamination; the M5 bug proves it's real here | write-everything with TTL |
+| Graph in SQLite | Already the stack; recursive CTEs suffice at this size | Neo4j / FalkorDB |
+| Deterministic corpus extraction | A fabricated edge looks like evidence | LLM entity extraction over the corpus |
+| `/triage` writes to joint namespace only | Writing to both private memories re-creates the leak, one turn later | write-back to each agent |
+| Build on SQLite, `containerTag`-shaped API | 94 facts vs supermemory's 100B tokens/month; avoids a Node+Postgres service beside Flask | adopt supermemory now |
+| Visible recall | Auditability; consistent with the CMO escalation gate | silent context injection |
+
+**Research sources:** [Microsoft Multi-Agent Reference Architecture](https://microsoft.github.io/multi-agent-reference-architecture/docs/memory/Short-Term-Memory.html) ·
+[mem0 — Multi-Agent Memory Systems](https://mem0.ai/blog/multi-agent-memory-systems) ·
+[LangChain — Long-term memory](https://docs.langchain.com/oss/python/langchain/long-term-memory) ·
+[Agent Memory Architecture: the three-tier pattern](https://appscale.blog/en/blog/agent-memory-architecture-episodic-semantic-procedural-the-three-tier-pattern-2026) ·
+[supermemory — Container Tags](https://supermemory.ai/docs/concepts/container-tags) ·
+[supermemory issue #27 — per-agent isolation (open)](https://github.com/supermemoryai/openclaw-supermemory/issues/27) ·
+[Redis — Knowledge graph RAG](https://redis.io/blog/knowledge-graph-rag-structured-retrieval-ai-agents/) ·
+[SQLite as a graph database](https://dev.to/rohansx/sqlite-as-a-graph-database-recursive-ctes-semantic-search-and-why-we-ditched-neo4j-1ai) ·
+[Simon Willison — Claude vs ChatGPT memory](https://simonwillison.net/2025/Sep/12/claude-memory/) ·
+[MintMCP — memory poisoning](https://www.mintmcp.com/blog/ai-agent-memory-poisoning)
+
+### 9.12 UI
+
+The per-agent chat and `/triage` view are a genuine layout change, so the background is
+re-based at the same time: replace the hand-written three.js simplex shader in
+`ShaderCanvas.jsx` with **`@shadergradient/react`** (`npm i @shadergradient/react
+@react-three/fiber three three-stdlib camera-controls`), using `ShaderGradientCanvas` +
+`ShaderGradient`. Per-agent accent colours can key off the same gradient config so each agent's
+session is visually distinct.
+
+### 9.13 Explicitly out of scope (deferred ceilings)
+
+- **No embeddings / vector search.** Keyword entry + graph traversal first; add vectors only
+  when keyword recall measurably fails. FTS5 is the cheaper next step.
+- **No cross-agent auto-learning.** Agents never learn from each other implicitly — only
+  through an explicit `/triage`.
+- **No automatic forgetting beyond episodic decay.** Contradiction resolution stays manual until
+  there is evidence it's needed.
+- **No agent-authored persona changes.** Procedural memory (the system prompt) changes only with
+  human approval.
+
+---
+
 ## 📊 Complete Phase Roadmap Summary Table
 
 | Phase | Milestone Name | Status | Key Deliverables |
@@ -355,7 +682,8 @@ flowchart TD
 | **Phase 2** | RAMP Grounded SQLite Engine | ✅ Complete | `marketing_os.db` seeded with 91 100% grounded facts & source URLs |
 | **Phase 3** | Core Swarm Agent Nodes | ✅ Complete | Active Branding & PR Agents with Pydantic schema validation |
 | **Phase 4** | Senior Engineering Layout & Deployment | ✅ Complete | Clean `app/` root, 7 Pytest cases, deployed on VM (`164.52.203.81`) |
-| **Phase 5** | CMO Weekly Executive Digest UI | 🎯 Next | Cross-agent digest, interactive link graph visualizer, weekly PDF export |
-| **Phase 6** | Multimodal Image & PDF Ingestion | 📍 Planned | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
+| **Phase 5** | CMO Weekly Executive Digest UI | ✅ Complete | LangGraph fan-out digest across all 5 agents, interactive link graph, print-to-PDF report with cited sources |
+| **Phase 6** | Multimodal Image & PDF Ingestion | 🎯 Next | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
 | **Phase 7** | Automated Change Tracking (CompTrack) | 📍 Planned | Background re-crawler, competitor delta engine, CMO contradiction alerts |
-| **Phase 8** | Full Activation of Swarm Agents | 📍 Planned | Activate Social, Product Marketing, and Field Events agent logic |
+| **Phase 8** | Full Activation of Swarm Agents | ✅ Complete | All 5 agents live in `AGENT_REGISTRY`; all five run in the M5 digest fan-out |
+| **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🎯 Next | Per-agent chat + private memory namespaces, promotion gate, scoped knowledge graph, `/triage` bridge, shadergradient UI |

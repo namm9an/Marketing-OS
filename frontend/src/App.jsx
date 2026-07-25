@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Sparkles, Copy, Check, FileText, ChevronDown, AlertCircle, LogOut, 
+import {
+  Sparkles, Copy, Check, FileText, ChevronDown, AlertCircle, LogOut,
   History, Database, Settings, LayoutDashboard, User, Lock, ArrowRight,
-  Eye, EyeOff, Menu, X, ShieldCheck
+  Eye, EyeOff, Menu, X, ShieldCheck, Network, Printer, RefreshCw
 } from 'lucide-react';
 import ShaderCanvas from './components/ShaderCanvas';
+import CompetitorNetwork from './components/CompetitorNetwork';
 
 const PRESETS = [
   {
@@ -47,6 +48,42 @@ export default function App() {
   const [history, setHistory] = useState([]);
   const [copied, setCopied] = useState(false);
   const [ratified, setRatified] = useState(false);
+
+  // Weekly digest (M5). The network map is cheap (DB-only) so it loads with the tab;
+  // the digest itself fans out to 5 agents, so it runs on demand.
+  const [network, setNetwork] = useState(null);
+  const [digest, setDigest] = useState(null);
+  const [digestLoading, setDigestLoading] = useState(false);
+  const [digestError, setDigestError] = useState(null);
+
+  useEffect(() => {
+    if (authenticated && activeTab === 'digest' && !network) {
+      fetch('/api/digest/network')
+        .then((r) => r.json())
+        .then((d) => d.success && setNetwork(d))
+        .catch(() => setDigestError('Could not load the competitor network.'));
+    }
+  }, [authenticated, activeTab, network]);
+
+  const runDigest = async () => {
+    setDigestLoading(true);
+    setDigestError(null);
+    try {
+      const res = await fetch('/api/digest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Digest failed');
+      setDigest(data);
+      if (data.network) setNetwork(data.network);
+    } catch (e) {
+      setDigestError(e.message);
+    } finally {
+      setDigestLoading(false);
+    }
+  };
 
   // Load persistent history from SQLite on login
   useEffect(() => {
@@ -331,10 +368,22 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setActiveTab('digest')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                activeTab === 'digest'
+                  ? 'bg-[#D97757] text-white shadow-xs'
+                  : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
+              }`}
+            >
+              <Network className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>Weekly Digest</span>}
+            </button>
+
+            <button
               onClick={() => setActiveTab('knowledge')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                activeTab === 'knowledge' 
-                  ? 'bg-[#D97757] text-white shadow-xs' 
+                activeTab === 'knowledge'
+                  ? 'bg-[#D97757] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
             >
@@ -401,12 +450,14 @@ export default function App() {
             <h2 className="text-sm font-semibold text-[#1C1917] capitalize">
               {activeTab === 'workbench' && 'Positioning Workbench'}
               {activeTab === 'history' && 'Decision History'}
+              {activeTab === 'digest' && 'CMO Weekly Executive Digest'}
               {activeTab === 'knowledge' && 'Semantic Memory Knowledge Base'}
               {activeTab === 'settings' && 'Runtime Settings'}
             </h2>
             <p className="text-[11px] text-[#78716C]">
               {activeTab === 'workbench' && 'Formulate positioning strategies and execute autonomous governance loops'}
               {activeTab === 'history' && 'Audit trail of past strategy executions and CMO ratifications'}
+              {activeTab === 'digest' && 'Cross-agent competitor intelligence, grounded in cited sources'}
               {activeTab === 'knowledge' && 'Active knowledge units (facts, assumptions, patterns)'}
               {activeTab === 'settings' && 'Model provider configuration and inference limits'}
             </p>
@@ -814,6 +865,142 @@ export default function App() {
                     </p>
                   </div>
                 ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Tab 4: CMO Weekly Executive Digest (M5) */}
+        {activeTab === 'digest' && (
+          <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 space-y-6">
+
+            <div className="flex items-center justify-between gap-3 no-print">
+              <div>
+                <h3 className="text-sm font-semibold text-[#1C1917]">Competitor Intelligence Digest</h3>
+                <p className="text-[11px] text-[#78716C]">
+                  Fans out to all 5 agents in parallel over {network?.total_facts ?? '—'} grounded competitor facts.
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {digest && (
+                  <button
+                    onClick={() => window.print()}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-medium border border-[#E0DACE] bg-white text-[#44403C] hover:text-[#1C1917] hover:bg-[#F2EEE7] transition-all"
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Save PDF
+                  </button>
+                )}
+                <button
+                  onClick={runDigest}
+                  disabled={digestLoading}
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#D97757] text-white shadow-xs hover:bg-[#C56647] disabled:opacity-60 transition-all"
+                >
+                  {digestLoading
+                    ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Synthesizing…</>
+                    : <><Sparkles className="w-3.5 h-3.5" /> {digest ? 'Regenerate' : 'Generate Digest'}</>}
+                </button>
+              </div>
+            </div>
+
+            {digestError && (
+              <div className="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#B91C1C] flex items-center gap-2 no-print">
+                <AlertCircle className="w-4 h-4 shrink-0" /> {digestError}
+              </div>
+            )}
+
+            {/* Printable executive report */}
+            <div id="digest-report" className="space-y-6">
+              {digest && (
+                <>
+                  <div className="p-5 rounded-2xl bg-white/80 border border-[#E7E2D8] space-y-3">
+                    <div className="flex items-start justify-between gap-4">
+                      <h4 className="text-base font-semibold text-[#1C1917] leading-snug">{digest.headline}</h4>
+                      <span className="text-[10px] font-mono text-[#78716C] shrink-0 mt-1">
+                        {new Date(digest.generated_at).toLocaleDateString()}
+                      </span>
+                    </div>
+                    <p className="text-xs text-[#44403C] leading-relaxed">{digest.executive_summary}</p>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Competitor Movements</div>
+                      <ul className="p-3.5 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] space-y-2">
+                        {digest.competitor_movements.map((m, i) => (
+                          <li key={i} className="text-xs text-[#44403C] leading-relaxed flex gap-2">
+                            <span className="text-[#D97757] font-bold">›</span>{m}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Recommended Actions</div>
+                      <ul className="p-3.5 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] space-y-2">
+                        {digest.recommended_actions.map((a, i) => (
+                          <li key={i} className="text-xs text-[#44403C] leading-relaxed flex gap-2">
+                            <span className="text-[#D97757] font-bold">›</span>{a}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+                      Specialist Agent Briefs ({digest.agent_briefs.length})
+                    </div>
+                    <div className="space-y-2">
+                      {digest.agent_briefs.map((b) => (
+                        <div key={b.agent} className="p-4 rounded-xl bg-white/80 border border-[#E7E2D8] space-y-1.5">
+                          <div className="flex items-center justify-between gap-3">
+                            <span className="text-xs font-bold text-[#1C1917]">{b.headline}</span>
+                            <span className="font-mono text-[10px] uppercase text-[#78716C] border border-[#E0DACE] bg-[#F7F5F0] px-2 py-0.5 rounded-md shrink-0">
+                              {b.agent.replace('_', ' ')} / {b.confidence}
+                            </span>
+                          </div>
+                          <p className="text-xs text-[#44403C] leading-relaxed">{b.finding}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Link network — grounded, renders with or without a synthesized digest */}
+              <div className="space-y-2.5">
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Competitor Link Network</div>
+                {network
+                  ? <CompetitorNetwork network={network} />
+                  : <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">Loading grounded competitor network…</div>}
+              </div>
+
+              {digest && (
+                <div className="space-y-2.5 pt-3 border-t border-[#E7E2D8]">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+                    Grounded Sources ({digest.citations.length})
+                  </div>
+                  <p className="text-[11px] text-[#78716C]">
+                    Every citation below is a stored knowledge unit with its scraped source URL — never model output.
+                  </p>
+                  <div className="space-y-1 max-h-72 overflow-y-auto print-expand">
+                    {digest.citations.map((c, i) => (
+                      <div key={i} className="p-2.5 rounded-lg bg-[#F7F5F0]/90 border border-[#E0DACE] flex items-center justify-between gap-3 text-[11px]">
+                        <span className="font-medium text-[#1C1917] shrink-0">{c.organization}</span>
+                        <span className="font-mono text-[10px] uppercase text-[#78716C] shrink-0">{c.knowledge_class}</span>
+                        <a href={c.source_url} target="_blank" rel="noopener noreferrer"
+                           className="font-mono text-[10px] text-[#D97757] hover:underline truncate text-right flex-1">
+                          {c.source_url}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {!digest && !digestLoading && (
+              <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C] no-print">
+                Generate the digest to fan out across all 5 agents and synthesize the executive brief.
               </div>
             )}
           </div>

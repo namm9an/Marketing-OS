@@ -183,3 +183,32 @@ def search_knowledge_units(query: str = "", limit: int = 15) -> List[Dict[str, A
 
 def get_all_knowledge_units() -> List[Dict[str, Any]]:
     return search_knowledge_units(limit=100)
+
+
+def get_competitor_facts(limit: int = 200) -> List[Dict[str, Any]]:
+    """The digest's 'Competitor Movement Filter': rival facts only, no internal E2E noise.
+
+    Agent-enriched rows are excluded too — the digest must cite scraped, sourced
+    competitor intelligence, not our own model's earlier output (that would let a
+    synthesized claim re-enter as a 'grounded' citation).
+
+    ponytail: no time window. A real weekly delta needs Phase 7 (CompTrack) writing
+    dated re-crawl rows first; filtering the one-shot seed by date would return noise.
+    """
+    init_db()
+    conn = get_connection()
+    try:
+        cursor = conn.execute(
+            """
+            SELECT * FROM knowledge_units
+            WHERE organization NOT LIKE '%E2E%'
+              AND enriched_by NOT LIKE '%agent%'
+              AND source_url IS NOT NULL AND source_url != ''
+            ORDER BY organization, knowledge_class
+            LIMIT ?
+            """,
+            (limit,),
+        )
+        return [dict(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()

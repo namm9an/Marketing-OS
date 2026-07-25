@@ -3,4 +3,9 @@ flask-cors>=4.0.0
 requests>=2.31.0
 playwright>=1.40.0
 beautifulsoup4>=4.12.0
-langfuse>=2.0.0
+# Multi-agent orchestration + observability (Milestone 5: real LangGraph supervisor).
+langgraph>=0.2.0
+langchain-core>=0.3.0
+langchain>=0.3.0          # required by langfuse.langchain CallbackHandler
+langfuse>=3.0.0           # v3+: `from langfuse.langchain import CallbackHandler`
+langsmith>=0.1.0          # LangSmith tracing is env-var driven (LANGSMITH_TRACING=true)

@@ -97,17 +97,27 @@ def _strip_code_fence(text: str) -> str:
     return text
 
 
-def run_agent(agent_type: str, goal_statement: str, provider: str = DEFAULT_PROVIDER) -> Dict[str, Any]:
+def run_agent(
+    agent_type: str,
+    goal_statement: str,
+    provider: str = DEFAULT_PROVIDER,
+    extra_context: str = "",
+) -> Dict[str, Any]:
+    """Run one agent. `extra_context` replaces the default retrieval when supplied —
+    the weekly digest uses it to ground agents on competitor-only facts."""
     cfg = AGENT_REGISTRY.get(agent_type, AGENT_REGISTRY["branding"])
 
     # 1. Retrieve grounded facts from the SQLite knowledge base.
-    db_facts = search_knowledge_units(query=goal_statement, limit=5)
-    facts_context = ""
-    if db_facts:
-        facts_context = "\n\nRELEVANT GROUNDED KNOWLEDGE UNITS FROM DB:\n" + "\n".join(
-            f"- [{f['organization']} / {f['knowledge_class']}] (URL: {f.get('source_url', 'N/A')}): {f['content']}"
-            for f in db_facts
-        )
+    if extra_context:
+        facts_context = f"\n\nGROUNDED KNOWLEDGE UNITS FROM DB:\n{extra_context}"
+    else:
+        db_facts = search_knowledge_units(query=goal_statement, limit=5)
+        facts_context = ""
+        if db_facts:
+            facts_context = "\n\nRELEVANT GROUNDED KNOWLEDGE UNITS FROM DB:\n" + "\n".join(
+                f"- [{f['organization']} / {f['knowledge_class']}] (URL: {f.get('source_url', 'N/A')}): {f['content']}"
+                for f in db_facts
+            )
     user_prompt = f"Goal: {goal_statement}{facts_context}\nFormulate the strategy for your domain."
 
     # 2. Call the LLM.

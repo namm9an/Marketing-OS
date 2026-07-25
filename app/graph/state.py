@@ -16,3 +16,7 @@ class SwarmState(TypedDict):
     confidence: Optional[str]
     knowledge_units: List[Dict[str, Any]]
     trace_id: Optional[str]
+    # Written by the governance node.
+    escalated: Optional[bool]
+    escalation_reason: Optional[str]
+    decision_id: Optional[str]

@@ -1,0 +1,97 @@
+"""
+Unit tests for the Milestone 5 CMO Weekly Digest fan-out graph.
+
+The load-bearing guarantees here are (a) all five agents actually contribute — this is
+the fan-out, not a single agent wearing five hats — and (b) the competitor filter and
+citation path never leak internal E2E rows or model output into "grounded sources".
+"""
+
+import sys
+import unittest
+from pathlib import Path
+
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
+sys.path.insert(0, str(BASE_DIR))
+
+from app.db.database import init_db, get_competitor_facts, save_knowledge_unit
+from app.core.primitives import new_id
+from app.db.grounded_seed import seed_grounded_knowledge
+from app.graph.digest import run_digest, build_network, _DIGEST_GRAPH
+
+
+class TestCompetitorFilter(unittest.TestCase):
+    def setUp(self):
+        init_db()
+        seed_grounded_knowledge()
+
+    def test_excludes_internal_e2e_noise(self):
+        for f in get_competitor_facts():
+            self.assertNotIn("E2E", f["organization"])
+
+    def test_excludes_agent_enriched_rows(self):
+        # An agent's own output must not come back as a citable competitor "fact".
+        save_knowledge_unit(
+            id_str=new_id(), k_class="positioning", confidence="high",
+            content="Synthesized claim about Nebius", organization="Nebius",
+            source_url="https://example.com", enriched_by="branding_agent",
+        )
+        self.assertFalse(
+            any("agent" in f["enriched_by"] for f in get_competitor_facts()),
+            "model-generated rows must never be cited as grounded sources",
+        )
+
+    def test_every_fact_has_a_source_url(self):
+        facts = get_competitor_facts()
+        self.assertTrue(facts)
+        for f in facts:
+            self.assertTrue(f["source_url"], "grounded citation requires a source URL")
+
+
+class TestDigestGraph(unittest.TestCase):
+    def setUp(self):
+        init_db()
+        seed_grounded_knowledge()
+
+    def test_graph_fans_out_to_all_five_agents(self):
+        nodes = set(_DIGEST_GRAPH.get_graph().nodes)
+        for agent in ("branding", "pr", "social", "product_marketing", "events"):
+            self.assertIn(f"digest_{agent}", nodes)
+        self.assertIn("synthesize", nodes)
+
+    def test_digest_collects_a_brief_from_each_agent(self):
+        out = run_digest()
+        self.assertTrue(out["success"])
+        self.assertEqual(
+            {b["agent"] for b in out["agent_briefs"]},
+            {"branding", "pr", "social", "product_marketing", "events"},
+            "the aggregator must receive all five parallel briefs",
+        )
+        self.assertTrue(out["headline"])
+        self.assertTrue(out["executive_summary"])
+
+    def test_citations_are_competitor_only(self):
+        out = run_digest()
+        self.assertTrue(out["citations"])
+        for c in out["citations"]:
+            self.assertNotIn("E2E", c["organization"])
+            self.assertTrue(c["source_url"])
+
+
+class TestNetworkMap(unittest.TestCase):
+    def setUp(self):
+        init_db()
+        seed_grounded_knowledge()
+
+    def test_hub_and_spoke_shape(self):
+        net = build_network()
+        hubs = [n for n in net["nodes"] if n["group"] == "us"]
+        competitors = [n for n in net["nodes"] if n["group"] == "competitor"]
+        self.assertEqual(len(hubs), 1)
+        self.assertTrue(competitors)
+        self.assertEqual(len(net["links"]), len(competitors), "one edge per rival")
+        for n in competitors:
+            self.assertEqual(n["fact_count"], len(n["citations"]))
+
+
+if __name__ == "__main__":
+    unittest.main()
