@@ -28,6 +28,7 @@ from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER, run_agent, _strip_
 from app.core.primitives import now_iso
 from app.core.schemas import DigestSchema
 from app.db.database import get_competitor_facts
+from app.memory.graph import shared_sku_links
 from app.services.llm_service import LLMService
 
 log = logging.getLogger(__name__)
@@ -191,9 +192,11 @@ def build_network() -> Dict[str, Any]:
     Edge weight = number of grounded facts we hold on that rival. Each node carries its
     own citations so a click can show rate cards and sources.
 
-    ponytail: hub-and-spoke only. Rival<->rival edges would need a real shared-attribute
-    join (e.g. same GPU SKU); inventing them would be exactly the fabrication this
-    project is built to avoid.
+    Rival<->rival edges are *derived*, not asserted: M9.4's corpus graph links two rivals
+    only when both are recorded offering the same GPU SKU, and the link names the SKUs so
+    the CMO can check it. Inventing a bare `competes_with` edge would have been exactly
+    the fabrication this project is built to avoid — which is why it stayed hub-and-spoke
+    until there was a real shared attribute to join on.
     """
     facts = get_competitor_facts()
     grouped: Dict[str, List[Dict[str, Any]]] = defaultdict(list)
@@ -222,8 +225,15 @@ def build_network() -> Dict[str, Any]:
                 for f in org_facts
             ],
         })
-        links.append({"source": "E2E Networks", "target": org, "weight": len(org_facts)})
+        links.append({"source": "E2E Networks", "target": org, "weight": len(org_facts),
+                      "kind": "hub"})
 
+    known = {n["id"] for n in nodes}
+    links += [
+        {**link, "kind": "shared_sku"}
+        for link in shared_sku_links()
+        if link["source"] in known and link["target"] in known
+    ]
     return {"nodes": nodes, "links": links, "total_facts": len(facts)}
 
 

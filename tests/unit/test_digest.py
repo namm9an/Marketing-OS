@@ -88,9 +88,23 @@ class TestNetworkMap(unittest.TestCase):
         competitors = [n for n in net["nodes"] if n["group"] == "competitor"]
         self.assertEqual(len(hubs), 1)
         self.assertTrue(competitors)
-        self.assertEqual(len(net["links"]), len(competitors), "one edge per rival")
+        hub_links = [l for l in net["links"] if l["kind"] == "hub"]
+        self.assertEqual(len(hub_links), len(competitors), "one hub edge per rival")
         for n in competitors:
             self.assertEqual(n["fact_count"], len(n["citations"]))
+
+    def test_rival_links_are_derived_and_every_endpoint_is_a_real_node(self):
+        """M9.4 added rival<->rival edges. They must be evidenced (a named shared SKU)
+        and drawable — a link to a node the map does not contain renders as a dangling
+        edge in CompetitorNetwork.jsx."""
+        net = build_network()
+        ids = {n["id"] for n in net["nodes"]}
+        rival = [l for l in net["links"] if l["kind"] == "shared_sku"]
+        self.assertTrue(rival)
+        for link in rival:
+            self.assertIn(link["source"], ids)
+            self.assertIn(link["target"], ids)
+            self.assertTrue(link["shared"], "a rival edge must name what it is based on")
 
 
 if __name__ == "__main__":

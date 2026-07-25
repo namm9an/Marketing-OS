@@ -33,7 +33,7 @@ from langgraph.graph import StateGraph, START, END
 
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER
 from app.db.database import search_knowledge_units
-from app.memory import gate, store
+from app.memory import gate, graph, store
 from app.services.llm_service import LLMService
 
 log = logging.getLogger(__name__)
@@ -41,6 +41,8 @@ log = logging.getLogger(__name__)
 _HISTORY_TURNS = 12   # ponytail: fixed window. Summarise older turns only if threads get long.
 _MEMORY_RECALL = 6
 _FACT_RECALL = 5
+_GRAPH_RECALL = 3     # extra memories reached by traversal rather than by keyword
+_GRAPH_DEPTH = 2      # memory -> entity -> related entity -> memory
 
 _CHAT_CONTRACT = """
 You are in a live conversation with the CMO of E2E Networks. Reply in plain prose — no JSON,
@@ -67,6 +69,7 @@ class ChatState(TypedDict, total=False):
     history: List[Dict[str, Any]]
     memories: List[Dict[str, Any]]
     facts: List[Dict[str, Any]]
+    graph_paths: List[Dict[str, Any]]
     reply: str
     memory_verdict: Dict[str, Any]
 
@@ -115,9 +118,22 @@ def _recall(state: ChatState) -> Dict[str, Any]:
 
     scope = store.readable_namespaces(agent_type)
     memories = store.search_memories(scope, message, limit=_MEMORY_RECALL)
+
+    # M9.4: keyword recall only finds notes that share wording with the question. The
+    # graph finds notes that share *subject matter* — "developer-first tone on H100
+    # posts" surfaces for a question about Nebius, because the corpus knows Nebius
+    # offers H100. Same scope, so this widens recall without widening access.
+    hop = graph.recall_by_graph(scope, message, depth=_GRAPH_DEPTH, limit=_GRAPH_RECALL)
+    known = {m["id"] for m in memories}
+    extra = [m for m in hop["memory_ids"] if m not in known]
+    memories += store.get_memories(extra, scope)
+    paths = [p for p in hop["paths"] if p["memory_id"] in set(extra)]
+
     facts = search_knowledge_units(query=message, limit=_FACT_RECALL, sourced_only=True)
-    log.info(f"[Chat/{agent_type}] recalled {len(memories)} memories, {len(facts)} facts")
-    return {"history": history, "user_turn_id": user_turn_id, "memories": memories, "facts": facts}
+    log.info(f"[Chat/{agent_type}] recalled {len(memories)} memories "
+             f"({len(extra)} via graph), {len(facts)} facts")
+    return {"history": history, "user_turn_id": user_turn_id, "memories": memories,
+            "facts": facts, "graph_paths": paths}
 
 
 def _fallback_reply(state: ChatState) -> str:
@@ -240,6 +256,9 @@ def run_chat(
                  "content": f["content"][:300], "source_url": f.get("source_url")}
                 for f in final.get("facts", [])
             ],
+            # How the graph reached what keyword search would have missed. A readable
+            # path ("Nebius > H100 > mem:...") is auditable in a way a score is not.
+            "graph": final.get("graph_paths", []),
         },
         # What the turn taught the agent, and why — shown rather than done silently.
         "memory": final.get("memory_verdict", {}),

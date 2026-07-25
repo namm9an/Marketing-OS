@@ -102,5 +102,11 @@ def seed_grounded_knowledge():
     finally:
         conn.close()
 
+    # The corpus graph (M9.4) is derived from these rows, and this function replaced all
+    # of them. Re-derive here rather than at boot alone, so the graph can never describe
+    # a corpus that no longer exists.
+    from app.memory.graph import rebuild_corpus_graph
+    print(f"[+] Corpus graph re-derived: {rebuild_corpus_graph()} edges")
+
 if __name__ == "__main__":
     seed_grounded_knowledge()

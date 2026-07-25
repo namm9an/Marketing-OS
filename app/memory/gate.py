@@ -30,7 +30,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from app.db.database import _keywords as keywords
-from app.memory import store
+from app.memory import graph, store
 
 # Rule 2. Checked in this order — the first match wins, most specific first.
 _CATEGORY_PATTERNS = (
@@ -137,12 +137,17 @@ def admit(namespace: str, role: str, content: str, turn_id: str = "") -> Dict[st
         provenance=f"user:{category}:{turn_id}" if turn_id else f"user:{category}",
         confidence=_CONFIDENCE[category],
     )
+    # M9.4: link the new memory to the entities it names, inside its own namespace, so
+    # it is reachable by traversal and not only by keyword. Anchoring happens *after*
+    # admission on purpose — the graph raises recall, it never widens what gets in.
+    anchors = graph.anchor_memory(memory_id, namespace, content)
+
     reason = f"{category} admitted"
     if tier == "semantic":
         reason += f" (recurring, {len(dupes) + 1} occurrences — promoted)"
     return {
         "admitted": True, "reason": reason, "memory_id": memory_id,
-        "tier": tier, "category": category,
+        "tier": tier, "category": category, "anchors": anchors,
     }
 
 

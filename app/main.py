@@ -12,8 +12,12 @@ from app.graph.chat import run_chat
 from app.graph.digest import run_digest, build_network
 from app.memory import store
 from app.db.database import get_all_decisions, init_db
+from app.memory.graph import rebuild_corpus_graph
 
 init_db()
+# Deterministic and idempotent, so re-deriving on every boot keeps the graph in step with
+# the corpus without a migration step. Cheap: one pass over ~94 sourced rows.
+rebuild_corpus_graph()
 
 FRONTEND_DIST = settings.BASE_DIR / "frontend" / "dist"
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path="")

@@ -156,6 +156,32 @@ def search_memories(namespaces: List[str], query: str = "", limit: int = 5) -> L
         conn.close()
 
 
+def get_memories(memory_ids: List[str], namespaces: List[str]) -> List[Dict[str, Any]]:
+    """Fetch memories by id, **still restricted to `namespaces`**.
+
+    The graph layer reaches memories by traversal rather than by keyword, so it hands
+    back ids. Re-applying the namespace filter here means the isolation rule is enforced
+    on the way out too, and a bug in traversal scoping cannot turn into a leak.
+    """
+    if not memory_ids or not namespaces:
+        return []
+    for ns in namespaces:
+        validate_ns(ns)
+    init_db()
+    conn = get_connection()
+    try:
+        rows = conn.execute(
+            f"""SELECT * FROM memories
+                WHERE id IN ({','.join('?' * len(memory_ids))})
+                  AND namespace IN ({','.join('?' * len(namespaces))})""",
+            (*memory_ids, *namespaces),
+        ).fetchall()
+    finally:
+        conn.close()
+    by_id = {r["id"]: dict(r) for r in rows}
+    return [by_id[m] for m in memory_ids if m in by_id]  # caller's order = relevance order
+
+
 def promote_memory(memory_id: str, tier: str = "semantic") -> None:
     """Move a memory up a tier. Repetition is the only thing that triggers this (M9.2)."""
     if tier not in TIERS:

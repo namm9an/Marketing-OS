@@ -679,6 +679,17 @@ Order rationale: the isolation rule is the part most likely to have a subtle fla
 built and tested **first, once, in one place** rather than discovered after five agents and a
 bridge already depend on it. M9.3 is the first commit that is user-visible end to end.
 
+**M9.4 as built.** Two notes where the implementation is narrower than the section above.
+Corpus extraction is fully deterministic: the organisation comes from the row's own
+`organization` column and SKUs from a fixed taxonomy, so no edge is ever inferred by a
+model — a fabricated edge is worse than a missing one, because a traversal path *looks*
+like evidence. And there is no asserted `competes_with` relation; rival↔rival is a derived
+2-hop result through a shared SKU (`Nebius -prices-> H100 <-offers- RunPod`), which also
+lifts M5's hub-and-spoke ceiling in `build_network()` with links that name their evidence.
+`rebuild_corpus_graph()` replaces rather than tops up `corpus:global` — the seeder DROPs
+`knowledge_units`, so surviving edges would cite ids that no longer exist. Memory anchors
+in `agent:*` / `triage:*` are untouched by a reseed.
+
 ### 9.14 Explicitly out of scope (deferred ceilings)
 
 - **No embeddings / vector search.** Keyword entry + graph traversal first; add vectors only

@@ -95,6 +95,23 @@ CREATE TABLE IF NOT EXISTS turns (
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_turns_thread ON turns(thread_id);
+
+-- Phase 9 (M9.4): the knowledge graph. `namespace` carries the same isolation rule as
+-- memories — 'corpus:global' edges are shared, 'agent:*' / 'triage:*' edges are scoped,
+-- and traversal filters on it at every hop. See app/memory/graph.py.
+CREATE TABLE IF NOT EXISTS edges (
+    id TEXT PRIMARY KEY,
+    src TEXT NOT NULL,
+    rel TEXT NOT NULL,
+    dst TEXT NOT NULL,
+    namespace TEXT NOT NULL,
+    provenance TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+-- Extraction is deterministic and re-runnable, so re-deriving the corpus graph must be a
+-- no-op rather than a duplicate.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique ON edges(src, rel, dst, namespace);
+CREATE INDEX IF NOT EXISTS idx_edges_ns ON edges(namespace);
 """
 
 def get_connection():
