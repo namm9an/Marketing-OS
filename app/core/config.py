@@ -18,10 +18,6 @@ class Settings:
     # LLM Settings
     GEMINI_API_KEY: str = os.environ.get("GEMINI_API_KEY", "")
     DEFAULT_MODEL: str = os.environ.get("DEFAULT_MODEL", "gemini-3.6-flash")
-    
-    # TIR Llama 3.3 70B Managed Endpoint (secrets are env-only; never commit real keys)
-    TIR_LLM_URL: str = os.environ.get("TIR_LLM_URL", "")
-    TIR_API_KEY: str = os.environ.get("TIR_API_KEY", "")
 
     # Auth (single-admin; override in production via env)
     ADMIN_USER: str = os.environ.get("ADMIN_USER", "admin")
