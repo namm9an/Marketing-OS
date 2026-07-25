@@ -186,13 +186,25 @@ def save_knowledge_unit(
     finally:
         conn.close()
 
-def search_knowledge_units(query: str = "", limit: int = 15) -> List[Dict[str, Any]]:
+def search_knowledge_units(
+    query: str = "", limit: int = 15, sourced_only: bool = False
+) -> List[Dict[str, Any]]:
+    """`sourced_only` restricts results to the crawled corpus (L0).
+
+    Agent-written rows are excluded when it is set, so a model's own earlier prose can
+    never come back as a grounded fact. Retrieval paths pass True; the knowledge browser
+    leaves it False, because it should show what is actually in the table.
+    """
     init_db()
     keywords = _keywords(query) if query else []
+    agent_filter = " AND enriched_by NOT LIKE '%agent%'" if sourced_only else ""
     conn = get_connection()
     try:
         if not keywords:
-            cursor = conn.execute("SELECT * FROM knowledge_units ORDER BY created_at DESC LIMIT ?", (limit,))
+            cursor = conn.execute(
+                f"SELECT * FROM knowledge_units WHERE 1=1{agent_filter} ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            )
             return [dict(row) for row in cursor.fetchall()]
 
         # Match ANY keyword, then rank by how many keywords each fact hits.
@@ -203,7 +215,9 @@ def search_knowledge_units(query: str = "", limit: int = 15) -> List[Dict[str, A
             params.extend([f"%{k}%", f"%{k}%"])
         params.append(limit * 3)
         cursor = conn.execute(
-            f"SELECT * FROM knowledge_units WHERE {where} ORDER BY created_at DESC LIMIT ?", params
+            f"SELECT * FROM knowledge_units WHERE ({where}){agent_filter} "
+            f"ORDER BY created_at DESC LIMIT ?",
+            params,
         )
         rows = [dict(row) for row in cursor.fetchall()]
 

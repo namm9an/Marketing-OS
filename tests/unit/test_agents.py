@@ -11,7 +11,9 @@ sys.path.insert(0, str(BASE_DIR))
 
 from app.agents.branding_agent import BrandingAgentNode
 from app.agents.pr_agent import PRAgentNode
+from app.core.primitives import new_id
 from app.core.schemas import AgentResponseSchema
+from app.db.database import save_knowledge_unit, search_knowledge_units
 from app.graph.workflow import _governance_check
 
 class TestGovernanceGate(unittest.TestCase):
@@ -44,6 +46,26 @@ class TestAgentNodes(unittest.TestCase):
         # Validate Pydantic Schema
         validated = AgentResponseSchema(**res)
         self.assertIsNotNone(validated.statement)
+
+class TestCorpusBoundary(unittest.TestCase):
+    """L0 is crawler-sourced and read-only to agents (design_doc.md §9.3/§9.5)."""
+
+    def test_running_an_agent_does_not_write_to_the_grounded_corpus(self):
+        before = len(search_knowledge_units(limit=10_000))
+        BrandingAgentNode().process("Position the B200 fleet against CoreWeave")
+        self.assertEqual(len(search_knowledge_units(limit=10_000)), before)
+
+    def test_sourced_only_retrieval_excludes_agent_written_rows(self):
+        """Defence in depth for the 8 rows agents wrote before the boundary existed."""
+        marker = f"zzsentinel{new_id()}"
+        save_knowledge_unit(
+            id_str=new_id(), k_class="positioning", confidence="high",
+            content=f"{marker} synthesized branding prose", organization="Nebius",
+            source_url="https://example.invalid/", enriched_by="branding_agent",
+        )
+        self.assertTrue(search_knowledge_units(query=marker, limit=5))
+        self.assertEqual(search_knowledge_units(query=marker, limit=5, sourced_only=True), [])
+
 
 if __name__ == "__main__":
     unittest.main()

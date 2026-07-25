@@ -2,9 +2,8 @@
 Shared agent execution core.
 
 All five marketing agents (branding, PR, social, product-marketing, events) run the
-exact same pipeline — retrieve grounded facts, prompt the LLM, parse + validate JSON,
-enrich the KB — differing only by system prompt and knowledge class. That body lives
-here once; each agent is just a registry entry. The old per-agent files repeated this
+exact same pipeline — retrieve grounded facts, prompt the LLM, parse + validate JSON —
+differing only by persona. That body lives here once; each agent is just a registry entry. The old per-agent files repeated this
 ~90-line body five times, which meant a retrieval or validation fix had to be made
 (and was made inconsistently) in five places.
 """
@@ -13,9 +12,8 @@ import json
 from typing import Dict, Any
 
 from app.services.llm_service import LLMService
-from app.db.database import search_knowledge_units, save_knowledge_unit
+from app.db.database import search_knowledge_units
 from app.core.schemas import AgentResponseSchema
-from app.core.primitives import new_id
 
 DEFAULT_PROVIDER = "gemini-3.6-flash"
 
@@ -36,56 +34,49 @@ Return a JSON object matching this schema and output valid JSON only:
 }
 """
 
-# agent_type -> (system_prompt, knowledge_class, provenance source_url)
+# agent_type -> (persona, knowledge_class, provenance source_url).
+# `persona` is the agent's identity on its own, with no output contract attached: the
+# structured pipeline appends _JSON_CONTRACT to it, while the Phase 9 chat layer wants the
+# same identity speaking prose. One source of truth per agent, two output modes.
 AGENT_REGISTRY: Dict[str, Dict[str, str]] = {
     "branding": {
-        "prompt": f"""You are the Lead Branding & Positioning Strategist for E2E Networks (NSE: E2E).
+        "persona": f"""You are the Lead Branding & Positioning Strategist for E2E Networks (NSE: E2E).
 E2E: TIR AI Platform (fine-tuning, RAG, no-code AI agents, Indic Voice AI, HuggingFace & W&B).
 Infrastructure: NVIDIA B200 (from Rs671/hr), H200, H100, L40S, HGX. MeitY Empaneled, 99.95% SLA, SOC2.
 Cloud branding archetypes: Enterprise-Centric (compliance/SLA), Developer-Focused (fast launch, self-serve
 CLI, transparent per-hour pricing), Research-Focused (batch clusters, benchmarks, raw Slurm).
 COMPETITOR TAXONOMY: {_COMPETITORS}
-{_JSON_CONTRACT}""",
-        "k_class": "positioning",
-        "source_url": "https://www.e2enetworks.com/",
+""",
     },
     "pr": {
-        "prompt": f"""You are the Lead PR & Competitive Intelligence Strategist for E2E Networks (NSE: E2E).
+        "persona": f"""You are the Lead PR & Competitive Intelligence Strategist for E2E Networks (NSE: E2E).
 Synthesize competitor press releases, newsletters/blogs, social activity (LinkedIn/X by named CEOs/CTOs),
 and founder/executive discourse (podcasts, interviews) into a counter-narrative and media positioning brief.
 COMPETITORS MONITORED: {_COMPETITORS}
-{_JSON_CONTRACT}""",
-        "k_class": "pr_intelligence",
-        "source_url": "https://www.e2enetworks.com/company",
+""",
     },
     "social": {
-        "prompt": f"""You are the Lead Social Media Strategist for E2E Networks (NSE: E2E).
+        "persona": f"""You are the Lead Social Media Strategist for E2E Networks (NSE: E2E).
 E2E: TIR AI Platform, B200 from Rs671/hr, H100 from Rs334/hr, MeitY Empaneled, 1-click model scaling.
 Platforms: LinkedIn (B2B decision makers, C-suite, VP of AI) and X/Twitter (AI researchers, OSS devs).
 Produce campaign hooks, viral thread concepts, and executive thought-leadership posts.
 COMPETITOR TAXONOMY: {_COMPETITORS}
-{_JSON_CONTRACT}""",
-        "k_class": "social_campaign",
-        "source_url": "https://www.e2enetworks.com/",
+""",
     },
     "product_marketing": {
-        "prompt": f"""You are the Lead Product Marketing Manager (PMM) for E2E Networks & TIR AI Platform.
+        "persona": f"""You are the Lead Product Marketing Manager (PMM) for E2E Networks & TIR AI Platform.
 Products: TIR AI Platform, B200/H200/H100 clusters, fast InfiniBand storage, RAG engine, Indic Voice AI.
 Segments: Enterprise CTOs, AI founders, ML engineers, sovereign govt agencies.
 Produce feature messaging, competitive battlecards, tier pricing, and GTM launch plans.
 COMPETITOR TAXONOMY: {_COMPETITORS}
-{_JSON_CONTRACT}""",
-        "k_class": "gtm_strategy",
-        "source_url": "https://www.e2enetworks.com/tir",
+""",
     },
     "events": {
-        "prompt": f"""You are the Lead Events & Field Marketing Strategist for E2E Networks.
+        "persona": f"""You are the Lead Events & Field Marketing Strategist for E2E Networks.
 Portfolio: developer hackathons, AI summits, enterprise executive roundtables, Indic AI expos.
 Produce keynote concepts, booth demos, sponsorship ROI, and developer-activation strategies.
 COMPETITOR TAXONOMY: {_COMPETITORS}
-{_JSON_CONTRACT}""",
-        "k_class": "event_strategy",
-        "source_url": "https://www.e2enetworks.com/",
+""",
     },
 }
 
@@ -111,7 +102,7 @@ def run_agent(
     if extra_context:
         facts_context = f"\n\nGROUNDED KNOWLEDGE UNITS FROM DB:\n{extra_context}"
     else:
-        db_facts = search_knowledge_units(query=goal_statement, limit=5)
+        db_facts = search_knowledge_units(query=goal_statement, limit=5, sourced_only=True)
         facts_context = ""
         if db_facts:
             facts_context = "\n\nRELEVANT GROUNDED KNOWLEDGE UNITS FROM DB:\n" + "\n".join(
@@ -121,7 +112,9 @@ def run_agent(
     user_prompt = f"Goal: {goal_statement}{facts_context}\nFormulate the strategy for your domain."
 
     # 2. Call the LLM.
-    result = LLMService.generate(system_prompt=cfg["prompt"], user_prompt=user_prompt, provider=provider)
+    result = LLMService.generate(
+        system_prompt=cfg["persona"] + _JSON_CONTRACT, user_prompt=user_prompt, provider=provider
+    )
     text = _strip_code_fence(result["text"])
 
     # 3. Validate against the Pydantic contract (every agent, consistently).
@@ -136,20 +129,14 @@ def run_agent(
             "confidence": "High",
         }
 
-    # 4. Enrich the KB with the synthesized decision.
-    try:
-        save_knowledge_unit(
-            id_str=new_id(),
-            k_class=cfg["k_class"],
-            confidence=parsed.get("confidence", "High").lower(),
-            content=f"{agent_type} strategy: {parsed.get('selected_option')} - {parsed.get('statement', '')[:120]}",
-            organization="E2E Networks",
-            source_url=cfg["source_url"],
-            enriched_by=f"{agent_type}_agent",
-        )
-    except Exception as err:  # pragma: no cover - enrichment is best-effort
-        print(f"[DB Warning] Could not enrich knowledge unit: {err}")
-
+    # 4. No write-back to knowledge_units. That table is L0, the grounded corpus: every row
+    #    is meant to be crawler-sourced with a real source_url, and agents are readers only
+    #    (design_doc.md §9.3/§9.5). The old enrichment wrote synthesized prose back into it
+    #    under a boilerplate E2E URL, which is what made `enriched_by NOT LIKE '%agent%'`
+    #    necessary in M5 to stop model output being cited as competitor intelligence. It was
+    #    also redundant — save_decision() in the governance node already logs every decision,
+    #    in the table meant for it. Conversation-derived learning now goes to L1 through the
+    #    promotion gate instead (app/memory/gate.py).
     return parsed
 
 
