@@ -60,6 +60,41 @@ CREATE TABLE IF NOT EXISTS knowledge_units (
     enriched_by TEXT NOT NULL DEFAULT 'system',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+-- Phase 9 (M9.1): per-agent memory. Additive — nothing above changes.
+-- `namespace` is the isolation boundary: 'agent:branding', 'triage:branding+pr',
+-- 'corpus:global'. Every read is scoped by it; see app/memory/store.py.
+CREATE TABLE IF NOT EXISTS memories (
+    id TEXT PRIMARY KEY,
+    namespace TEXT NOT NULL,
+    tier TEXT NOT NULL DEFAULT 'episodic',      -- episodic | semantic
+    content TEXT NOT NULL,
+    provenance TEXT NOT NULL DEFAULT '',        -- which turn/user action produced it
+    confidence TEXT NOT NULL DEFAULT 'medium',
+    source_turn_id TEXT,
+    hit_count INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL DEFAULT (datetime('now')),
+    last_used_at TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_memories_ns ON memories(namespace);
+
+CREATE TABLE IF NOT EXISTS threads (
+    id TEXT PRIMARY KEY,
+    namespace TEXT NOT NULL,
+    title TEXT NOT NULL DEFAULT '',
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_threads_ns ON threads(namespace);
+
+CREATE TABLE IF NOT EXISTS turns (
+    id TEXT PRIMARY KEY,
+    thread_id TEXT NOT NULL,
+    role TEXT NOT NULL,                         -- user | agent
+    content TEXT NOT NULL,
+    recalled_ids TEXT NOT NULL DEFAULT '[]',    -- JSON list: what this turn recalled (visible recall)
+    created_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_turns_thread ON turns(thread_id);
 """
 
 def get_connection():
