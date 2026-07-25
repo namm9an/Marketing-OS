@@ -6,8 +6,11 @@ import os
 from flask import Flask, request, jsonify, send_from_directory, Response
 from flask_cors import CORS
 from app.core.config import settings
+from app.agents.base import AGENT_REGISTRY
 from app.graph.workflow import swarm_engine
+from app.graph.chat import run_chat
 from app.graph.digest import run_digest, build_network
+from app.memory import store
 from app.db.database import get_all_decisions, init_db
 
 init_db()
@@ -130,6 +133,57 @@ def api_digest():
         return jsonify(run_digest(provider=provider))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+
+# --- Phase 9 M9.3: per-agent conversation ------------------------------------------
+# Talking to an agent is a different shape from /api/run: multi-turn, persistent, and
+# scoped to one agent's memory. The reply carries its own recall so the CMO can see what
+# it was built from instead of taking it on trust.
+
+@app.route("/api/chat", methods=["POST"])
+def api_chat():
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(run_chat(
+            agent_type=(data.get("agent") or "branding").strip(),
+            message=(data.get("message") or "").strip(),
+            thread_id=(data.get("thread_id") or None),
+            provider=(data.get("provider") or "gemini-3.6-flash").strip(),
+        ))
+    except ValueError as e:  # unknown agent / unknown thread / empty message
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/chat/threads", methods=["GET"])
+def api_chat_threads():
+    agent = (request.args.get("agent") or "branding").strip()
+    if agent not in AGENT_REGISTRY:
+        return jsonify({"error": f"unknown agent: {agent}"}), 400
+    return jsonify({"success": True, "agent": agent, "threads": store.list_threads(store.agent_ns(agent))})
+
+
+@app.route("/api/chat/thread/<thread_id>", methods=["GET"])
+def api_chat_thread(thread_id):
+    thread = store.get_thread(thread_id)
+    if thread is None:
+        return jsonify({"error": "unknown thread"}), 404
+    return jsonify({"success": True, "thread": thread, "turns": store.get_turns(thread_id)})
+
+
+@app.route("/api/memory", methods=["GET"])
+def api_memory():
+    """What one agent actually remembers — the 'it gets smarter' view, made inspectable."""
+    agent = (request.args.get("agent") or "branding").strip()
+    if agent not in AGENT_REGISTRY:
+        return jsonify({"error": f"unknown agent: {agent}"}), 400
+    return jsonify({
+        "success": True,
+        "agent": agent,
+        "namespace": store.agent_ns(agent),
+        "memories": store.list_memories(store.agent_ns(agent)),
+    })
 
 
 @app.route("/", defaults={"path": ""})

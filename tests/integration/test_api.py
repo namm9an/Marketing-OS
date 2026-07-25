@@ -4,12 +4,15 @@ Integration Tests for Flask REST API Routers
 
 import sys
 import json
+import tempfile
 import unittest
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+from app.core.config import settings
+from app.db import database
 from app.main import app
 
 class TestAPIRoutes(unittest.TestCase):
@@ -89,6 +92,77 @@ class TestAPIRoutes(unittest.TestCase):
             anon.post('/api/digest', data=json.dumps({}), content_type='application/json').status_code,
             401,
         )
+
+class TestChatRoutes(unittest.TestCase):
+    """Phase 9 M9.3. Runs on a throwaway DB — these routes write real conversations and
+    real memories, which have no business landing in the CMO's actual knowledge base."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._real_path = settings.DB_PATH
+        settings.DB_PATH = Path(self._tmp.name) / "api_chat_test.db"
+        database.init_db(force=True)
+        self.client = app.test_client()
+        self.client.post(
+            '/api/login',
+            data=json.dumps({"username": "admin", "password": "marketing2026"}),
+            content_type='application/json',
+        )
+
+    def tearDown(self):
+        settings.DB_PATH = self._real_path
+        database._INITIALIZED = False
+        self._tmp.cleanup()
+
+    def _chat(self, **payload):
+        return self.client.post('/api/chat', data=json.dumps(payload), content_type='application/json')
+
+    def test_chat_requires_auth(self):
+        anon = app.test_client()
+        for path in ('/api/chat/threads', '/api/memory'):
+            self.assertEqual(anon.get(path).status_code, 401, path)
+        self.assertEqual(
+            anon.post('/api/chat', data=json.dumps({}), content_type='application/json').status_code,
+            401,
+        )
+
+    def test_chat_response_shape(self):
+        """Every field the chat panel renders — a break here empties the UI silently."""
+        res = self._chat(agent="branding", message="How do we position B200 against Nebius?")
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        for key in ("success", "agent", "namespace", "thread_id", "reply", "recall", "memory"):
+            self.assertIn(key, data)
+        self.assertEqual(data["namespace"], "agent:branding")
+        self.assertIn("memories", data["recall"])
+        self.assertIn("facts", data["recall"])
+
+    def test_bad_request_is_400_not_500(self):
+        self.assertEqual(self._chat(agent="finance", message="hi there").status_code, 400)
+        self.assertEqual(self._chat(agent="branding", message="").status_code, 400)
+        self.assertEqual(self.client.get('/api/chat/threads?agent=finance').status_code, 400)
+        self.assertEqual(self.client.get('/api/chat/thread/nope').status_code, 404)
+
+    def test_threads_and_transcript_are_listed_per_agent(self):
+        thread_id = json.loads(self._chat(agent="pr", message="Draft our Yotta line").data)["thread_id"]
+
+        listed = json.loads(self.client.get('/api/chat/threads?agent=pr').data)
+        self.assertEqual([t["id"] for t in listed["threads"]], [thread_id])
+        self.assertEqual(json.loads(self.client.get('/api/chat/threads?agent=events').data)["threads"], [])
+
+        transcript = json.loads(self.client.get(f'/api/chat/thread/{thread_id}').data)
+        self.assertEqual([t["role"] for t in transcript["turns"]], ["user", "agent"])
+
+    def test_memory_endpoint_shows_only_that_agents_memory(self):
+        self._chat(agent="branding", message="never frame our pricing as a price war")
+
+        mine = json.loads(self.client.get('/api/memory?agent=branding').data)
+        self.assertEqual(mine["namespace"], "agent:branding")
+        self.assertTrue(any("price war" in m["content"] for m in mine["memories"]))
+
+        theirs = json.loads(self.client.get('/api/memory?agent=pr').data)
+        self.assertEqual(theirs["memories"], [])
+
 
 if __name__ == "__main__":
     unittest.main()
