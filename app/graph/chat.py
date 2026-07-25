@@ -105,17 +105,13 @@ def _history_block(history: List[Dict[str, Any]]) -> str:
 
 # --- Nodes ------------------------------------------------------------------------
 
-def _recall(state: ChatState) -> Dict[str, Any]:
-    """Load history, persist the user's turn, and retrieve from memory + corpus.
+def recall_for(agent_type: str, message: str) -> Dict[str, Any]:
+    """What one agent may draw on for one message: its own scope, and nothing else.
 
-    The user turn is written here so the promotion gate has a real turn id to record as
-    provenance, and so a failure further down the graph still leaves the question on record.
+    Shared with the /triage bridge (M9.5), where each agent reasons privately before the
+    merge. Keeping it in one function means "shared ∪ own private ∪ own joint" is decided
+    once — a second copy of this scoping logic is exactly how the two would drift apart.
     """
-    agent_type = state["agent_type"]
-    message = state["message"]
-    history = store.get_turns(state["thread_id"])
-    user_turn_id = store.add_turn(state["thread_id"], "user", message)
-
     scope = store.readable_namespaces(agent_type)
     memories = store.search_memories(scope, message, limit=_MEMORY_RECALL)
 
@@ -130,10 +126,24 @@ def _recall(state: ChatState) -> Dict[str, Any]:
     paths = [p for p in hop["paths"] if p["memory_id"] in set(extra)]
 
     facts = search_knowledge_units(query=message, limit=_FACT_RECALL, sourced_only=True)
-    log.info(f"[Chat/{agent_type}] recalled {len(memories)} memories "
-             f"({len(extra)} via graph), {len(facts)} facts")
-    return {"history": history, "user_turn_id": user_turn_id, "memories": memories,
-            "facts": facts, "graph_paths": paths}
+    log.info(f"[Recall/{agent_type}] {len(memories)} memories ({len(extra)} via graph), "
+             f"{len(facts)} facts")
+    return {"memories": memories, "facts": facts, "graph_paths": paths}
+
+
+def _recall(state: ChatState) -> Dict[str, Any]:
+    """Load history, persist the user's turn, and retrieve from memory + corpus.
+
+    The user turn is written here so the promotion gate has a real turn id to record as
+    provenance, and so a failure further down the graph still leaves the question on record.
+    """
+    history = store.get_turns(state["thread_id"])
+    user_turn_id = store.add_turn(state["thread_id"], "user", state["message"])
+    return {
+        "history": history,
+        "user_turn_id": user_turn_id,
+        **recall_for(state["agent_type"], state["message"]),
+    }
 
 
 def _fallback_reply(state: ChatState) -> str:

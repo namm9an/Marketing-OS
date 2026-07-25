@@ -164,5 +164,71 @@ class TestChatRoutes(unittest.TestCase):
         self.assertEqual(theirs["memories"], [])
 
 
+class TestTriageRoutes(unittest.TestCase):
+    """Phase 9 M9.5. Throwaway DB — same reason as TestChatRoutes."""
+
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self._real_path = settings.DB_PATH
+        settings.DB_PATH = Path(self._tmp.name) / "api_triage_test.db"
+        database.init_db(force=True)
+        self.client = app.test_client()
+        self.client.post(
+            '/api/login',
+            data=json.dumps({"username": "admin", "password": "marketing2026"}),
+            content_type='application/json',
+        )
+
+    def tearDown(self):
+        settings.DB_PATH = self._real_path
+        database._INITIALIZED = False
+        self._tmp.cleanup()
+
+    def _triage(self, **payload):
+        return self.client.post('/api/triage', data=json.dumps(payload),
+                                content_type='application/json')
+
+    def test_triage_requires_auth(self):
+        anon = app.test_client()
+        res = anon.post('/api/triage', data=json.dumps({}), content_type='application/json')
+        self.assertEqual(res.status_code, 401)
+
+    def test_triage_response_shape(self):
+        res = self._triage(agents=["branding", "pr"], message="How do we answer the Nebius cut?")
+        self.assertEqual(res.status_code, 200)
+        data = json.loads(res.data)
+        for key in ("success", "agents", "namespace", "thread_id", "answer",
+                    "agreements", "tensions", "recommended_action", "views", "memory"):
+            self.assertIn(key, data)
+        self.assertEqual(data["namespace"], "triage:branding+pr")
+        self.assertEqual([v["agent"] for v in data["views"]], ["branding", "pr"])
+
+    def test_bad_pair_is_400_not_500(self):
+        for agents in (["branding"], ["branding", "finance"], ["branding", "branding"]):
+            self.assertEqual(self._triage(agents=agents, message="hi there").status_code, 400, agents)
+        self.assertEqual(self._triage(agents=["branding", "pr"], message="").status_code, 400)
+        self.assertEqual(self.client.get('/api/memory?agents=branding').status_code, 400)
+
+    def test_joint_memory_is_inspectable_without_exposing_either_private_side(self):
+        self._triage(agents=["branding", "pr"], message="always cite sovereignty against Nebius")
+
+        joint = json.loads(self.client.get('/api/memory?agents=pr,branding').data)
+        self.assertEqual(joint["namespace"], "triage:branding+pr")
+        self.assertTrue(any("sovereignty" in m["content"] for m in joint["memories"]))
+
+        for agent in ("branding", "pr"):
+            private = json.loads(self.client.get(f'/api/memory?agent={agent}').data)
+            self.assertEqual(private["memories"], [], agent)
+
+    def test_triage_threads_are_listed_under_the_pair_not_either_agent(self):
+        thread_id = json.loads(
+            self._triage(agents=["branding", "pr"], message="How do we answer Nebius?").data
+        )["thread_id"]
+
+        joint = json.loads(self.client.get('/api/chat/threads?agents=branding,pr').data)
+        self.assertEqual([t["id"] for t in joint["threads"]], [thread_id])
+        self.assertEqual(json.loads(self.client.get('/api/chat/threads?agent=branding').data)["threads"], [])
+
+
 if __name__ == "__main__":
     unittest.main()

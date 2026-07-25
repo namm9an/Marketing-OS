@@ -9,6 +9,7 @@ from app.core.config import settings
 from app.agents.base import AGENT_REGISTRY
 from app.graph.workflow import swarm_engine
 from app.graph.chat import run_chat
+from app.graph.triage import run_triage
 from app.graph.digest import run_digest, build_network
 from app.memory import store
 from app.db.database import get_all_decisions, init_db
@@ -160,12 +161,36 @@ def api_chat():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/api/chat/threads", methods=["GET"])
-def api_chat_threads():
+def _namespace_from_args():
+    """Resolve ?agent=branding or ?agents=branding,pr to a namespace.
+
+    One resolver for both the thread list and the memory inspector, so the joint view can
+    never be reachable under one and not the other.
+    """
+    pair = (request.args.get("agents") or "").strip()
+    if pair:
+        members = [a.strip() for a in pair.split(",") if a.strip()]
+        if len(members) != 2 or members[0] == members[1]:
+            raise ValueError("agents must name exactly two different agents")
+        for a in members:
+            if a not in AGENT_REGISTRY:
+                raise ValueError(f"unknown agent: {a}")
+        return store.triage_ns(*members)
+
     agent = (request.args.get("agent") or "branding").strip()
     if agent not in AGENT_REGISTRY:
-        return jsonify({"error": f"unknown agent: {agent}"}), 400
-    return jsonify({"success": True, "agent": agent, "threads": store.list_threads(store.agent_ns(agent))})
+        raise ValueError(f"unknown agent: {agent}")
+    return store.agent_ns(agent)
+
+
+@app.route("/api/chat/threads", methods=["GET"])
+def api_chat_threads():
+    try:
+        namespace = _namespace_from_args()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
+    return jsonify({"success": True, "namespace": namespace,
+                    "threads": store.list_threads(namespace)})
 
 
 @app.route("/api/chat/thread/<thread_id>", methods=["GET"])
@@ -178,16 +203,40 @@ def api_chat_thread(thread_id):
 
 @app.route("/api/memory", methods=["GET"])
 def api_memory():
-    """What one agent actually remembers — the 'it gets smarter' view, made inspectable."""
-    agent = (request.args.get("agent") or "branding").strip()
-    if agent not in AGENT_REGISTRY:
-        return jsonify({"error": f"unknown agent: {agent}"}), 400
+    """What one agent — or one pair — actually remembers, made inspectable.
+
+    Scoped by namespace, so this endpoint cannot show one agent another's private memory
+    even if asked to: `?agents=a,b` resolves to the joint namespace, never to a union of
+    the two private ones.
+    """
+    try:
+        namespace = _namespace_from_args()
+    except ValueError as e:
+        return jsonify({"error": str(e)}), 400
     return jsonify({
         "success": True,
-        "agent": agent,
-        "namespace": store.agent_ns(agent),
-        "memories": store.list_memories(store.agent_ns(agent)),
+        "namespace": namespace,
+        "memories": store.list_memories(namespace),
     })
+
+
+# --- Phase 9 M9.5: the /triage bridge ----------------------------------------------
+
+@app.route("/api/triage", methods=["POST"])
+def api_triage():
+    """Two agents, one answer, neither one's private memory touched."""
+    data = request.get_json(silent=True) or {}
+    try:
+        return jsonify(run_triage(
+            agents=data.get("agents") or [],
+            message=(data.get("message") or "").strip(),
+            thread_id=(data.get("thread_id") or None),
+            provider=(data.get("provider") or "gemini-3.6-flash").strip(),
+        ))
+    except ValueError as e:  # bad pair / unknown agent / empty message / wrong thread
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route("/", defaults={"path": ""})

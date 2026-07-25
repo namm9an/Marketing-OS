@@ -690,6 +690,19 @@ lifts M5's hub-and-spoke ceiling in `build_network()` with links that name their
 `knowledge_units`, so surviving edges would cite ids that no longer exist. Memory anchors
 in `agent:*` / `triage:*` are untouched by a reseed.
 
+**M9.5 as built.** Both agents reason through the same `recall_for()` the solo chat path
+uses, so "shared ∪ own private ∪ own joint" is decided in one function rather than
+reimplemented for the bridge — a second copy is how the two would drift apart. Bounded to
+exactly two agents on purpose: the merge attributes two named positions and the namespace
+algebra sorts two members, so an n-way bridge is a different product decision (who
+arbitrates disagreement?), not a loop bound to raise. The merge is told to surface
+disagreement rather than average it — two specialists pulling against each other is
+information the CMO needs — and its fallback returns both views verbatim and attributed,
+because losing the synthesis is acceptable while inventing a consensus is not. A thread
+is pinned to its pair, so one pair's history cannot be filed under another's.
+`?agents=a,b` on `/api/memory` and `/api/chat/threads` resolves to the *joint* namespace,
+never to a union of the two private ones.
+
 ### 9.14 Explicitly out of scope (deferred ceilings)
 
 - **No embeddings / vector search.** Keyword entry + graph traversal first; add vectors only
