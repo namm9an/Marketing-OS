@@ -156,6 +156,19 @@ def search_memories(namespaces: List[str], query: str = "", limit: int = 5) -> L
         conn.close()
 
 
+def promote_memory(memory_id: str, tier: str = "semantic") -> None:
+    """Move a memory up a tier. Repetition is the only thing that triggers this (M9.2)."""
+    if tier not in TIERS:
+        raise ValueError(f"invalid tier: {tier!r}")
+    init_db()
+    conn = get_connection()
+    try:
+        conn.execute("UPDATE memories SET tier = ? WHERE id = ?", (tier, memory_id))
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def list_memories(namespace: str, limit: int = 100) -> List[Dict[str, Any]]:
     """Everything in one namespace, newest first. For the UI's memory inspector."""
     validate_ns(namespace)
