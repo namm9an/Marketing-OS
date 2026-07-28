@@ -1,5 +1,5 @@
 # 📐 Master System Design Document (Phases 1 – 9)
-## Marketing OS v2.0 for E2E Networks & TIR AI Platform
+## Marketing OS v2.0 for E2E Networks
 
 > **Document Purpose**: Production-grade architectural blueprint detailing the end-to-end multi-agent intelligence ecosystem for E2E Networks. Formatted for Claude model ingestion, developer onboarding, and executive review.
 
@@ -7,7 +7,7 @@
 
 ## 📑 System Overview & Core Philosophy
 
-**Marketing OS v2.0** is an enterprise-grade, governed multi-agent competitive intelligence platform built for **E2E Networks** (NSE: E2E) and its **TIR AI Platform**.
+**Marketing OS v2.0** is an enterprise-grade, governed multi-agent competitive intelligence platform built for **E2E Networks** (NSE: E2E).
 
 ### Fundamental Architectural Principles:
 1. **Strict Zero-Hallucination Grounding**: Every recommendation, rate card comparison, and PR counter-strategy is strictly backed by verifiable empirical facts in SQLite (`marketing_os.db`).
@@ -24,7 +24,7 @@
    - **India Top 3**: E2E Networks (Us), Yotta Data Services, Neysa AI.
    - **Global Top 10**: Together AI, RunPod, Lambda Labs, Nebius, CoreWeave, Crusoe Cloud, VAST Data, Voltage Park, Hyperstack, Foundry.
 2. **Multi-Page Playwright Crawler (`scratch/deep_neo_cloud_scraper.py`)**:
-   - Spawns Chromium Headless browser instances to navigate 35+ target subpages (`/pricing`, `/tir`, `/company`, `/products/*`, `/shakti-cloud`).
+   - Spawns Chromium Headless browser instances to navigate 35+ target subpages (`/pricing`, `/company`, `/products/*`, `/shakti-cloud`).
    - Extracts rendered DOM elements, headings (`h1`, `h2`, `h3`), hardware rate cards (`$6.99/hr`, `₹671/hr`), GPU hardware listings (`B200`, `H200`, `H100`, `L40S`), and technical text snippets.
 3. **Context-Safe Data Aggregation**:
    - Saves raw JSON payloads to `app/data/deep_scrape_results.json` without polluting LLM prompt context window.
@@ -79,7 +79,7 @@ flowchart LR
 
     subgraph LLM ["2. LLM Inference Engine"]
         Search --> Prompt["System Prompt + Grounded Facts + User Goal"]
-        Prompt --> Gemini["Google Gemini 3.6 Flash / TIR Llama 3.3 70B"]
+        Prompt --> Gemini["Google Gemini 3.6 Flash — sole provider since 7d81520"]
     end
 
     subgraph PostInference ["3. Post-Inference (Enrichment)"]
@@ -96,7 +96,7 @@ flowchart LR
 ### 3.1 Detailed Technical Steps:
 1. **🎨 Branding Agent Node (`app/agents/branding_agent.py`)**:
    - **Scope**: Competitor tech stacks, design systems, visual design archetypes (*Enterprise-Centric* vs *Developer-Focused* vs *Research-Focused*), website design recommendations.
-   - Compares E2E Networks & TIR against global and Indian Neo-Cloud landing page structures.
+   - Compares E2E Networks against global and Indian Neo-Cloud landing page structures.
 2. **📰 Unified PR Agent Node (`app/agents/pr_agent.py`)**:
    - **Scope**: Combines 4 media vectors: Press Releases, Company Blogs/Newsletters, Social Media (`[LinkedIn]`, `[X/Twitter]`), and Founder PR (interviews, podcast transcripts).
    - Formulates counter-narratives and media positioning briefs.
@@ -666,14 +666,14 @@ session is visually distinct.
 Phase 9 ships as six atomic commits, bottom-up. Each is independently testable and leaves
 the suite green; nothing is half-wired between commits.
 
-| # | Milestone | Deliverable | Proves |
-|---|---|---|---|
-| **M9.1** | Memory store | `memories` / `threads` / `turns` tables, `app/memory/store.py`, namespace algebra | **The isolation rule** — an agent reads shared ∪ own private ∪ own joint, nothing else |
-| **M9.2** | Promotion gate | `app/memory/gate.py` — admission classifier, provenance, episodic→semantic on repetition | Model prose never becomes memory |
-| **M9.3** | Conversation layer | `POST /api/chat`, per-agent threads, memory-aware `run_agent`, visible recall | Agents are multi-turn and stateful |
-| **M9.4** | Graph & scoped traversal | `edges` table, deterministic corpus extraction, recursive-CTE traversal | Traversal cannot hop into another agent's private memory |
-| **M9.5** | `/triage` bridge | `POST /api/triage`, 2-agent parallel fan-out, attributed merge, joint-namespace write | Neither private namespace is touched |
-| **M9.6** | UI | Per-agent chat panel, `/triage` composer, `@shadergradient/react` swap | The CMO can actually use it |
+| # | Milestone | Deliverable | Proves | Status |
+|---|---|---|---|---|
+| **M9.1** | Memory store | `memories` / `threads` / `turns` tables, `app/memory/store.py`, namespace algebra | **The isolation rule** — an agent reads shared ∪ own private ∪ own joint, nothing else | ✅ `c05eaa3` |
+| **M9.2** | Promotion gate | `app/memory/gate.py` — admission classifier, provenance, episodic→semantic on repetition | Model prose never becomes memory | ✅ `07a4c66` — **superseded by M9.7, see below** |
+| **M9.3** | Conversation layer | `POST /api/chat`, per-agent threads, memory-aware `run_agent`, visible recall | Agents are multi-turn and stateful | ✅ `1adfbd1` |
+| **M9.4** | Graph & scoped traversal | `edges` table, deterministic corpus extraction, recursive-CTE traversal | Traversal cannot hop into another agent's private memory | ✅ `1d0e28f` |
+| **M9.5** | `/triage` bridge | `POST /api/triage`, 2-agent parallel fan-out, attributed merge, joint-namespace write | Neither private namespace is touched | ✅ `fb10aa1` |
+| **M9.6** | UI | Per-agent chat panel, `/triage` composer, memory inspector, `@shadergradient/react` swap | The CMO can actually use it | 🔵 **Not started — next** |
 
 Order rationale: the isolation rule is the part most likely to have a subtle flaw, so it is
 built and tested **first, once, in one place** rather than discovered after five agents and a
@@ -706,13 +706,51 @@ never to a union of the two private ones.
 ### 9.14 Explicitly out of scope (deferred ceilings)
 
 - **No embeddings / vector search.** Keyword entry + graph traversal first; add vectors only
-  when keyword recall measurably fails. FTS5 is the cheaper next step.
+  when keyword recall measurably fails. FTS5 is the cheaper next step. *(M9.9 puts a number on
+  "measurably" — until then this bullet was an assertion, not a finding.)*
 - **No cross-agent auto-learning.** Agents never learn from each other implicitly — only
-  through an explicit `/triage`.
+  through an explicit `/triage`. **Still true after M9.7:** an agent may now write to *its own*
+  memory, never to another's.
 - **No automatic forgetting beyond episodic decay.** Contradiction resolution stays manual until
   there is evidence it's needed.
 - **No agent-authored persona changes.** Procedural memory (the system prompt) changes only with
-  human approval.
+  human approval. **Unchanged by M9.7** — reflections are episodic/semantic rows, never persona.
+
+### 9.15 M9.7 — Self-evolving memory (supersedes M9.2 rule 1)
+
+**User decision, 2026-07-26.** M9.2's rule 1 — *only user turns are candidates for memory* —
+is reversed. The agent decides what it commits to its own memory, so the layer can learn from
+prior interactions instead of only recording what it was told.
+
+The reversal is safe only with the guardrail attached, because the failure mode is documented:
+self-evolving agents over-trust their own reflections and distil *locally correct but
+non-transferable* experience into over-generalised standing rules, which then self-reinforce as
+each use raises their rank. Answer one Nebius pricing question well, write "undercut on price
+when a rival cuts," and six months later that is strategy the CMO never approved.
+
+Three mechanisms, all reusing parts that already exist:
+
+| Mechanism | Implementation | Source |
+|---|---|---|
+| **Provenance tiers** | `user` / `reflection` / `lesson` on the existing `provenance` column. A `reflection` never outranks a `user` row at recall and is shown to the model as *"I previously concluded X"*, never as an instruction. | — |
+| **No promotion across tiers** | `CHECK` constraint: a reflection can never become `user`. Not by repetition, not by hit count. The two sources stay distinguishable permanently. | — |
+| **Consensus validation** | Before a reflection is written, compare it against its own graph neighbourhood via the existing `recall_by_graph()`. A structural outlier is not written. | A-MemGuard (arXiv 2510.02373) — >95% attack-success reduction, minimal utility cost |
+| **Lesson memory** | Contradicted reflections are distilled into a separate `lesson` tier, consulted *before* answering rather than merged into the answer. | A-MemGuard dual-memory |
+
+**M9.7 ships with its own metrics or it does not ship.** Gate precision/recall, reported
+separately for `user` and `reflection` provenance. Without them a self-evolving memory layer is
+unfalsifiable — it will feel like it is learning whether or not it is.
+
+### 9.16 M9.8–M9.10 — instrumentation, retrieval, deferred
+
+| # | Milestone | Contents | Gate to start |
+|---|---|---|---|
+| **M9.8** | Evaluation harness | Retrieval gold set (~50 queries) → Recall@5 / Precision@5 / **F2@5** / MRR. Deterministic groundedness: every number, price, date and URL in an answer must appear verbatim in the retrieved facts — hard fail, not a score. Doc/diagram reconciliation. LangSmith removal. Load test on the VM. | M9.7 merged |
+| **M9.9** | Retrieval upgrade | FTS5 replacing `LIKE`. Cross-domain hint (deterministic keyword overlap → suggests `/triage`, never auto-escalates). | M9.8 baseline exists |
+| **M9.10** | Deferred, trigger-gated | Claim-level faithfulness judge; hybrid embeddings *(trigger: FTS5 Recall@5 < 0.85)*; semantic consensus triples *(trigger: M9.7 gate precision ≥ 0.9)*; N-way `/triage` *(trigger: an arbitration rule is chosen)*. | Its own trigger fires |
+
+**F2 not F1.** A missed fact makes the agent answer ungrounded; a surplus fact costs tokens.
+F1 weights those equally. They are not equal, so recall carries 2×.
 
 ---
 
@@ -721,15 +759,21 @@ never to a union of the two private ones.
 | Phase | Milestone Name | Status | Key Deliverables |
 |---|---|---|---|
 | **Phase 1** | Web Crawling & Scraping | ✅ Complete | Scraped 35+ subpages across 13 Neo-Clouds (`deep_scrape_results.json`) |
-| **Phase 2** | RAMP Grounded SQLite Engine | ✅ Complete | `marketing_os.db` seeded with 91 100% grounded facts & source URLs |
+| **Phase 2** | RAMP Grounded SQLite Engine | ✅ Complete | `marketing_os.db` seeded with 94 100% grounded facts & source URLs |
 | **Phase 3** | Core Swarm Agent Nodes | ✅ Complete | Active Branding & PR Agents with Pydantic schema validation |
 | **Phase 4** | Senior Engineering Layout & Deployment | ✅ Complete | Clean `app/` root, 7 Pytest cases, deployed on VM (`164.52.203.81`) |
-| **Phase 5** | CMO Weekly Executive Digest UI | ✅ Complete | LangGraph fan-out digest across all 5 agents, interactive link graph, print-to-PDF report with cited sources |
+| **Phase 5** | CMO Weekly Executive Digest UI | ⚠️ Complete (one gap) | LangGraph fan-out digest across all 5 agents, interactive link graph, **markdown** export with cited sources. **PDF export was specified and never built** — `/api/export/markdown` is the only export route. Digest tab has never been visually verified in a browser. |
 | **Phase 6** | Multimodal Image & PDF Ingestion | 📍 Planned | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
 | **Phase 7** | Automated Change Tracking (CompTrack) | 📍 Planned | Background re-crawler, competitor delta engine, CMO contradiction alerts |
 | **Phase 8** | Full Activation of Swarm Agents | ✅ Complete | All 5 agents live in `AGENT_REGISTRY`; all five run in the M5 digest fan-out |
-| **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🎯 **NEXT — BUILD ORDER CONFIRMED** | Per-agent chat + private memory namespaces, promotion gate, scoped knowledge graph, `/triage` bridge, shadergradient UI |
+| **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🔵 **In progress — backend done, UI not started** | M9.1–M9.5 committed (`c05eaa3` → `fb10aa1`): namespace store, promotion gate, chat layer, scoped graph, `/triage` bridge. **M9.6 UI not started — the frontend makes zero calls to `/api/chat`, `/api/triage` or `/api/memory`, so none of it is reachable from the product.** |
 
 > **Build order (user decision, 2026-07-25): Phase 9 is next.** Phases 6 and 7 are deferred
 > behind it. They are independent of Phase 9 (both write to the L0 shared corpus, which the
 > memory work does not touch), so they can follow in any order afterwards.
+>
+> **Status honesty note (2026-07-26).** This table previously read "Phase 9 = NEXT" while five
+> of its six milestones were already committed, and claimed a PDF export that was never built.
+> Both are corrected above. The rule going forward: a row is ✅ only when a reachable code path
+> exists, not when the module compiles. Phase 9's backend compiles and is tested; it is not
+> reachable, so it is 🔵 not ✅.

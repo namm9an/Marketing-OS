@@ -18,7 +18,8 @@ class LLMService:
         max_tokens: int = 1024
     ) -> Dict[str, Any]:
         """
-        Unified LLM generation endpoint supporting Gemini, TIR Llama, and Claude.
+        Gemini-only generation endpoint. Falls back to a mock response when
+        GEMINI_API_KEY is unset, so the app stays runnable without a live key.
         """
         provider_clean = provider.lower().strip()
         

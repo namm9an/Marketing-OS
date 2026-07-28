@@ -15,13 +15,12 @@ ARTIFACT_KB_MD = Path("/Users/namanmoudgill13/.gemini/antigravity/brain/b79b81f3
 def build_expanded_kb():
     content = []
     content.append("# 📚 Master System Knowledge Base, Code Manifest & Scrape Audit Trail")
-    content.append("## Marketing OS v2.0 for E2E Networks & TIR AI Platform\n")
+    content.append("## Marketing OS v2.0 for E2E Networks\n")
     content.append("> **Notice**: This document is the primary, exhaustive context knowledge base for AI Coding Agents and Senior Developers building and maintaining Marketing OS v2.0.\n\n---\n")
 
     # SECTION 1: System Scope & Identity
     content.append("## 🏛️ 1. Executive Identity & Core Mission")
     content.append("* **Organization**: **E2E Networks** (NSE: E2E) — India's leading sovereign GPU cloud provider.")
-    content.append("* **Flagship Platform**: **TIR AI Platform** — Complete AI/ML model deployment & training platform (model fine-tuning, RAG pipelines, no-code AI agents, Indic Voice AI, Hugging Face & W&B integrations).")
     content.append("* **Architecture**: Governed Multi-Agent Swarm operating on a **LangGraph state machine** with **LangFuse full-trace observability** and **RAMP SQLite persistent memory** (`marketing_os.db`).\n\n---\n")
 
     # SECTION 2: Scraped Neo-Cloud Subpage Registry & Text Corpus

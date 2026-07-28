@@ -4,8 +4,15 @@ import {
   History, Database, Settings, LayoutDashboard, User, Lock, ArrowRight,
   Eye, EyeOff, Menu, X, ShieldCheck, Network, Printer, RefreshCw
 } from 'lucide-react';
-import ShaderCanvas from './components/ShaderCanvas';
 import CompetitorNetwork from './components/CompetitorNetwork';
+
+// The gradient background pulls in three + @react-three/fiber (~150kB gzipped) for
+// something purely decorative. Lazy so it never sits on the critical path — the app is
+// fully usable the moment it renders, and the background fades in behind it.
+const ShaderCanvas = React.lazy(() => import('./components/ShaderCanvas'));
+const Backdrop = (props) => (
+  <React.Suspense fallback={null}><ShaderCanvas {...props} /></React.Suspense>
+);
 
 const PRESETS = [
   {
@@ -155,6 +162,10 @@ export default function App() {
 
   const [selectedAgent, setSelectedAgent] = useState('branding'); // 'branding' | 'pr'
 
+  // Which agent(s) the background is tinted for. Only on tabs that are actually about one
+  // agent — the digest and knowledge base belong to no one, so they keep the neutral wash.
+  const backdropAgents = activeTab === 'workbench' ? [selectedAgent] : [];
+
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
     if (!goal.trim()) return;
@@ -232,7 +243,7 @@ export default function App() {
   if (!authenticated) {
     return (
       <div className="bg-[#FBF9F5] text-[#1C1917] font-sans antialiased min-h-screen flex items-center justify-center p-4 relative overflow-hidden">
-        <ShaderCanvas />
+        <Backdrop />
 
         <div className="w-full max-w-[360px] space-y-6 relative z-10">
           <div className="space-y-1 text-center sm:text-left">
@@ -305,8 +316,8 @@ export default function App() {
   return (
     <div className="bg-[#FBF9F5] text-[#1C1917] font-sans antialiased min-h-screen flex selection:bg-[#D97757]/20 selection:text-[#1C1917] relative overflow-hidden">
       
-      {/* 3D WebGL Shader Canvas Background */}
-      <ShaderCanvas />
+      {/* Ambient gradient background, tinted by whichever agent is in focus */}
+      <Backdrop agents={backdropAgents} />
 
       {/* Left Navigation Sidebar */}
       <aside 

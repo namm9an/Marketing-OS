@@ -41,7 +41,6 @@ Return a JSON object matching this schema and output valid JSON only:
 AGENT_REGISTRY: Dict[str, Dict[str, str]] = {
     "branding": {
         "persona": f"""You are the Lead Branding & Positioning Strategist for E2E Networks (NSE: E2E).
-E2E: TIR AI Platform (fine-tuning, RAG, no-code AI agents, Indic Voice AI, HuggingFace & W&B).
 Infrastructure: NVIDIA B200 (from Rs671/hr), H200, H100, L40S, HGX. MeitY Empaneled, 99.95% SLA, SOC2.
 Cloud branding archetypes: Enterprise-Centric (compliance/SLA), Developer-Focused (fast launch, self-serve
 CLI, transparent per-hour pricing), Research-Focused (batch clusters, benchmarks, raw Slurm).
@@ -57,15 +56,15 @@ COMPETITORS MONITORED: {_COMPETITORS}
     },
     "social": {
         "persona": f"""You are the Lead Social Media Strategist for E2E Networks (NSE: E2E).
-E2E: TIR AI Platform, B200 from Rs671/hr, H100 from Rs334/hr, MeitY Empaneled, 1-click model scaling.
+E2E: B200 from Rs671/hr, H100 from Rs334/hr, MeitY Empaneled, 1-click model scaling.
 Platforms: LinkedIn (B2B decision makers, C-suite, VP of AI) and X/Twitter (AI researchers, OSS devs).
 Produce campaign hooks, viral thread concepts, and executive thought-leadership posts.
 COMPETITOR TAXONOMY: {_COMPETITORS}
 """,
     },
     "product_marketing": {
-        "persona": f"""You are the Lead Product Marketing Manager (PMM) for E2E Networks & TIR AI Platform.
-Products: TIR AI Platform, B200/H200/H100 clusters, fast InfiniBand storage, RAG engine, Indic Voice AI.
+        "persona": f"""You are the Lead Product Marketing Manager (PMM) for E2E Networks (NSE: E2E).
+Products: B200/H200/H100 clusters, fast InfiniBand storage, RAG engine, Indic Voice AI.
 Segments: Enterprise CTOs, AI founders, ML engineers, sovereign govt agencies.
 Produce feature messaging, competitive battlecards, tier pricing, and GTM launch plans.
 COMPETITOR TAXONOMY: {_COMPETITORS}
@@ -79,6 +78,13 @@ COMPETITOR TAXONOMY: {_COMPETITORS}
 """,
     },
 }
+
+# Agents whose output reaches a user. The other three registry entries (social,
+# product_marketing, events) were built from a 3-bullet spec in design_doc Phase 8 and are
+# parked until the requesting stakeholder specifies what they should actually do. They stay
+# in AGENT_REGISTRY so their namespaces keep existing (memory isolation tests depend on the
+# `pr` ⊂ `product_marketing` prefix collision); they just don't get to write the CMO digest.
+ACTIVE_AGENTS = ("branding", "pr")
 
 
 def _strip_code_fence(text: str) -> str:
@@ -153,6 +159,7 @@ class AgentNode:
 if __name__ == "__main__":
     # ponytail self-check: registry is complete and the pipeline returns a valid contract.
     assert set(AGENT_REGISTRY) == {"branding", "pr", "social", "product_marketing", "events"}
+    assert set(ACTIVE_AGENTS) < set(AGENT_REGISTRY), "active agents must be registered agents"
     out = run_agent("branding", "Position B200 against Nebius on price")  # uses mock LLM without keys
     assert {"selected_option", "statement", "rationale", "risks", "confidence"} <= set(out)
     print("base.py self-check OK:", out["selected_option"])

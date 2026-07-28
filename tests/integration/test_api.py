@@ -14,6 +14,7 @@ sys.path.insert(0, str(BASE_DIR))
 from app.core.config import settings
 from app.db import database
 from app.main import app
+from app.agents.base import ACTIVE_AGENTS
 
 class TestAPIRoutes(unittest.TestCase):
     def setUp(self):
@@ -81,7 +82,7 @@ class TestAPIRoutes(unittest.TestCase):
                     "recommended_actions", "agent_briefs", "network", "citations",
                     "generated_at"):
             self.assertIn(key, data)
-        self.assertEqual(len(data["agent_briefs"]), 5)
+        self.assertEqual(len(data["agent_briefs"]), len(ACTIVE_AGENTS))
         for key in ("agent", "headline", "finding", "confidence"):
             self.assertIn(key, data["agent_briefs"][0])
 

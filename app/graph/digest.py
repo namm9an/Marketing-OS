@@ -24,7 +24,7 @@ from typing import TypedDict, List, Dict, Any, Annotated
 
 from langgraph.graph import StateGraph, START, END
 
-from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER, run_agent, _strip_code_fence
+from app.agents.base import ACTIVE_AGENTS, DEFAULT_PROVIDER, run_agent, _strip_code_fence
 from app.core.primitives import now_iso
 from app.core.schemas import DigestSchema
 from app.db.database import get_competitor_facts
@@ -172,11 +172,11 @@ def _build_digest_graph():
     builder.add_node("load_facts", _load_facts)
     builder.add_node("synthesize", _synthesize)
     builder.add_edge(START, "load_facts")
-    for agent_type in AGENT_REGISTRY:
+    for agent_type in ACTIVE_AGENTS:
         node = f"digest_{agent_type}"
         builder.add_node(node, _make_digest_worker(agent_type))
-        builder.add_edge("load_facts", node)   # fan out (all five run in one superstep)
-        builder.add_edge(node, "synthesize")   # aggregate (waits for all five)
+        builder.add_edge("load_facts", node)   # fan out (all active agents in one superstep)
+        builder.add_edge(node, "synthesize")   # aggregate (waits for all of them)
     builder.add_edge("synthesize", END)
     return builder.compile()
 

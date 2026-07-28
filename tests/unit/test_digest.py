@@ -17,6 +17,7 @@ from app.db.database import init_db, get_competitor_facts, save_knowledge_unit
 from app.core.primitives import new_id
 from app.db.grounded_seed import seed_grounded_knowledge
 from app.graph.digest import run_digest, build_network, _DIGEST_GRAPH
+from app.agents.base import ACTIVE_AGENTS, AGENT_REGISTRY
 
 
 class TestCompetitorFilter(unittest.TestCase):
@@ -52,19 +53,22 @@ class TestDigestGraph(unittest.TestCase):
         init_db()
         seed_grounded_knowledge()
 
-    def test_graph_fans_out_to_all_five_agents(self):
+    def test_graph_fans_out_to_active_agents_only(self):
         nodes = set(_DIGEST_GRAPH.get_graph().nodes)
-        for agent in ("branding", "pr", "social", "product_marketing", "events"):
+        for agent in ACTIVE_AGENTS:
             self.assertIn(f"digest_{agent}", nodes)
         self.assertIn("synthesize", nodes)
+        # Parked agents are still registered, but must not reach the CMO digest.
+        for agent in set(AGENT_REGISTRY) - set(ACTIVE_AGENTS):
+            self.assertNotIn(f"digest_{agent}", nodes)
 
     def test_digest_collects_a_brief_from_each_agent(self):
         out = run_digest()
         self.assertTrue(out["success"])
         self.assertEqual(
             {b["agent"] for b in out["agent_briefs"]},
-            {"branding", "pr", "social", "product_marketing", "events"},
-            "the aggregator must receive all five parallel briefs",
+            set(ACTIVE_AGENTS),
+            "the aggregator must receive one brief per active agent",
         )
         self.assertTrue(out["headline"])
         self.assertTrue(out["executive_summary"])
