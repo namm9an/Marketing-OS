@@ -1,8 +1,8 @@
 """
 Unit tests for the Milestone 5 CMO Weekly Digest fan-out graph.
 
-The load-bearing guarantees here are (a) all five agents actually contribute — this is
-the fan-out, not a single agent wearing five hats — and (b) the competitor filter and
+The load-bearing guarantees here are (a) every active agent actually contributes — this is
+a real fan-out, not one agent wearing several hats — and (b) the competitor filter and
 citation path never leak internal E2E rows or model output into "grounded sources".
 """
 

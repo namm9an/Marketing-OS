@@ -259,43 +259,115 @@ flowchart LR
 
 ---
 
-## 🚩 Phase 7: Automated Competitor Change Detection & Delta Alerting (CompTrack Sync)
+## 🚩 Phase 7: Narrative-Shift Detection & Temporal Knowledge
 
-### 7.1 Detailed Technical Steps:
-1. **Background Re-Crawler Scheduler**:
-   - Runs automated periodic re-crawls (weekly/daily) of target `/pricing` and `/products` subpages.
-2. **Delta Engine**:
-   - Compares newly crawled subpage text against `marketing_os.db` baseline.
-   - Detects price drops (e.g. B200 / H100 rate cuts), new GPU hardware launches, or website layout overhauls.
-3. **Knowledge Contradiction Flagging & Alerting**:
-   - Automatically flags conflicting facts and triggers an executive notification banner on the CMO dashboard.
+> **Renamed 2026-07-28.** Previously "Automated Competitor Change Detection & Delta Alerting
+> (CompTrack Sync)". CompTrack is an unrelated project that was used once as a verbal
+> reference; the codename implied a dependency that does not exist. Nothing in `app/` has
+> ever imported from it.
+
+**Why this phase exists.** The PR agent is specified to track *"global competitors, social
+posts, press releases, podcasts, interviews, and **narrative shifts**"*. Five of those six are
+satisfied by the persona in `AGENT_REGISTRY["pr"]` operating over the L0 corpus. The sixth is
+not, and cannot be, because `knowledge_units` has no time axis:
+
+```sql
+-- current schema: one timestamp, and it means "when the row was inserted"
+knowledge_units(id, organization, knowledge_class, confidence,
+                content, source_url, enriched_by, created_at)
+```
+
+A narrative shift is *what an organization used to say* versus *what it says now*. The corpus
+stores only "now", from a single crawl, with no scheduler to produce a second one. The gap is
+architectural, not a missing feature flag.
+
+### 7.0 The finding that determines the design
+
+The obvious build — "re-crawl, hand both versions to Gemini, ask *did the narrative shift?*" —
+is the one that does not work. Measured on a labelled corpus (CEUR-WS Vol-3964, 68 documents,
+37 true shifts):
+
+| LLM role | Accuracy | Failure mode |
+|---|---|---|
+| **Judge** — "did the narrative shift?" | **57.35%** (F1 0.7010) | Called a shift in **60 of 68** when only **37** were real. Near-total false-positive collapse. |
+| **Explainer** — given a shift already detected, "what changed?" | **83.78%** (31/37) | Reliable. |
+
+The model cannot tell a *narrative* shift (repositioning) from a *content* shift (a reworded
+paragraph, a new footer, a changed CSS class). It says "yes, shifted" to almost everything,
+because that is the agreeable answer to the question as asked.
+
+> **Design law for this phase: the LLM is never the detector, only the explainer.**
+> A deterministic gate decides *whether* something changed. The LLM is invoked only after
+> that gate fires, and only to answer *what it means*. Inverting this ships an alert feed
+> that cries wolf ~62% of the time, which a CMO stops reading in a week.
+
+### 7.1 Detailed Technical Steps
+
+**Layer 1 — Temporal corpus (SCD Type 2).** Add `valid_from`, `valid_to`, `is_current` to
+`knowledge_units`. A re-crawl never overwrites and never deletes: it closes the old row
+(`valid_to = now, is_current = 0`) and inserts a new current one. The superseded fact remains
+queryable — which is the entire point, since "what they used to say" *is* the product.
+
+Verified on the project's own SQLite 3.46.0: `ALTER TABLE ... ADD COLUMN ... DEFAULT
+(datetime('now'))` is accepted and back-fills existing rows, so this migrates in place with no
+table rebuild.
+
+> This is the relational form of the bi-temporal model behind Zep/Graphiti (edges carry
+> *when a fact was true* and *when the system learned it*; superseded facts are invalidated,
+> not deleted — reported DMR 94.8% vs MemGPT 93.4%, LongMemEval gains up to 18.5%). Full
+> bi-temporality is two extra columns we do not need yet; SCD Type 2 gives the half that
+> matters here, in plain SQLite, with no new dependency.
+
+**Layer 2 — Three-check cascade (each stage ~100× cheaper than the next).**
+1. **Content hash** — SHA-256 of normalised text. Unchanged ⇒ stop. Kills the ~95% of
+   re-crawls where nothing happened, at zero API cost.
+2. **Structural signature** — heading/DOM shape. Changed alone ⇒ a redesign, not a
+   repositioning. Log it, do not alert.
+3. **Semantic similarity** — embedding cosine against the superseded row. Only a drop past
+   threshold means *the meaning* moved.
+
+**Layer 3 — Shift feed.** Join each closed row to the row that replaced it (`now.valid_from =
+was.valid_to`) to produce before/after pairs. This query is what the PR agent reads.
+
+**Layer 4 — LLM explanation.** Only for pairs that cleared Layer 2. Prompt is *"here is what
+they said, here is what they now say, characterise the repositioning"* — never *"did anything
+change?"*.
+
+**Deliberately not built:** RollingLDA / statistical change-point detection over a document
+stream (the CEUR paper's own machinery). It needs a continuous high-volume corpus to estimate
+a baseline; this project has 13 organisations on a weekly crawl. Scale mismatch — revisit if
+the corpus ever reaches thousands of documents per week.
 
 ### 7.2 Mermaid Architecture Diagram:
 ```mermaid
 flowchart TD
-    subgraph Scheduler ["⏰ Periodic Re-Crawler Scheduler"]
-        Cron["Cron / Background Task Trigger"]
+    Cron["⏰ Scheduler"] --> Fetch["🌐 Re-crawl 13 target orgs"]
+
+    subgraph Cascade ["⚡ Deterministic cascade — no LLM past this point"]
+        direction TB
+        H{"1. Content hash<br/>differs?"}
+        S{"2. Structural<br/>signature only?"}
+        E{"3. Embedding cosine<br/>below threshold?"}
     end
 
-    subgraph Crawler ["🌐 Live Re-Crawler"]
-        Fetch["Fetch 13 Neo-Cloud Target Subpages"]
-    end
+    Fetch --> H
+    H -->|no ~95%| Stop(["✅ No change — stop, 0 API cost"])
+    H -->|yes| S
+    S -->|yes| Redesign(["📐 Site redesign — log, do not alert"])
+    S -->|no| E
+    E -->|no| Reword(["📝 Reworded, same meaning — log, do not alert"])
 
-    subgraph DeltaEngine ["⚡ Competitor Delta Engine"]
-        Diff["Diff Engine: Compare with DB Baseline"]
-        Detect{"Change Detected?"}
-    end
+    E -->|yes| SCD[("🕓 SCD Type 2 write<br/>close old row: valid_to = now, is_current = 0<br/>insert new current row")]
+    SCD --> Feed["🔗 Shift feed<br/>JOIN now.valid_from = was.valid_to"]
 
-    subgraph Alerting ["🚨 Notification & Database Update"]
-        DB[("Update marketing_os.db")]
-        Alert["Flag Knowledge Contradiction & Alert CMO Dashboard"]
-    end
+    Feed --> LLM["🤖 Gemini — EXPLAINER ONLY<br/>'here is before, here is after,<br/>characterise the repositioning'"]
+    LLM --> PR["📣 PR Agent counter-narrative brief"]
+    PR --> Dash["🚨 CMO dashboard"]
 
-    Cron --> Fetch
-    Fetch --> Diff
-    Diff --> Detect
-    Detect -->|Yes (Price cut / New GPU)| Alert
-    Alert --> DB
+    Judge["❌ Gemini as JUDGE<br/>'did the narrative shift?'<br/>57.35% acc — 60 shifts called of 37 real"]
+    Judge -.->|rejected: see §7.0| H
+
+    style Judge stroke-dasharray: 5 5
 ```
 
 ---
@@ -772,7 +844,7 @@ F1 weights those equally. They are not equal, so recall carries 2×.
 | **Phase 4** | Senior Engineering Layout & Deployment | ✅ Complete | Clean `app/` root, 7 Pytest cases, deployed on VM (`164.52.203.81`) |
 | **Phase 5** | CMO Weekly Executive Digest UI | ⚠️ Complete (one gap) | LangGraph fan-out digest across `ACTIVE_AGENTS` (branding + PR; see Phase 8), interactive link graph, **markdown** export with cited sources. **PDF export was specified and never built** — `/api/export/markdown` is the only export route. Digest tab has never been visually verified in a browser. |
 | **Phase 6** | Multimodal Image & PDF Ingestion | 📍 Planned | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
-| **Phase 7** | Automated Change Tracking (CompTrack) | 📍 Planned | Background re-crawler, competitor delta engine, CMO contradiction alerts |
+| **Phase 7** | Narrative-Shift Detection & Temporal Knowledge | 📍 Planned — **next build** | SCD Type 2 time axis on `knowledge_units`, three-check deterministic cascade (hash → structure → embedding), shift feed, LLM as explainer only. Closes the one PR-agent responsibility that is currently impossible. See §7.0 for why the LLM must not be the detector. |
 | **Phase 8** | Full Activation of Swarm Agents | ⏸️ Parked (2 of 5 active) | All 5 personas live in `AGENT_REGISTRY`, but only `ACTIVE_AGENTS = ("branding", "pr")` reach the M5 digest fan-out. §8.1 specifies social / product_marketing / events in **one bullet each** — not enough to say what a correct output looks like, so they were shipped unvalidatable. Parked pending a scope conversation with the requesting stakeholder. Registry entries are retained: the memory-isolation tests use them as namespace fixtures (`pr` ⊂ `product_marketing` prefix collision). |
 | **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🔵 **In progress — backend done, UI not started** | M9.1–M9.5 committed (`c05eaa3` → `fb10aa1`): namespace store, promotion gate, chat layer, scoped graph, `/triage` bridge. **M9.6 UI not started — the frontend makes zero calls to `/api/chat`, `/api/triage` or `/api/memory`, so none of it is reachable from the product.** |
 

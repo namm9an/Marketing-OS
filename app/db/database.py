@@ -258,8 +258,9 @@ def get_competitor_facts(limit: int = 200) -> List[Dict[str, Any]]:
     competitor intelligence, not our own model's earlier output (that would let a
     synthesized claim re-enter as a 'grounded' citation).
 
-    ponytail: no time window. A real weekly delta needs Phase 7 (CompTrack) writing
-    dated re-crawl rows first; filtering the one-shot seed by date would return noise.
+    ponytail: no time window. A real weekly delta needs Phase 7 (narrative-shift detection)
+    adding the SCD Type 2 columns and writing dated re-crawl rows first; filtering the
+    one-shot seed by created_at would return noise.
     """
     init_db()
     conn = get_connection()

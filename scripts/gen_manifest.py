@@ -14,6 +14,7 @@ unwieldy, emit signatures + docstrings instead — the splice logic does not cha
 """
 
 import argparse
+import re
 import sys
 from pathlib import Path
 
@@ -87,9 +88,13 @@ def splice(text: str, manifest: str) -> str:
         return head + manifest + rest.split(END, 1)[1]
 
     # First run: the section is bounded by its own heading and the next numbered one.
+    # Match on the "4." prefix, not the section title — the title has changed once already.
     start = text.index("## 📁 3. Complete Source Code Manifest")
     start = text.index("\n", start) + 1
-    stop = text.index("## 🔍 4. CompTrack Legacy Architecture")
+    stop = re.search(r"^## .{0,4}4\. ", text[start:], re.M)
+    if stop is None:
+        raise SystemExit("gen_manifest: no section 4 heading after the manifest — check the KB")
+    stop = start + stop.start()
     return text[:start] + "\n" + manifest + "\n\n---\n\n" + text[stop:]
 
 

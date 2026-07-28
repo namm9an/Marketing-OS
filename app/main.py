@@ -122,7 +122,7 @@ def api_export_markdown():
 
 # --- Milestone 5: CMO Weekly Executive Digest ---------------------------------------
 # Split in two on purpose: the network map is an instant DB projection, while the digest
-# fans out to five agents (5 LLM calls). Bundling them would make the graph tab wait on
+# fans out to every agent in ACTIVE_AGENTS (one LLM call each). Bundling them would make the graph tab wait on
 # synthesis it does not need.
 
 @app.route("/api/digest/network", methods=["GET"])

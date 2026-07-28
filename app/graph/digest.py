@@ -3,8 +3,8 @@ Milestone 5 — CMO Weekly Executive Digest.
 
 A LangGraph fan-out/aggregate subgraph. Unlike the single-agent supervisor graph in
 workflow.py (where routing is deterministic and only one agent runs), the digest is
-real multi-agent work: all five agents read the same competitor evidence in parallel
-and a synthesizer merges their briefs into one executive view.
+real multi-agent work: every agent in ACTIVE_AGENTS reads the same competitor evidence in
+parallel and a synthesizer merges their briefs into one executive view.
 
     START -> load_facts -> [branding | pr | social | product_marketing | events]  (parallel)
                               -> synthesize -> END
@@ -261,9 +261,9 @@ def run_digest(provider: str = DEFAULT_PROVIDER) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # ponytail self-check: all five agents fan out, digest is populated, nothing cites E2E.
+    # ponytail self-check: every active agent fans out, digest is populated, nothing cites E2E.
     out = run_digest()
-    assert len(out["agent_briefs"]) == 5, out["agent_briefs"]
+    assert len(out["agent_briefs"]) == len(ACTIVE_AGENTS), out["agent_briefs"]
     assert out["headline"] and out["executive_summary"]
     assert out["network"]["total_facts"] > 0
     assert all("E2E" not in c["organization"] for c in out["citations"])

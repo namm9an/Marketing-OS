@@ -422,7 +422,7 @@ def api_export_markdown():
 
 # --- Milestone 5: CMO Weekly Executive Digest ---------------------------------------
 # Split in two on purpose: the network map is an instant DB projection, while the digest
-# fans out to five agents (5 LLM calls). Bundling them would make the graph tab wait on
+# fans out to every agent in ACTIVE_AGENTS (one LLM call each). Bundling them would make the graph tab wait on
 # synthesis it does not need.
 
 @app.route("/api/digest/network", methods=["GET"])
@@ -1183,8 +1183,8 @@ Milestone 5 — CMO Weekly Executive Digest.
 
 A LangGraph fan-out/aggregate subgraph. Unlike the single-agent supervisor graph in
 workflow.py (where routing is deterministic and only one agent runs), the digest is
-real multi-agent work: all five agents read the same competitor evidence in parallel
-and a synthesizer merges their briefs into one executive view.
+real multi-agent work: every agent in ACTIVE_AGENTS reads the same competitor evidence in
+parallel and a synthesizer merges their briefs into one executive view.
 
     START -> load_facts -> [branding | pr | social | product_marketing | events]  (parallel)
                               -> synthesize -> END
@@ -1441,9 +1441,9 @@ def run_digest(provider: str = DEFAULT_PROVIDER) -> Dict[str, Any]:
 
 
 if __name__ == "__main__":
-    # ponytail self-check: all five agents fan out, digest is populated, nothing cites E2E.
+    # ponytail self-check: every active agent fans out, digest is populated, nothing cites E2E.
     out = run_digest()
-    assert len(out["agent_briefs"]) == 5, out["agent_briefs"]
+    assert len(out["agent_briefs"]) == len(ACTIVE_AGENTS), out["agent_briefs"]
     assert out["headline"] and out["executive_summary"]
     assert out["network"]["total_facts"] > 0
     assert all("E2E" not in c["organization"] for c in out["citations"])
@@ -3029,8 +3029,9 @@ def get_competitor_facts(limit: int = 200) -> List[Dict[str, Any]]:
     competitor intelligence, not our own model's earlier output (that would let a
     synthesized claim re-enter as a 'grounded' citation).
 
-    ponytail: no time window. A real weekly delta needs Phase 7 (CompTrack) writing
-    dated re-crawl rows first; filtering the one-shot seed by date would return noise.
+    ponytail: no time window. A real weekly delta needs Phase 7 (narrative-shift detection)
+    adding the SCD Type 2 columns and writing dated re-crawl rows first; filtering the
+    one-shot seed by created_at would return noise.
     """
     init_db()
     conn = get_connection()
@@ -3786,8 +3787,8 @@ if __name__ == "__main__":
 """
 Unit tests for the Milestone 5 CMO Weekly Digest fan-out graph.
 
-The load-bearing guarantees here are (a) all five agents actually contribute — this is
-the fan-out, not a single agent wearing five hats — and (b) the competitor filter and
+The load-bearing guarantees here are (a) every active agent actually contributes — this is
+a real fan-out, not one agent wearing several hats — and (b) the competitor filter and
 citation path never leak internal E2E rows or model output into "grounded sources".
 """
 
@@ -4790,27 +4791,44 @@ MIT
 
 ---
 
-## 🔍 4. CompTrack Legacy Architecture & Prompt Injection Rules
-* **Source Path**: `/Users/namanmoudgill13/Desktop/CompTrack`
-* **Prompt Injection Protection**: Uses `BEGIN_DATA` and `END_DATA` tags to separate raw untrusted web content from LLM system instructions.
-* **Text Capping Rules**: `RAW_TEXT_CHAR_LIMIT = 20,000`, `PER_SOURCE_CHAR_LIMIT = 4,000`.
-* **Extracted System Prompt Templates**:
+## 🔍 4. Phase 7 Research: Narrative-Shift Detection
+> **This section replaced 'CompTrack Legacy Architecture & Prompt Injection Rules' on 2026-07-28.**
+> CompTrack is a separate, unrelated project of the author's, mentioned once to an AI assistant as a
+> verbal example of *"something similar I built before"*. The assistant read that codebase and wrote its
+> architecture into this document as though it were a dependency of Marketing OS. It never was:
+> `grep` across `app/` returns zero hits for `BEGIN_DATA`, `END_DATA`, `RAW_TEXT_CHAR_LIMIT`,
+> `PER_SOURCE_CHAR_LIMIT`, `DAILY_PROMPT_TEMPLATE` or any of its prompt text. All five personas in
+> `AGENT_REGISTRY` are original. The contamination was confined to documentation; no running code path
+> was ever affected. The section is replaced rather than blanked so the provenance stays on record.
 
-```python
+### 4.1 The problem
+The PR agent is specified to track *"global competitors, social posts, press releases, podcasts,
+interviews, and **narrative shifts**"*. Five of six are satisfied by the persona operating over the L0
+corpus. The sixth is structurally impossible: `knowledge_units` carries a single `created_at`
+(row-insert time), there is no re-crawl scheduler, and no row is ever linked to the row it replaced.
+A narrative shift is *then* versus *now*; the corpus has no *then*.
 
-DAILY_PROMPT_TEMPLATE = """You are a competitive intelligence analyst.
-Analyze the following raw scraped data from competitors and extract structured insights:
-1. Product/Feature Announcements
-2. Pricing/Rate Card Changes
-3. Social Media & Executive PR Statements
+### 4.2 The measured finding that dictates the architecture
+From a labelled evaluation (CEUR-WS Vol-3964; 68 documents, 37 true narrative shifts):
 
-Data Boundaries:
-BEGIN_DATA
-{raw_data}
-END_DATA
-"""
+| LLM role | Accuracy | Behaviour |
+|---|---|---|
+| **Judge** — *"did the narrative shift?"* | **57.35%** (F1 0.7010) | Reported a shift in **60 of 68** documents when only **37** were real |
+| **Explainer** — *"a shift was detected; what changed?"* | **83.78%** | Correct on 31 of 37 |
 
-```
+The model cannot separate a **narrative** shift (repositioning) from a **content** shift (rewording, a
+new footer, a CSS change). Asked to judge, it agrees. **Therefore: detection must be deterministic;
+the LLM is only ever the explainer.** Inverting this produces an alert feed that is wrong ~62% of the
+time — which a CMO stops opening within a week, taking the rest of the product's credibility with it.
+
+### 4.3 Design
+* **Layer 1 — SCD Type 2 time axis.** Add `valid_from` / `valid_to` / `is_current` to `knowledge_units`. A re-crawl closes the superseded row rather than overwriting it, so "what they used to say" stays queryable. Verified on this project's SQLite 3.46.0: `ALTER TABLE ... ADD COLUMN ... DEFAULT (datetime('now'))` is accepted and back-fills existing rows — migrates in place, no table rebuild.
+* **Layer 2 — three-check cascade**, each stage ~100× cheaper than the next: content hash (kills ~95% of re-crawls at zero API cost) → structural signature (a redesign is not a repositioning) → embedding cosine (only this means the *meaning* moved).
+* **Layer 3 — shift feed.** `JOIN now.valid_from = was.valid_to` yields before/after pairs. This is what the PR agent reads.
+* **Layer 4 — explanation.** Gemini is invoked only on pairs that cleared Layer 2, and only to characterise the repositioning.
+* **Prior art:** the bi-temporal model in Zep/Graphiti (facts invalidated, never deleted; reported DMR 94.8% vs MemGPT 93.4%). SCD Type 2 is its relational half — the part that matters here, in plain SQLite, with no new dependency.
+* **Rejected:** RollingLDA / statistical change-point detection. Needs a continuous high-volume stream to estimate a baseline; this project crawls 13 organisations weekly. Scale mismatch.
+
 
 ---
 
@@ -4832,8 +4850,6 @@ class SwarmState(TypedDict):
     trace_id: Optional[str]
 
 ```
-
----
 
 # 🔎 Audit & Remediation Report — 2026-07-24
 

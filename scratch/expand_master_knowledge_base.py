@@ -12,6 +12,9 @@ DEEP_SCRAPE_JSON = BASE_DIR / "app" / "data" / "deep_scrape_results.json"
 KB_MD = BASE_DIR / "docs" / "knowledge_base.md"
 ARTIFACT_KB_MD = Path("/Users/namanmoudgill13/.gemini/antigravity/brain/b79b81f3-5e03-426f-952f-9680a760e79c/knowledge_base.md")
 
+# Everything from this heading down is written by hand, not generated. See build_expanded_kb().
+AUTHORED_TAIL_MARKER = "# 🔎 Audit & Remediation Report"
+
 def build_expanded_kb():
     content = []
     content.append("# 📚 Master System Knowledge Base, Code Manifest & Scrape Audit Trail")
@@ -90,28 +93,41 @@ def build_expanded_kb():
             content.append(fpath.read_text())
             content.append("```\n")
 
-    # SECTION 4: CompTrack Architecture & Prompt Patterns
+    # SECTION 4: Phase 7 research findings (replaces the CompTrack section — see note below)
     content.append("\n---\n")
-    content.append("## 🔍 4. CompTrack Legacy Architecture & Prompt Injection Rules")
-    content.append("* **Source Path**: `/Users/namanmoudgill13/Desktop/CompTrack`")
-    content.append("* **Prompt Injection Protection**: Uses `BEGIN_DATA` and `END_DATA` tags to separate raw untrusted web content from LLM system instructions.")
-    content.append("* **Text Capping Rules**: `RAW_TEXT_CHAR_LIMIT = 20,000`, `PER_SOURCE_CHAR_LIMIT = 4,000`.")
-    content.append("* **Extracted System Prompt Templates**:\n")
-    content.append("```python")
-    content.append("""
-DAILY_PROMPT_TEMPLATE = \"\"\"You are a competitive intelligence analyst.
-Analyze the following raw scraped data from competitors and extract structured insights:
-1. Product/Feature Announcements
-2. Pricing/Rate Card Changes
-3. Social Media & Executive PR Statements
-
-Data Boundaries:
-BEGIN_DATA
-{raw_data}
-END_DATA
-\"\"\"
-""")
-    content.append("```\n\n---\n")
+    content.append("## 🔍 4. Phase 7 Research: Narrative-Shift Detection")
+    content.append("> **This section replaced 'CompTrack Legacy Architecture & Prompt Injection Rules' on 2026-07-28.**")
+    content.append("> CompTrack is a separate, unrelated project of the author's, mentioned once to an AI assistant as a")
+    content.append("> verbal example of *\"something similar I built before\"*. The assistant read that codebase and wrote its")
+    content.append("> architecture into this document as though it were a dependency of Marketing OS. It never was:")
+    content.append("> `grep` across `app/` returns zero hits for `BEGIN_DATA`, `END_DATA`, `RAW_TEXT_CHAR_LIMIT`,")
+    content.append("> `PER_SOURCE_CHAR_LIMIT`, `DAILY_PROMPT_TEMPLATE` or any of its prompt text. All five personas in")
+    content.append("> `AGENT_REGISTRY` are original. The contamination was confined to documentation; no running code path")
+    content.append("> was ever affected. The section is replaced rather than blanked so the provenance stays on record.\n")
+    content.append("### 4.1 The problem")
+    content.append("The PR agent is specified to track *\"global competitors, social posts, press releases, podcasts,")
+    content.append("interviews, and **narrative shifts**\"*. Five of six are satisfied by the persona operating over the L0")
+    content.append("corpus. The sixth is structurally impossible: `knowledge_units` carries a single `created_at`")
+    content.append("(row-insert time), there is no re-crawl scheduler, and no row is ever linked to the row it replaced.")
+    content.append("A narrative shift is *then* versus *now*; the corpus has no *then*.\n")
+    content.append("### 4.2 The measured finding that dictates the architecture")
+    content.append("From a labelled evaluation (CEUR-WS Vol-3964; 68 documents, 37 true narrative shifts):\n")
+    content.append("| LLM role | Accuracy | Behaviour |")
+    content.append("|---|---|---|")
+    content.append("| **Judge** — *\"did the narrative shift?\"* | **57.35%** (F1 0.7010) | Reported a shift in **60 of 68** documents when only **37** were real |")
+    content.append("| **Explainer** — *\"a shift was detected; what changed?\"* | **83.78%** | Correct on 31 of 37 |\n")
+    content.append("The model cannot separate a **narrative** shift (repositioning) from a **content** shift (rewording, a")
+    content.append("new footer, a CSS change). Asked to judge, it agrees. **Therefore: detection must be deterministic;")
+    content.append("the LLM is only ever the explainer.** Inverting this produces an alert feed that is wrong ~62% of the")
+    content.append("time — which a CMO stops opening within a week, taking the rest of the product's credibility with it.\n")
+    content.append("### 4.3 Design")
+    content.append("* **Layer 1 — SCD Type 2 time axis.** Add `valid_from` / `valid_to` / `is_current` to `knowledge_units`. A re-crawl closes the superseded row rather than overwriting it, so \"what they used to say\" stays queryable. Verified on this project's SQLite 3.46.0: `ALTER TABLE ... ADD COLUMN ... DEFAULT (datetime('now'))` is accepted and back-fills existing rows — migrates in place, no table rebuild.")
+    content.append("* **Layer 2 — three-check cascade**, each stage ~100× cheaper than the next: content hash (kills ~95% of re-crawls at zero API cost) → structural signature (a redesign is not a repositioning) → embedding cosine (only this means the *meaning* moved).")
+    content.append("* **Layer 3 — shift feed.** `JOIN now.valid_from = was.valid_to` yields before/after pairs. This is what the PR agent reads.")
+    content.append("* **Layer 4 — explanation.** Gemini is invoked only on pairs that cleared Layer 2, and only to characterise the repositioning.")
+    content.append("* **Prior art:** the bi-temporal model in Zep/Graphiti (facts invalidated, never deleted; reported DMR 94.8% vs MemGPT 93.4%). SCD Type 2 is its relational half — the part that matters here, in plain SQLite, with no new dependency.")
+    content.append("* **Rejected:** RollingLDA / statistical change-point detection. Needs a continuous high-volume stream to estimate a baseline; this project crawls 13 organisations weekly. Scale mismatch.\n")
+    content.append("\n---\n")
 
     # SECTION 5: LangGraph & LangFuse Architecture
     content.append("## 📐 5. LangGraph Swarm & LangFuse Tracing Specifications")
@@ -134,6 +150,20 @@ class SwarmState(TypedDict):
     content.append("```\n")
 
     final_text = "\n".join(content)
+
+    # Sections 1-5 are generated; everything from the audit report onward is hand-authored
+    # and must survive a regeneration. This script used to write `final_text` alone, which
+    # silently deleted ~440 lines of audit trail every time it ran.
+    if KB_MD.exists():
+        existing = KB_MD.read_text()
+        if (idx := existing.find(AUTHORED_TAIL_MARKER)) != -1:
+            final_text = final_text.rstrip("\n") + "\n\n" + existing[idx:]
+        else:
+            raise SystemExit(
+                f"refusing to write: {KB_MD} exists but has no {AUTHORED_TAIL_MARKER!r} marker,"
+                " so the authored tail cannot be located and would be destroyed"
+            )
+
     KB_MD.write_text(final_text)
     ARTIFACT_KB_MD.write_text(final_text)
     print(f"[+] Expanded Master Knowledge Base successfully written! Total lines: {len(final_text.splitlines())}, Size: {len(final_text)} bytes")
