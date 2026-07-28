@@ -302,6 +302,14 @@ flowchart TD
 
 ## 🚩 Phase 8: Full Activation of Extended Swarm Agents
 
+> **⏸️ Parked — 2026-07-28.** The three agents below were implemented in `384b320` from
+> exactly the three bullets in §8.1. One bullet is a topic, not a specification: it does not
+> say what the agent's input is, what a correct output looks like, or who consumes it — so
+> there is no way to tell whether the shipped persona is right or wrong. They were gated out
+> of the digest fan-out via `ACTIVE_AGENTS` rather than deleted, pending a scope conversation
+> with the requesting stakeholder. Reactivating one = add it to `ACTIVE_AGENTS` after §8.1
+> gets a real spec.
+
 ### 8.1 Detailed Technical Steps:
 1. **🔮 Social Media Agent (`app/agents/social_agent.py`)**:
    - B2B LinkedIn campaign hooks, viral X/Twitter threads for AI developers, executive thought leadership.
@@ -762,10 +770,10 @@ F1 weights those equally. They are not equal, so recall carries 2×.
 | **Phase 2** | RAMP Grounded SQLite Engine | ✅ Complete | `marketing_os.db` seeded with 94 100% grounded facts & source URLs |
 | **Phase 3** | Core Swarm Agent Nodes | ✅ Complete | Active Branding & PR Agents with Pydantic schema validation |
 | **Phase 4** | Senior Engineering Layout & Deployment | ✅ Complete | Clean `app/` root, 7 Pytest cases, deployed on VM (`164.52.203.81`) |
-| **Phase 5** | CMO Weekly Executive Digest UI | ⚠️ Complete (one gap) | LangGraph fan-out digest across all 5 agents, interactive link graph, **markdown** export with cited sources. **PDF export was specified and never built** — `/api/export/markdown` is the only export route. Digest tab has never been visually verified in a browser. |
+| **Phase 5** | CMO Weekly Executive Digest UI | ⚠️ Complete (one gap) | LangGraph fan-out digest across `ACTIVE_AGENTS` (branding + PR; see Phase 8), interactive link graph, **markdown** export with cited sources. **PDF export was specified and never built** — `/api/export/markdown` is the only export route. Digest tab has never been visually verified in a browser. |
 | **Phase 6** | Multimodal Image & PDF Ingestion | 📍 Planned | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
 | **Phase 7** | Automated Change Tracking (CompTrack) | 📍 Planned | Background re-crawler, competitor delta engine, CMO contradiction alerts |
-| **Phase 8** | Full Activation of Swarm Agents | ✅ Complete | All 5 agents live in `AGENT_REGISTRY`; all five run in the M5 digest fan-out |
+| **Phase 8** | Full Activation of Swarm Agents | ⏸️ Parked (2 of 5 active) | All 5 personas live in `AGENT_REGISTRY`, but only `ACTIVE_AGENTS = ("branding", "pr")` reach the M5 digest fan-out. §8.1 specifies social / product_marketing / events in **one bullet each** — not enough to say what a correct output looks like, so they were shipped unvalidatable. Parked pending a scope conversation with the requesting stakeholder. Registry entries are retained: the memory-isolation tests use them as namespace fixtures (`pr` ⊂ `product_marketing` prefix collision). |
 | **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🔵 **In progress — backend done, UI not started** | M9.1–M9.5 committed (`c05eaa3` → `fb10aa1`): namespace store, promotion gate, chat layer, scoped graph, `/triage` bridge. **M9.6 UI not started — the frontend makes zero calls to `/api/chat`, `/api/triage` or `/api/memory`, so none of it is reachable from the product.** |
 
 > **Build order (user decision, 2026-07-25): Phase 9 is next.** Phases 6 and 7 are deferred

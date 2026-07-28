@@ -79,6 +79,12 @@ COMPETITOR TAXONOMY: {_COMPETITORS}
     },
 }
 
+# Agents whose output reaches a user. The other three registry entries (social,
+# product_marketing, events) were built from a 3-bullet spec in design_doc Phase 8 and are
+# parked until the requesting stakeholder specifies what they should actually do. They stay
+# in AGENT_REGISTRY so their namespaces keep existing (memory isolation tests depend on the
+# `pr` ⊂ `product_marketing` prefix collision); they just don't get to write the CMO digest.
+ACTIVE_AGENTS = ("branding", "pr")
 
 
 def _strip_code_fence(text: str) -> str:
@@ -153,6 +159,7 @@ class AgentNode:
 if __name__ == "__main__":
     # ponytail self-check: registry is complete and the pipeline returns a valid contract.
     assert set(AGENT_REGISTRY) == {"branding", "pr", "social", "product_marketing", "events"}
+    assert set(ACTIVE_AGENTS) < set(AGENT_REGISTRY), "active agents must be registered agents"
     out = run_agent("branding", "Position B200 against Nebius on price")  # uses mock LLM without keys
     assert {"selected_option", "statement", "rationale", "risks", "confidence"} <= set(out)
     print("base.py self-check OK:", out["selected_option"])

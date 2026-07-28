@@ -727,6 +727,13 @@ COMPETITOR TAXONOMY: {_COMPETITORS}
     },
 }
 
+# Agents whose output reaches a user. The other three registry entries (social,
+# product_marketing, events) were built from a 3-bullet spec in design_doc Phase 8 and are
+# parked until the requesting stakeholder specifies what they should actually do. They stay
+# in AGENT_REGISTRY so their namespaces keep existing (memory isolation tests depend on the
+# `pr` ⊂ `product_marketing` prefix collision); they just don't get to write the CMO digest.
+ACTIVE_AGENTS = ("branding", "pr")
+
 
 def _strip_code_fence(text: str) -> str:
     text = text.strip()
@@ -800,6 +807,7 @@ class AgentNode:
 if __name__ == "__main__":
     # ponytail self-check: registry is complete and the pipeline returns a valid contract.
     assert set(AGENT_REGISTRY) == {"branding", "pr", "social", "product_marketing", "events"}
+    assert set(ACTIVE_AGENTS) < set(AGENT_REGISTRY), "active agents must be registered agents"
     out = run_agent("branding", "Position B200 against Nebius on price")  # uses mock LLM without keys
     assert {"selected_option", "statement", "rationale", "risks", "confidence"} <= set(out)
     print("base.py self-check OK:", out["selected_option"])
@@ -1196,7 +1204,7 @@ from typing import TypedDict, List, Dict, Any, Annotated
 
 from langgraph.graph import StateGraph, START, END
 
-from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER, run_agent, _strip_code_fence
+from app.agents.base import ACTIVE_AGENTS, DEFAULT_PROVIDER, run_agent, _strip_code_fence
 from app.core.primitives import now_iso
 from app.core.schemas import DigestSchema
 from app.db.database import get_competitor_facts
@@ -1344,11 +1352,11 @@ def _build_digest_graph():
     builder.add_node("load_facts", _load_facts)
     builder.add_node("synthesize", _synthesize)
     builder.add_edge(START, "load_facts")
-    for agent_type in AGENT_REGISTRY:
+    for agent_type in ACTIVE_AGENTS:
         node = f"digest_{agent_type}"
         builder.add_node(node, _make_digest_worker(agent_type))
-        builder.add_edge("load_facts", node)   # fan out (all five run in one superstep)
-        builder.add_edge(node, "synthesize")   # aggregate (waits for all five)
+        builder.add_edge("load_facts", node)   # fan out (all active agents in one superstep)
+        builder.add_edge(node, "synthesize")   # aggregate (waits for all of them)
     builder.add_edge("synthesize", END)
     return builder.compile()
 
@@ -3280,6 +3288,7 @@ sys.path.insert(0, str(BASE_DIR))
 from app.core.config import settings
 from app.db import database
 from app.main import app
+from app.agents.base import ACTIVE_AGENTS
 
 class TestAPIRoutes(unittest.TestCase):
     def setUp(self):
@@ -3347,7 +3356,7 @@ class TestAPIRoutes(unittest.TestCase):
                     "recommended_actions", "agent_briefs", "network", "citations",
                     "generated_at"):
             self.assertIn(key, data)
-        self.assertEqual(len(data["agent_briefs"]), 5)
+        self.assertEqual(len(data["agent_briefs"]), len(ACTIVE_AGENTS))
         for key in ("agent", "headline", "finding", "confidence"):
             self.assertIn(key, data["agent_briefs"][0])
 
@@ -3793,6 +3802,7 @@ from app.db.database import init_db, get_competitor_facts, save_knowledge_unit
 from app.core.primitives import new_id
 from app.db.grounded_seed import seed_grounded_knowledge
 from app.graph.digest import run_digest, build_network, _DIGEST_GRAPH
+from app.agents.base import ACTIVE_AGENTS, AGENT_REGISTRY
 
 
 class TestCompetitorFilter(unittest.TestCase):
@@ -3828,19 +3838,22 @@ class TestDigestGraph(unittest.TestCase):
         init_db()
         seed_grounded_knowledge()
 
-    def test_graph_fans_out_to_all_five_agents(self):
+    def test_graph_fans_out_to_active_agents_only(self):
         nodes = set(_DIGEST_GRAPH.get_graph().nodes)
-        for agent in ("branding", "pr", "social", "product_marketing", "events"):
+        for agent in ACTIVE_AGENTS:
             self.assertIn(f"digest_{agent}", nodes)
         self.assertIn("synthesize", nodes)
+        # Parked agents are still registered, but must not reach the CMO digest.
+        for agent in set(AGENT_REGISTRY) - set(ACTIVE_AGENTS):
+            self.assertNotIn(f"digest_{agent}", nodes)
 
     def test_digest_collects_a_brief_from_each_agent(self):
         out = run_digest()
         self.assertTrue(out["success"])
         self.assertEqual(
             {b["agent"] for b in out["agent_briefs"]},
-            {"branding", "pr", "social", "product_marketing", "events"},
-            "the aggregator must receive all five parallel briefs",
+            set(ACTIVE_AGENTS),
+            "the aggregator must receive one brief per active agent",
         )
         self.assertTrue(out["headline"])
         self.assertTrue(out["executive_summary"])

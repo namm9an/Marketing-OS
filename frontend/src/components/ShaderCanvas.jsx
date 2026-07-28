@@ -20,6 +20,8 @@ const AGENT_GRADIENTS = {
   default:           { c1: '#FBF9F5', c2: '#EADAC8', c3: '#D97757' },
   branding:          { c1: '#FBF9F5', c2: '#EDD9C4', c3: '#D97757' },  // terracotta
   pr:                { c1: '#F7F8FB', c2: '#D9DFEE', c3: '#6D82C4' },  // slate blue
+  // Parked (see ACTIVE_AGENTS in app/agents/base.py) — unreachable until the roster is
+  // specified, kept so the palette doesn't have to be re-derived when they come back.
   social:            { c1: '#FBF7FA', c2: '#EBD8E6', c3: '#B0679E' },  // magenta
   product_marketing: { c1: '#F6FAF8', c2: '#D2E6DC', c3: '#4F9C7C' },  // green
   events:            { c1: '#FCF9F4', c2: '#F0E2C0', c3: '#C9A227' },  // amber
