@@ -53,7 +53,9 @@ def api_me():
 @app.route("/api/login", methods=["POST"])
 def api_login():
     data = request.get_json(silent=True) or {}
-    if data.get("username") == settings.ADMIN_USER and data.get("password") == settings.ADMIN_PASSWORD:
+    user = (data.get("username") or "").strip()
+    pwd = (data.get("password") or "").strip()
+    if user.lower() == settings.ADMIN_USER.lower() and pwd == settings.ADMIN_PASSWORD:
         resp = jsonify({"success": True, "username": settings.ADMIN_USER})
         resp.set_cookie(SESSION_COOKIE, SESSION_TOKEN, max_age=86400, httponly=True, samesite="Lax")
         return resp

@@ -20,8 +20,8 @@ class Settings:
     DEFAULT_MODEL: str = os.environ.get("DEFAULT_MODEL", "gemini-3.6-flash")
 
     # Auth (single-admin; override in production via env)
-    ADMIN_USER: str = os.environ.get("ADMIN_USER", "admin")
-    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "marketing2026")
+    ADMIN_USER: str = os.environ.get("ADMIN_USER") or os.environ.get("APP_USERNAME") or "admin"
+    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD") or os.environ.get("APP_PASSWORD") or "marketing2026"
     
     # LangFuse Observability Settings
     LANGFUSE_PUBLIC_KEY: str = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
