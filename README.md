@@ -1,166 +1,148 @@
 # Marketing OS
 
-An AI-powered marketing decision-making system. It uses AI agents to analyze business goals and recommend market positioning strategies, with every AI decision going through a governance review before being finalized.
+Governed multi-agent competitive intelligence for **E2E Networks** (NSE: E2E) and the TIR AI Platform.
 
-## What It Does
+Five marketing specialists reason over a crawled, source-attributed corpus of the neo-cloud GPU market. Each keeps its own private memory, all of them share the grounded corpus, and any two can be bridged onto a single question without their memories mixing.
 
-You give the system a business goal (e.g., *"Establish market position in GPU cloud compute for AI training"*), and it:
+---
 
-1. **Positioning Strategist** (AI agent) analyzes the goal, reviews available knowledge, and selects a positioning strategy from defined alternatives
-2. **Governance Reviewer** checks the decision quality — rejects low-confidence decisions, approves high-confidence ones
-3. **CMO Profile** handles escalations — reviews medium-confidence decisions at the executive level
-4. Everything is logged in **Decision Records** with full audit trails
+## Design principles
 
-The system runs in two modes:
-- **Deterministic** — rule-based reasoning, no AI needed
-- **AI-assisted** — sends structured prompts to Claude (Anthropic), parses structured responses
+**Grounded, not generative.** Every competitor fact carries the `source_url` of the page it came from. Retrieval excludes agent-written rows, so a model's own earlier prose can never return as evidence for a later answer.
 
-## Current Status
+**Isolation by default.** An agent reads the shared corpus, its own namespace, and any joint namespace it belongs to — nothing else. Membership is matched exactly rather than by substring, so `agent:pr` can never be handed `triage:product_marketing+social`.
 
-| What | Status |
-|---|---|
-| Core data model | ✅ Complete |
-| Memory system | ✅ Complete |
-| Inference engine (model-agnostic) | ✅ Complete |
-| Gemini API adapter | ✅ Complete (live-tested) |
-| Claude API adapter | ⚠️ Written, not live-tested |
-| Mock provider (for testing) | ✅ Complete |
-| Positioning Strategist (AI agent) | ✅ Complete (dual-mode) |
-| Governance + CMO review | ✅ Complete |
-| Orchestrator | ✅ Complete |
-| Test suite | ✅ 17 tests, all passing |
-| Other AI roles (8 remaining) | ❌ Not started |
-| Persistence | ❌ In-memory only |
+**Merge the answers, not the memories.** `/api/triage` puts two agents on one question. They reason independently, and only their conclusions are merged. The joint turn is written to the pair's namespace and to neither private one, so a pair improves as a pair without either agent's voice drifting toward the other's.
 
-## Quick Start
+**Deterministic where correctness matters.** Corpus graph edges are derived from a fixed entity taxonomy, never inferred by a model. A fabricated edge is worse than a missing one, because a traversal path looks like evidence.
 
-### Run locally (no dependencies needed)
+**Escalate rather than assume.** Low-confidence or high-risk positioning is flagged for CMO ratification instead of being returned as settled.
 
-```bash
-# Clone
-git clone https://github.com/namm9an/Marketing-OS.git
-cd Marketing-OS
-
-# Run all tests
-python3 -m unittest discover
-
-# Run the GPU cloud scenario (human-readable output)
-python3 -m tests.scenario.test_gpu_cloud_launch
-```
-
-### Run the AI agent
-
-```bash
-# With Gemini (default):
-export GEMINI_API_KEY="your-key-here"
-python3 run_agent.py
-
-# With Claude:
-export ANTHROPIC_API_KEY="your-key-here"
-python3 run_agent.py --provider claude
-
-# Deterministic mode (no API key needed):
-python3 run_agent.py --provider none
-
-# Custom goal:
-python3 run_agent.py --goal "Launch our SaaS product in the enterprise market"
-```
-
-### Run with Docker
-
-```bash
-# Run scenario comparison
-docker compose up --build
-
-# Run tests
-docker compose run marketing-os python3 -m unittest discover
-
-# Run agent with Gemini
-docker compose run -e GEMINI_API_KEY=your-key marketing-os python3 run_agent.py
-```
-
-## Project Structure
-
-```
-Marketing-OS/
-├── runtime/                    # The application code
-│   ├── core/
-│   │   └── primitives.py       # Data models: Goal, Positioning, DecisionRecord, etc.
-│   ├── inference/
-│   │   ├── base.py             # Model-agnostic inference contract
-│   │   └── providers/
-│   │       ├── gemini_provider.py   # Google Gemini adapter (stdlib urllib)
-│   │       ├── claude_provider.py   # Anthropic Claude adapter (stdlib urllib)
-│   │       └── mock_provider.py     # Deterministic test double
-│   ├── memory/
-│   │   └── memory.py           # Working / Episodic / Semantic memory
-│   ├── orchestration/
-│   │   └── orchestrator.py     # Workflow coordinator
-│   └── roles/
-│       ├── specialist/
-│       │   ├── positioning_strategist.py  # The AI agent (dual-mode)
-│       │   └── governance_reviewer.py     # Decision quality gate
-│       └── executive/
-│           └── cmo_profile.py  # Executive escalation handler
-├── tests/
-│   ├── unit/                   # 9 tests — memory, inference contract
-│   ├── integration/            # 7 tests — full workflow, failure modes
-│   └── scenario/               # 1 test — end-to-end business scenario
-├── examples/
-│   └── prototype-0.1/          # Original standalone prototype
-├── backlog/
-│   └── BACKLOG.md              # Enhancement tracking (29 items)
-├── docs/
-│   └── validation/
-│       └── alpha-engineering-report.md
-├── ROADMAP.md                  # Release plan
-├── CHANGELOG.md                # Version history
-├── INDEX.md                    # Document cross-reference
-├── Dockerfile
-├── docker-compose.yml
-└── Makefile
-```
+---
 
 ## Architecture
 
 ```
-Orchestrator
-  ├── Positioning Strategist
-  │     ├── Memory (working / episodic / semantic)
-  │     └── InferenceProvider (optional)
-  │           ├── GeminiProvider (needs GEMINI_API_KEY)
-  │           ├── ClaudeProvider (needs ANTHROPIC_API_KEY)
-  │           └── MockProvider (no dependencies)
-  ├── Governance Reviewer
-  └── CMO Profile
+app/
+├── main.py         Flask entrypoint — REST API and SPA host
+├── core/           Settings, Pydantic schemas, id primitives
+├── agents/         Agent registry and the five personas
+├── graph/          LangGraph: supervisor workflow, chat, triage, digest
+├── memory/         Namespace store, promotion gate, corpus graph
+├── db/             SQLite layer (WAL) and the grounded seeder
+└── services/       LLM factory, LangFuse tracing
+frontend/           React 18 + Vite SPA
+tests/              Unit and integration suites
+docs/               Design doc, knowledge base, architecture diagram
+scripts/            Manifest generator
 ```
 
-The inference layer is model-agnostic — swapping Gemini for Claude, GPT, or any other provider requires implementing one class with a single `generate()` method. Zero changes to roles, orchestration, or core code.
+Knowledge is layered, and the boundaries between layers are the product:
 
-## Requirements
+| Layer | Contents | Written by |
+|---|---|---|
+| **L0** Grounded corpus | Competitor facts, every row carrying a `source_url` | The crawler and seeder only — read-only to agents |
+| **L0.5** Corpus graph | Entity edges (`offers`, `prices`) over the corpus | Deterministic extraction from a fixed taxonomy |
+| **L1** Private memory | One namespace per agent | The promotion gate, from that agent's own conversations |
+| **L2** Joint memory | One namespace per agent pair | `/api/triage`, readable by the pair's members only |
 
-- **Python 3.9+** (that's it — no pip install needed for deterministic/mock mode)
-- **Docker** (optional, for containerized deployment)
-- **GEMINI_API_KEY** (for Gemini API calls — default provider)
-- **ANTHROPIC_API_KEY** (optional, for Claude API calls)
+The **promotion gate** decides what is allowed to become memory at all. User corrections, stated preferences and ratified decisions are admitted; model prose and unsourced claims are discarded, which is what keeps a self-referential memory loop from forming.
 
-## Make Commands
+The five specialists are **Branding**, **PR**, **Social**, **Product Marketing** and **Field Events**. All five are addressable through the chat and triage endpoints; the weekly digest currently fans out across Branding and PR.
+
+---
+
+## Quick start
+
+### Docker
 
 ```bash
-make test          # Run all tests
-make run           # Run the scenario comparison
-make docker-build  # Build Docker image
-make docker-run    # Run in Docker container
+docker compose up --build
 ```
 
-## Known Limitations
+Serves on port 80. Set `GEMINI_API_KEY` in the environment or a `.env` file for live model calls.
 
-1. **Only 1 of 9 roles uses AI** — the other 8 are rule-based stubs
-2. **In-memory only** — no persistence, everything is lost when the process stops
-3. **Minimal prompt** — the AI system prompt works but isn't tuned for quality
-4. **Claude provider not live-tested** — Gemini is the tested/default provider
+### Local
 
-See [backlog/BACKLOG.md](backlog/BACKLOG.md) for the full list of tracked items.
+```bash
+pip install -r requirements.txt
+python -m app.db.grounded_seed
+python -m app.main
+```
+
+Serves on port 5000. Run from the repository root — `-m` places it on the import path.
+
+To build the frontend:
+
+```bash
+cd frontend
+npm install
+npm run build
+```
+
+The API runs without a built frontend; requests to `/` return a plain notice until `frontend/dist` exists.
+
+---
+
+## API
+
+| Method | Route | Purpose |
+|---|---|---|
+| `POST` | `/api/run` | One-shot structured agent run, through governance review |
+| `POST` | `/api/chat` | Multi-turn conversation with one agent, returning its recall |
+| `GET` | `/api/chat/threads` | Threads in a namespace (`?agent=` or `?agents=a,b`) |
+| `GET` | `/api/chat/thread/<id>` | Turns in one thread |
+| `POST` | `/api/triage` | Two agents, one merged and attributed answer |
+| `GET` | `/api/memory` | Inspect the memories a namespace holds |
+| `POST` | `/api/digest` | Weekly competitor intelligence digest |
+| `GET` | `/api/digest/network` | Competitor network projection (no model call) |
+| `POST` | `/api/export/markdown` | Digest export with cited sources |
+| `GET` | `/api/history` | Past decision records |
+| `GET` | `/api/health` | Health check |
+| `POST` | `/api/login` · `/api/logout` | Session auth |
+| `GET` | `/api/me` | Current session |
+
+Chat and triage responses carry the memories and sourced facts each answer was built from, so recall is inspectable rather than taken on trust.
+
+---
+
+## Configuration
+
+| Variable | Default | Purpose |
+|---|---|---|
+| `GEMINI_API_KEY` | — | Live model calls; without it the system runs a deterministic fallback |
+| `DEFAULT_MODEL` | `gemini-3.6-flash` | Model id |
+| `APP_USERNAME` / `ADMIN_USER` | `admin` | Single-admin session auth |
+| `APP_PASSWORD` / `ADMIN_PASSWORD` | `marketing2026` | **Override in production** |
+| `DATABASE_URL` | `sqlite:///app/data/marketing_os.db` | Database location |
+| `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` / `LANGFUSE_HOST` | — | Optional tracing |
+| `PORT` | `5000` | Listen port |
+
+---
+
+## Development
+
+```bash
+python -m pytest                      # run the suite
+python scripts/gen_manifest.py        # refresh the source manifest in the knowledge base
+python scripts/gen_manifest.py --check   # exit 1 if the manifest is stale
+```
+
+`docs/knowledge_base.md` embeds a generated copy of the source tree. Re-run the generator after any commit that adds, removes or changes a module — the `--check` form is intended for CI.
+
+---
+
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [`docs/design_doc.md`](docs/design_doc.md) | Phase-by-phase system design, build milestones, and the reasoning behind each architectural decision |
+| [`docs/knowledge_base.md`](docs/knowledge_base.md) | Scrape audit trail, generated source manifest, research findings and decision history |
+| [`docs/architecture.html`](docs/architecture.html) | Rendered architecture diagrams, annotated with implementation status |
+
+Build status for individual milestones lives in the design doc and the architecture diagram, which are kept reconciled against the tree.
+
+---
 
 ## License
 
