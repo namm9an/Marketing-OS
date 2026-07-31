@@ -855,10 +855,46 @@ unfalsifiable — it will feel like it is learning whether or not it is.
 |---|---|---|---|
 | **M9.8** | Evaluation harness | Retrieval gold set (~50 queries) → Recall@5 / Precision@5 / **F2@5** / MRR. Deterministic groundedness: every number, price, date and URL in an answer must appear verbatim in the retrieved facts — hard fail, not a score. Doc/diagram reconciliation. LangSmith removal. Load test on the VM. | M9.7 merged |
 | **M9.9** | Retrieval upgrade | FTS5 replacing `LIKE`. Cross-domain hint (deterministic keyword overlap → suggests `/triage`, never auto-escalates). | M9.8 baseline exists |
-| **M9.10** | Deferred, trigger-gated | Claim-level faithfulness judge; hybrid embeddings *(trigger: FTS5 Recall@5 < 0.85)*; semantic consensus triples *(trigger: M9.7 gate precision ≥ 0.9)*; N-way `/triage` *(trigger: an arbitration rule is chosen)*. | Its own trigger fires |
+| **M9.10** | Deferred, trigger-gated | Claim-level faithfulness judge; hybrid embeddings, RRF-fused, with a cross-encoder rerank *(trigger: FTS5 Recall@5 < 0.85)*; semantic consensus triples *(trigger: M9.7 gate precision ≥ 0.9)*; N-way `/triage` *(trigger: an arbitration rule is chosen)*. | Its own trigger fires |
 
 **F2 not F1.** A missed fact makes the agent answer ungrounded; a surplus fact costs tokens.
 F1 weights those equally. They are not equal, so recall carries 2×.
+
+**M9.8 runs inside the existing suite, not beside it.** The project already has 92 pytest
+functions; an eval harness that lives in a separate notebook is one nobody runs after the week
+it was written. DeepEval is pytest-native and asserts on metric thresholds like any other test,
+so a retrieval regression fails CI the same way a broken import does. RAGAS is the better
+reference for *what* to measure — faithfulness, answer relevancy, context precision, context
+recall — and its faithfulness metric decomposes an answer into claims and checks each against
+retrieved context, which is the scored cousin of the verbatim groundedness check above. Keep the
+hard fail; add the score alongside it.
+
+**If M9.10's hybrid trigger fires, fuse on ranks, not scores.** BM25 scores are unbounded
+positive, cosine similarity sits in [-1, 1]. Weighted-averaging them is the standard way to
+build a hybrid retriever that performs *worse* than either half alone, because whichever scale
+runs larger silently dominates the blend. Reciprocal Rank Fusion discards the scores and
+combines ranks instead. On WANDS: RRF 0.7068 NDCG against BM25 0.6983 and pure KNN 0.6953,
+tuned variants to 0.7497 — real, but single-digit percent, which is the honest size of that
+prize.
+
+The cross-encoder rerank is the larger half of the same upgrade. Retrieve wide (top-50 to
+top-200 fused), rerank down to the 5 that `_FACT_RECALL` admits. **There is no rerank stage
+today**: `limit=5` is the *retrieval* number, so the fifth-best keyword match enters the prompt
+as grounding regardless of whether it bears on the question.
+
+**Expect the trigger to fire.** This corpus is hostile to lexical-only retrieval in both
+directions at once — rare exact tokens that embeddings blur (`B200`, `H200`, `₹671/hr`) sitting
+inside the same queries as heavy cross-site paraphrase (thirteen vendors describing one GPU
+rental in thirteen vocabularies). FTS5 wins the first and loses the second; dense retrieval does
+the reverse. That is the textbook hybrid case, and it is an argument for *predicting* M9.9 will
+miss 0.85 — not for skipping M9.9 and going straight to vectors. The measurement is still what
+licenses the change; §9.14's whole point is that "keyword recall is insufficient" was an
+assertion until something counted it.
+
+> Retrieval, not generation, is where RAG systems fail: production analyses put the majority of
+> bad answers — commonly cited at 70%+ — on wrong, missing, or misordered retrieved documents
+> rather than on the model inventing things. Worth holding next to the fact that M9.8 gates
+> M9.9, which gates M9.10: this ordering front-loads the layer that carries most of the error.
 
 ---
 
