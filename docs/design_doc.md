@@ -849,6 +849,25 @@ Three mechanisms, all reusing parts that already exist:
 separately for `user` and `reflection` provenance. Without them a self-evolving memory layer is
 unfalsifiable — it will feel like it is learning whether or not it is.
 
+**Binary admission is the known weak point, and the first thing to revisit after those numbers
+exist.** All four mechanisms above resolve to accept-or-discard. That is correct for M9.2's user
+turns, where provenance is unambiguous, and progressively wrong for reflections, where confidence
+is genuinely graded: a reflection drawn from one answered question and one drawn from forty
+consistent ones are not the same claim, and the gate as specified cannot express the difference.
+The alternative is to weight each entry by a trust score and down-weight low-trust rows *at
+recall* instead of rejecting them *at write* — which keeps the signal a hard threshold discards,
+at the cost of a number that has to be calibrated.
+
+Deliberately out of M9.7 scope. Binary ships first because it is falsifiable with the metrics
+this section already owes; graded trust needs those metrics to exist before there is anything to
+calibrate against. Sequencing it here makes it a decision rather than an oversight.
+
+> SuperLocalMemory (arXiv 2603.02240) — per-agent local memory plus Bayesian trust weighting
+> against memory poisoning. Its contamination result is the same one §9.7's write-isolation rule
+> already assumes: unvalidated sharing lets a false memory propagate silently through the
+> system. Mild external confirmation that the boundary is drawn in the right place, and a
+> ready-made design for the graded version when M9.7's numbers justify it.
+
 ### 9.16 M9.8–M9.10 — instrumentation, retrieval, deferred
 
 | # | Milestone | Contents | Gate to start |
