@@ -333,6 +333,33 @@ was.valid_to`) to produce before/after pairs. This query is what the PR agent re
 they said, here is what they now say, characterise the repositioning"* — never *"did anything
 change?"*.
 
+The explainer returns **frame elements, not prose.** A paragraph is unverifiable: there is
+nothing to diff, nothing for Pydantic to reject, and no way to distinguish a real repositioning
+from a fluent description of one. Framing theory already supplies the decomposition — four
+elements, extracted once per side of the pair:
+
+| Element | What it captures for a competitor |
+|---|---|
+| **Problem Definition** | What they claim the customer's problem is — *"GPU capacity is unaffordable"* |
+| **Causal Interpretation** | Who or what they blame — *"hyperscaler margin stacking"* |
+| **Moral Evaluation** | The value asserted — *"compute access should be sovereign"* |
+| **Treatment Recommendation** | What they propose — *"rent from an Indian operator"* |
+
+A narrative shift is then a **diff between two frame-element sets**, not a model's impression
+that something feels different. `TreatmentRecommendation` moving while `ProblemDefinition` holds
+is tactical repricing; `ProblemDefinition` itself moving is the repositioning the CMO actually
+needs. Both are computable from the pair, and neither rests on a judgement call — which is the
+same reason §7.0 took detection away from the LLM in the first place. This extends that law one
+step further: the explainer is not trusted to *narrate* either, only to fill four named slots.
+
+> Frame Element-based Model (arXiv 2402.15525) — Problem Definition, Causal Interpretation,
+> Moral Evaluation, Treatment Recommendation. Standard in framing analysis, so the extraction
+> target is not something this project invented and can be checked against a literature baseline.
+
+ponytail: extraction is still an LLM call and can fail. It fails *safely* — a malformed or empty
+element set is a schema violation the existing Pydantic layer rejects, degrading to "changed,
+unexplained" rather than to a fabricated narrative. That is the correct direction to fail in.
+
 **Deliberately not built:** RollingLDA / statistical change-point detection over a document
 stream (the CEUR paper's own machinery). It needs a continuous high-volume corpus to estimate
 a baseline; this project has 13 organisations on a weekly crawl. Scale mismatch — revisit if
@@ -360,8 +387,9 @@ flowchart TD
     E -->|yes| SCD[("🕓 SCD Type 2 write<br/>close old row: valid_to = now, is_current = 0<br/>insert new current row")]
     SCD --> Feed["🔗 Shift feed<br/>JOIN now.valid_from = was.valid_to"]
 
-    Feed --> LLM["🤖 Gemini — EXPLAINER ONLY<br/>'here is before, here is after,<br/>characterise the repositioning'"]
-    LLM --> PR["📣 PR Agent counter-narrative brief"]
+    Feed --> LLM["🤖 Gemini — EXPLAINER ONLY<br/>'here is before, here is after'<br/>fills 4 named slots, does not narrate"]
+    LLM --> Frame["🧩 Frame-element diff<br/>Problem · Cause · Moral · Treatment<br/>Problem moved ⇒ repositioning<br/>Treatment only ⇒ tactical repricing"]
+    Frame --> PR["📣 PR Agent counter-narrative brief"]
     PR --> Dash["🚨 CMO dashboard"]
 
     Judge["❌ Gemini as JUDGE<br/>'did the narrative shift?'<br/>57.35% acc — 60 shifts called of 37 real"]
