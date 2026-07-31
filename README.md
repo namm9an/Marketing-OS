@@ -33,8 +33,6 @@ app/
 └── services/       LLM factory, LangFuse tracing
 frontend/           React 18 + Vite SPA
 tests/              Unit and integration suites
-docs/               Design doc, knowledge base, architecture diagram
-scripts/            Manifest generator
 ```
 
 Knowledge is layered, and the boundaries between layers are the product:
@@ -123,24 +121,8 @@ Chat and triage responses carry the memories and sourced facts each answer was b
 ## Development
 
 ```bash
-python -m pytest                      # run the suite
-python scripts/gen_manifest.py        # refresh the source manifest in the knowledge base
-python scripts/gen_manifest.py --check   # exit 1 if the manifest is stale
+python -m pytest
 ```
-
-`docs/knowledge_base.md` embeds a generated copy of the source tree. Re-run the generator after any commit that adds, removes or changes a module — the `--check` form is intended for CI.
-
----
-
-## Documentation
-
-| Document | Contents |
-|---|---|
-| [`docs/design_doc.md`](docs/design_doc.md) | Phase-by-phase system design, build milestones, and the reasoning behind each architectural decision |
-| [`docs/knowledge_base.md`](docs/knowledge_base.md) | Scrape audit trail, generated source manifest, research findings and decision history |
-| [`docs/architecture.html`](docs/architecture.html) | Rendered architecture diagrams, annotated with implementation status |
-
-Build status for individual milestones lives in the design doc and the architecture diagram, which are kept reconciled against the tree.
 
 ---
 
