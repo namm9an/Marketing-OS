@@ -4827,7 +4827,7 @@ time — which a CMO stops opening within a week, taking the rest of the product
 * **Layer 1 — SCD Type 2 time axis.** Add `valid_from` / `valid_to` / `is_current` to `knowledge_units`. A re-crawl closes the superseded row rather than overwriting it, so "what they used to say" stays queryable. Verified on this project's SQLite 3.46.0: `ALTER TABLE ... ADD COLUMN ... DEFAULT (datetime('now'))` is accepted and back-fills existing rows — migrates in place, no table rebuild.
 * **Layer 2 — three-check cascade**, each stage ~100× cheaper than the next: content hash (kills ~95% of re-crawls at zero API cost) → structural signature (a redesign is not a repositioning) → embedding cosine (only this means the *meaning* moved).
 * **Layer 3 — shift feed.** `JOIN now.valid_from = was.valid_to` yields before/after pairs. This is what the PR agent reads.
-* **Layer 4 — explanation.** Gemini is invoked only on pairs that cleared Layer 2, and only to characterise the repositioning.
+* **Layer 4 — explanation.** Gemini is invoked only on pairs that cleared Layer 2, and only to characterise the repositioning — by filling **four named frame elements** (Problem Definition / Causal Interpretation / Moral Evaluation / Treatment Recommendation; arXiv 2402.15525) rather than writing prose. A shift is then a *diff between element sets*: Treatment moving alone is tactical repricing, Problem Definition moving is the repositioning worth a CMO alert. Prose would be undiffable and unrejectable — §7.0 took detection away from the LLM for calling shifts that were not there, and handing it a paragraph to write reopens the same hole one stage later. A malformed element set is a schema violation, so the failure mode is "changed, unexplained" rather than an invented narrative.
 * **Prior art:** the bi-temporal model in Zep/Graphiti (facts invalidated, never deleted; reported DMR 94.8% vs MemGPT 93.4%). SCD Type 2 is its relational half — the part that matters here, in plain SQLite, with no new dependency.
 * **Rejected:** RollingLDA / statistical change-point detection. Needs a continuous high-volume stream to estimate a baseline; this project crawls 13 organisations weekly. Scale mismatch.
 
@@ -5297,3 +5297,70 @@ python scripts/gen_manifest.py
 
 `python scripts/gen_manifest.py --check` exits 1 when stale — wire it into CI so this cannot
 drift again.
+
+---
+
+## 9.H State as of 2026-07-31 (supersedes 9.G)
+
+§9.G is preserved as the record of that session. **No application code was written this session.**
+The branch was audited against outside criticism, prior art was researched, and the results were
+folded into `design_doc.md` §7.1, §9.15 and §9.16, plus `docs/architecture.html`.
+
+### Research performed (6 searches + 3 fetches)
+
+**Searches:** RAG evaluation harnesses (RAGAS / DeepEval / TruLens) · narrative-shift detection and
+framing analysis · supermemory container-tag architecture (re-check) · hybrid BM25 + dense retrieval
+with RRF and rerankers · LangGraph multi-agent memory-handoff patterns in production.
+**Fetches:** arXiv 2506.14836 · arXiv 2603.02240 · CEUR-WS Vol-3964 paper 6 (the PDF did not
+parse; the arXiv abstract, 2506.20269, carried the result).
+
+| # | Finding | What it changed |
+|---|---|---|
+| R20 | **Retrieval, not generation, is where RAG fails.** Production analyses attribute the majority of bad answers — commonly cited at 70%+ — to wrong, missing or misordered retrieval rather than to the model inventing things | Nothing. Confirms M9.8 → M9.9 → M9.10 already front-loads the layer carrying most of the error |
+| R21 | **RRF fuses on ranks, not scores.** BM25 is unbounded positive, cosine is [-1,1]; weighted-averaging lets whichever scale runs larger dominate silently | §9.16 M9.10 now names RRF instead of saying "hybrid embeddings" and leaving fusion to whoever implements it |
+| R22 | **Cross-encoder rerank is the larger half of a hybrid upgrade** — retrieve wide, rerank narrow | Recorded that **no rerank stage exists**: `_FACT_RECALL = 5` is the *retrieval* number, so the fifth-best keyword match is admitted as grounding on rank alone |
+| R23 | **The LLM stretches the framing definition when only content changed**, while applying it accurately when a shift is real | Already the basis of §7.0. Extended one stage: the *explainer* now fills named slots instead of writing prose |
+| R24 | **Frame elements are standard** — Problem Definition / Causal Interpretation / Moral Evaluation / Treatment Recommendation (arXiv 2402.15525) | Became the §7.1 Layer 4 extraction target. A shift is a diff between element sets, not a judgement call |
+| R25 | **Topological narrative detection** (arXiv 2506.14836) — persistent homology over daily co-occurrence graphs; unsupervised, no keyword dictionaries; narrative *cohesion* shifts lead *framing* shifts by 30–40 steps | Rejected, same reason as RollingLDA in §7.1: built for 37+ outlets daily, and the authors note entropy gets noisy on small controlled corpora. 13 vendors on a weekly crawl is the wrong scale |
+| R26 | **Graded trust beats binary admission** (SuperLocalMemory, arXiv 2603.02240) — weight memory by a per-source trust score, down-weight at recall rather than reject at write | Recorded in §9.15 as M9.7's successor and explicitly *not* in M9.7: binary is falsifiable with the gate metrics M9.7 already owes; graded needs those to calibrate against |
+| R27 | **DeepEval is pytest-native**; RAGAS supplies the metric vocabulary (faithfulness, answer relevancy, context precision, context recall) | §9.16 M9.8 now specifies the harness runs inside the existing 92-test suite — an eval living in a separate notebook is one nobody re-runs |
+| R28 | supermemory v4 **still cannot query across containers** (re-verified) | R13 unchanged. `/triage` merging answers rather than memories remains the industry constraint, not a workaround |
+
+### On the outside criticism (2026-07-31)
+
+Verified against the tree rather than accepted:
+
+- **Wrong — praised something that does not exist.** "Delta engine + contradiction flagging" was
+  listed as a strength. `database.py:261` is a deferral comment explaining why it *cannot* exist
+  until Phase 7 adds the time axis. The reviewer praised a diagram node, which is the failure their
+  own fourth criticism warns about.
+- **Wrong — "only Phase 5 is implemented; is Phase 9 on paper?"** 92 tests across 10 files;
+  `test_triage.py` asserts the isolation invariants by name. The defensible version of the point is
+  §9.G item 4: the tests exercise the LLM *fallback* path, so nothing is validated under live calls.
+- **Overstated — LangSmith.** Both are in `requirements.txt`, but LangSmith is env-var driven
+  (`LANGSMITH_TRACING=true`) and inert unless switched on. One active stack plus an opt-in, not two.
+  Still slated for removal in M9.8.
+- **Landed — retrieval is keyword-only and unmeasured, and there is no eval harness.** Both were
+  already known (§9.14, §9.16), but neither had a number attached, which is exactly what left them
+  open to the charge.
+
+### 🔴 Open — carry forward (revised)
+
+§9.G items 2, 3, 4, 6 and 7 stand unchanged. Revised:
+
+1. **`main` is 22 commits behind as of this entry**, not the 7 recorded in §9.G — `main` still sits
+   at `2255863`. The deploy question is unanswered and gets more expensive with every commit:
+   **check what the VM at `164.52.203.81` actually serves before merging.** Note that the local
+   working copy at `D:\Marketing-OS-main\` is an extracted archive of `main`, not a clone, so it
+   contains none of this and cannot be brought up to date with `git pull`.
+5. **No evaluation harness — now the critical path rather than a nice-to-have.** It is the one
+   criticism that landed without qualification, and it gates M9.9, which gates M9.10. Half a day of
+   labelled queries converts every quality claim in this project from assertion to measurement.
+
+### 📌 Diagram maintenance
+
+`docs/architecture.html` was moved into the repo this session. It had drifted two days behind
+`design_doc.md` — still drawing Phase 7 as a generic delta engine after §7.0–7.2 had replaced it —
+because it lived at `D:\index.html`, outside version control. Same failure as the hand-maintained
+manifest above: a document that mirrors another has to sit next to what it mirrors. It is not
+generated, so it still needs updating by hand whenever a phase design changes.
