@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marketing OS v2.0 — Master System Architecture & Closed Knowledge Loop (Phases 1 - 9)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: #111827;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #10b981;
+            --accent-amber: #f59e0b;
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --border-color: #1f2937;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        header {
+            max-width: 1400px;
+            margin: 0 auto 2rem auto;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1.5rem;
+        }
+
+        .logo-tag {
+            display: inline-block;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            color: #fff;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 0.3rem 0.8rem;
+            border-radius: 9999px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient(to right, #ffffff, #9ca3af);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        p.subtitle {
+            color: var(--text-muted);
+            font-size: 1rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 1rem;
+            padding: 2rem;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+            transition: border-color 0.3s ease;
+        }
+
+        .card:hover {
+            border-color: var(--accent-blue);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            gap: 0.6rem;
+        }
+
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 0.4rem;
+            font-weight: 600;
+        }
+
+        .badge-green { background-color: rgba(16, 185, 129, 0.15); color: #34d399; }
+        .badge-amber { background-color: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+        .badge-purple { background-color: rgba(139, 92, 246, 0.15); color: #a78bfa; }
+
+        .diagram-container {
+            background-color: #0b0f19;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            overflow-x: auto;
+            display: flex;
+            justify-content: center;
+        }
+
+        .mermaid {
+            width: 100%;
+        }
+
+        footer {
+            max-width: 1400px;
+            margin: 3rem auto 0 auto;
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 1.5rem;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-tag">E2E Networks — TIR AI Platform</div>
+        <h1>Marketing OS v2.0 Master Architecture Blueprint</h1>
+        <p class="subtitle">Complete Closed Knowledge Loop & System Component Diagrams (Phases 1 through 9)</p>
+        <div style="margin: 1.25rem 0; padding: 1rem 1.25rem; background: rgba(245,158,11,0.08); border-left: 3px solid #fbbf24; border-radius: 6px; color: var(--text-muted); font-size: 0.9rem; line-height: 1.6;">
+            <strong style="color:#fbbf24;">Status legend — reconciled against the codebase 2026-07-26, re-synced to design_doc.md 2026-07-31.</strong>
+            Every node is marked with what actually exists. The 07-26 pass fixed a page that drew Phases 6 and 7
+            as if built (both have zero code), omitted the L0.5 corpus graph and the whole conversation
+            layer, left <code>Mem_Joint</code> as an orphan node, showed 2 of 5 agent memories, and routed
+            CMO governance into the promotion gate — a path that would have rejected 100% of inputs.
+            <span style="display:block;margin-top:0.6rem;">The 07-31 pass re-syncs to the design doc. Phase 7 is no longer
+            a generic delta engine but the <strong>three-check deterministic cascade</strong> of §7.0–7.2, with the LLM
+            barred from the detector role — as judge it called a shift in 60 of 68 documents where only 37 were real —
+            and the explainer now emitting <strong>frame elements rather than prose</strong>. The Phase 9 tail gains
+            M9.9 and M9.10, whose absence made the eval harness look like the final milestone.</span>
+            <span style="display:block;margin-top:0.6rem;">
+                <span class="badge badge-green">✅ Built</span>
+                <span class="badge badge-amber">⚠️ Built with a gap</span>
+                <span class="badge badge-purple">🔵 Next</span>
+                <span class="badge" style="background:rgba(248,113,113,0.15);color:#f87171;">❌ Not built</span>
+                &nbsp;— dashed edges and red nodes are unbuilt paths.
+            </span>
+        </div>
+    </header>
+
+    <div class="container">
+
+        <!-- MASTER KNOWLEDGE LOOP -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>🔁 Master System Architecture & Closed Knowledge Loop (Phases 1 – 9)</span>
+                </div>
+                <span class="badge badge-purple">End-to-End System Blueprint</span>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Comprehensive architecture detailing multi-page scraping, RAMP SQLite database, Pydantic schema validation, LangGraph state machine, LangFuse telemetry, CMO governance, multimodal ingestion, delta tracking, and Phase 9 Agent Memory Hub.</p>
+            <div class="diagram-container">
+                <div class="mermaid">
+flowchart TD
+    subgraph S1 ["🌐 Phase 1: Multi-Page Scraping Infrastructure"]
+        Targets["13 Neo-Cloud Targets\n(E2E, Yotta, Neysa, Nebius, CoreWeave, etc.)"]
+        Playwright["Playwright Chromium Headless Crawler\n(Audits 35+ Subpages)"]
+        ScrapeJSON["app/data/deep_scrape_results.json\n(Raw DOM, Rate Cards & Text)"]
+        Targets --> Playwright --> ScrapeJSON
+    end
+
+    subgraph S2 ["💾 Phase 2: RAMP Grounded SQLite Engine"]
+        Seeder["grounded_seed.py"]
+        DB_L0[("L0 Grounded Corpus Table\n(knowledge_units in marketing_os.db)\n- 100% source_url backed\n- READ-ONLY TO AGENTS")]
+        DB_Decisions[("decisions Table\n- id, goal, selected_option, rationale")]
+        ScrapeJSON --> Seeder --> DB_L0
+    end
+
+    subgraph S2b ["🕸️ Phase 9 / L0.5: Corpus Knowledge Graph"]
+        GraphBuilder["rebuild_corpus_graph()\napp/memory/graph.py\nDETERMINISTIC — no LLM extraction"]
+        DB_Edges[("L0.5 edges table\nnamespace = corpus:global\nrel: offers / prices\n~38 edges, replace-not-top-up")]
+        DB_L0 --> GraphBuilder --> DB_Edges
+    end
+
+    subgraph S6 ["📎 Phase 6: Multimodal Ingestion — ❌ NOT BUILT (0 lines of code)"]
+        AttachInput["UI Attachment Bar\n(📎 Attach PDF / Image)"]
+        VisionOCR["Gemini Vision / OCR Engine"]
+        PDFChunker["PDF Vector Chunker"]
+        AttachInput -.->|Image| VisionOCR
+        AttachInput -.->|PDF| PDFChunker
+    end
+
+    subgraph S3_Pre ["🔍 Phase 3A: Pre-Inference Keyword Retrieval"]
+        UserGoal["User Goal / Query"]
+        TokenExtractor["Keyword Tokenizer & Stopword Filter"]
+        SQLSearch["SQL Keyword Frequency Match\nsearch_knowledge_units(query, limit=5)\n⚠️ LIKE-based — unmeasured, FTS5 pending M9.9\n⚠️ limit=5 is the RETRIEVAL number — no rerank stage exists"]
+        UserGoal --> TokenExtractor --> SQLSearch
+        DB_L0 -->|Grounded Facts| SQLSearch
+        VisionOCR & PDFChunker -.->|Media Context — NOT BUILT| ConstructPrompt
+    end
+
+    subgraph S3_Exec ["🤖 Phase 3B & 8: LangGraph Swarm Execution"]
+        ConstructPrompt["Construct Grounded Prompt"]
+        Supervisor["LangGraph Supervisor Node (workflow.py)"]
+        
+        BrandingNode["🎨 Branding Agent Node"]
+        PRNode["📰 Unified PR Agent Node"]
+        SocialNode["🔮 Social Media Agent"]
+        PMMNode["🚀 Product Marketing Node"]
+        EventsNode["🎪 Field Events Node"]
+        
+        PydanticCheck["Pydantic Output Validation\n(AgentResponseSchema)"]
+        
+        SQLSearch -->|Grounded Context| ConstructPrompt --> Supervisor
+        Supervisor --> BrandingNode & PRNode & SocialNode & PMMNode & EventsNode --> PydanticCheck
+    end
+
+    subgraph S9_Chat ["💬 Phase 9 / M9.3 + M9.5: Conversation Layer — ✅ BUILT, ❌ NO UI"]
+        ChatAPI["POST /api/chat\napp/graph/chat.py\nthread, recall, answer, remember"]
+        TriageAPI["POST /api/triage\napp/graph/triage.py\nprepare, fan-out to 2 views, merge, remember"]
+        Threads[("threads / turns tables\nmulti-turn, namespace-pinned")]
+        ChatAPI & TriageAPI --> Threads
+    end
+
+    subgraph S9_Mem ["💾 Phase 9: Four-Layer Memory Hub & Isolation — ✅ M9.1-M9.5 BUILT"]
+        PromoGate{{"PROMOTION GATE\napp/memory/gate.py\nM9.2: user turns only\nM9.7: + agent reflections"}}
+
+        Mem_Branding[("agent:branding\nPrivate L1")]
+        Mem_PR[("agent:pr\nPrivate L1")]
+        Mem_Social[("agent:social\nPrivate L1")]
+        Mem_PMM[("agent:product_marketing\nPrivate L1")]
+        Mem_Events[("agent:events\nPrivate L1")]
+        Mem_Joint[("triage:branding+pr\nJoint L2\nreadable by BOTH members only")]
+        MemAnchor["anchor_memory()\nlinks mem: nodes to entities"]
+
+        ChatAPI -->|"user turn"| PromoGate
+        TriageAPI -->|"user turn — JOINT NS ONLY"| PromoGate
+        PromoGate -->|"admitted"| Mem_Branding & Mem_PR & Mem_Social & Mem_PMM & Mem_Events
+        PromoGate -->|"admitted (triage)"| Mem_Joint
+        PromoGate --> MemAnchor --> DB_Edges
+
+        Mem_Branding <-->|"recall: own + corpus + own joint"| ChatAPI
+        Mem_PR <--> ChatAPI
+        Mem_Social & Mem_PMM & Mem_Events <--> ChatAPI
+        Mem_Joint <-->|"members read, no one else"| TriageAPI
+        Mem_Joint -.->|"readable in solo chat by both members"| ChatAPI
+        DB_Edges -->|"recall_by_graph() 2-hop, namespace-filtered at every hop"| ChatAPI
+    end
+
+    subgraph S4_Gov ["🛡️ Phase 3C & 4: CMO Governance & Tracing"]
+        GovCheck{"_governance_check()\nLow Confidence / High Risk?"}
+        Escalate["Set escalated = True\n(CMO Banner)"]
+        Approve["Set escalated = False"]
+
+        SaveDecision["save_decision()"]
+
+        LangFuse["LangFuse Telemetry Traces\n✅ KEEP — self-hostable"]
+        LangSmith["LangSmith Tracing Stream\n❌ REDUNDANT — slated for removal M9.8"]
+
+        PydanticCheck --> GovCheck
+        GovCheck -->|Yes| Escalate
+        GovCheck -->|No| Approve
+
+        Escalate & Approve --> SaveDecision --> DB_Decisions
+        Escalate & Approve --> LangFuse & LangSmith
+    end
+
+    NoteGate["⚠️ CORRECTED 2026-07-26: governance does NOT feed the promotion gate.\nThe earlier diagram drew Escalate/Approve --> PromoGate --> agent memory.\nThat contradicts gate rule 1 (only conversational user turns are candidates)\nand would have rejected 100% of inputs. The gate is fed by /api/chat and\n/api/triage user turns only."]
+    NoteGate -.-> PromoGate
+
+    subgraph S5 ["📊 Phase 5: CMO Weekly Digest & Network Map — ✅ BUILT, never visually verified"]
+        DigestAggregator["Digest Synthesizer (app/graph/digest.py)"]
+        GraphNetwork["Interactive Competitor Network Map\nhub links + shared_sku rival links (M9.4)"]
+        MDExport["/api/export/markdown\n✅ the only export route that exists"]
+        PDFExport["Weekly PDF Intelligence Report\n❌ SPECIFIED, NEVER BUILT"]
+
+        DB_L0 --> DigestAggregator --> GraphNetwork & MDExport
+        DigestAggregator -.-> PDFExport
+        DB_Edges -->|"shared-SKU rival links"| GraphNetwork
+    end
+
+    subgraph S7 ["⚡ Phase 7: Narrative-Shift Detection & Temporal Knowledge — ❌ NOT BUILT (designed §7.0-7.2; only a deferral comment exists, database.py:261)"]
+        Cron7["⏰ Scheduler — periodic re-crawl"]
+        Hash7{"1. Content hash\ndiffers?"}
+        Struct7{"2. Structural\nsignature only?"}
+        Embed7{"3. Embedding cosine\nbelow threshold?"}
+        SCD7[("🕓 SCD Type 2 write\nclose old row: valid_to = now, is_current = 0\ninsert new current — never overwrite, never delete")]
+        Feed7["🔗 Shift feed\nJOIN now.valid_from = was.valid_to"]
+        Explain7["🤖 Gemini — EXPLAINER ONLY\nfills 4 named slots, does not narrate"]
+        Frame7["🧩 Frame-element diff\nProblem · Cause · Moral · Treatment\nProblem moved ⇒ repositioning\nTreatment only ⇒ tactical repricing"]
+        Judge7["❌ LLM as JUDGE — REJECTED §7.0\n57.35% acc — called 60 shifts where 37 were real"]
+
+        Cron7 -.-> Hash7
+        Hash7 -.->|"no ~95% — 0 API cost"| Stop7(["✅ no change — stop"])
+        Hash7 -.->|yes| Struct7
+        Struct7 -.->|yes| Redesign7(["📐 site redesign — log, do not alert"])
+        Struct7 -.->|no| Embed7
+        Embed7 -.->|no| Reword7(["📝 reworded, same meaning — log, do not alert"])
+        Embed7 -.->|"yes — the meaning moved"| SCD7
+        SCD7 -.-> Feed7 -.-> Explain7 -.-> Frame7
+        Judge7 -.->|"rejected: never the detector"| Hash7
+    end
+
+    Cron7 -.->|"re-uses the Phase 1 crawler"| Playwright
+    SCD7 -.->|"adds the time axis to"| DB_L0
+    Frame7 -.->|"counter-narrative brief"| PRNode
+
+    subgraph S9_Next ["🔵 Phase 9 remaining — NOT BUILT (each gates the next)"]
+        M96["M9.6 UI — chat panel, /triage parser,\nattributed split-view, memory inspector\n⬅ THE BLOCKING ITEM"]
+        M97["M9.7 self-evolving memory\nprovenance tiers + consensus validation + lesson tier\nbinary admission; graded trust deferred"]
+        M98["M9.8 eval harness\nF2@5 / MRR / groundedness / gate precision\npytest-native — a regression fails CI"]
+        M99["M9.9 retrieval upgrade\nFTS5 replacing LIKE\n⚠️ still lexical — paraphrase unaddressed"]
+        M910["M9.10 trigger-gated\nhybrid embeddings, RRF-fused + cross-encoder rerank\ntrigger: FTS5 Recall@5 < 0.85"]
+        M96 -.-> M97 -.->|"merged"| M98 -.->|"baseline exists"| M99 -.->|"trigger fires"| M910
+    end
+
+    M96 -.->|"exposes"| ChatAPI
+    M97 -.->|"extends"| PromoGate
+
+    classDef built fill:#064e3b,stroke:#34d399,color:#d1fae5
+    classDef notbuilt fill:#3f1d1d,stroke:#f87171,color:#fecaca,stroke-dasharray:5 5
+    classDef pending fill:#1e3a5f,stroke:#60a5fa,color:#dbeafe,stroke-dasharray:5 5
+    classDef warn fill:#422006,stroke:#fbbf24,color:#fef3c7
+
+    class AttachInput,VisionOCR,PDFChunker,Cron7,Hash7,Struct7,Embed7,SCD7,Feed7,Explain7,Frame7,Judge7,PDFExport,LangSmith notbuilt
+    class M96,M97,M98,M99,M910 pending
+    class NoteGate warn
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 9: AGENT MEMORY HUB & TRIAGE PROTOCOL -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>🧠 Phase 9: Agent Memory Hub & /triage Bridging Protocol</span>
+                </div>
+                <span class="badge badge-green">✅ M9.1–M9.5 Built</span>
+                <span class="badge" style="background:rgba(248,113,113,0.15);color:#f87171;">❌ M9.6 UI Not Started</span>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Details the four-layer memory hierarchy (L0 Grounded Corpus, L0.5 Corpus Graph, L1 Private Agent Memory, L2 Joint Triage Memory), Promotion Gate admission policy, scoped graph traversal, and parallel `/triage` bridge execution.</p>
+            <div class="diagram-container">
+                <div class="mermaid">
+flowchart TB
+    User(["CMO"])
+    User --> Sel{"How is the user talking?"}
+    Sel -->|"clicks one agent"| Solo["SOLO SESSION"]
+    Sel -->|"types /triage branding pr"| Bridge["TRIAGE BRIDGE"]
+
+    subgraph AL ["AGENT LAYER - persona lives in system prompt"]
+        direction LR
+        A1["🎨 Branding Agent"]
+        A2["📰 PR Agent"]
+        A3["🔮 Social Agent"]
+        A4["🚀 Product Marketing"]
+        A5["🎪 Field Events"]
+    end
+
+    Solo --> AL
+    Bridge -.->|"parallel fan-out to 2 named agents"| AL
+
+    subgraph PM ["L1 PRIVATE MEMORY - one namespace per agent (NO CROSS-READS)"]
+        direction LR
+        M1[("agent:branding")]
+        M2[("agent:pr")]
+        M3[("agent:social")]
+        M4[("agent:product_marketing")]
+        M5[("agent:events")]
+    end
+
+    subgraph GC ["L0 GROUNDED CORPUS - SHARED, READ-ONLY TO AGENTS"]
+        C[("competitor facts\nevery row carries a source_url")]
+    end
+
+    Ingest[/"crawler · PDF · image ingestion"/] ==>|"the only writer"| C
+    AL -.->|"retrieve - read only"| C
+    PM -.->|"recall - own namespace only"| AL
+
+    AL --> PG{{"PROMOTION GATE\nwhat may become memory?"}}
+    PG -->|"user corrections · preferences · ratified decisions"| PM
+    PG -->|"model prose · unsourced claims"| Drop["discarded"]
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 9.7: TRIAGE SEQUENCE -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>🤝 Phase 9.7: /triage Protocol Sequence Diagram</span>
+                </div>
+                <span class="badge badge-green">✅ Built — <code>fb10aa1</code></span>
+                <span class="badge badge-amber">⚠️ No UI — nothing parses the <code>/triage a b "q"</code> string</span>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Demonstrates how two agents reason privately in parallel without reading each other's memories, merging their views into a single joint answer written strictly to `triage:branding+pr`.</p>
+            <div class="diagram-container">
+                <div class="mermaid">
+sequenceDiagram
+    autonumber
+    actor U as CMO
+    participant B as Triage Bridge
+    participant BA as Branding Agent
+    participant PA as PR Agent
+    participant MB as agent:branding
+    participant MP as agent:pr
+    participant C as Grounded Corpus
+
+    U->>B: /triage branding pr "How do we answer the Nebius price cut?"
+
+    par Branding reasons privately
+        B->>BA: question + shared task frame
+        BA->>MB: recall own memory
+        BA->>C: retrieve sourced facts
+        BA-->>B: branding view
+    and PR reasons privately
+        B->>PA: question + shared task frame
+        PA->>MP: recall own memory
+        PA->>C: retrieve sourced facts
+        PA-->>B: PR view
+    end
+
+    Note over MB,MP: neither agent ever reads the other's memory
+    B->>B: merge the two VIEWS, not the two MEMORIES
+    B-->>U: one joint answer, each contribution attributed
+    B->>B: write turn to triage:branding+pr only
+                </div>
+            </div>
+        </div>
+
+        <!-- PHASE 5: CMO WEEKLY DIGEST -->
+        <div class="card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>📊 Phase 5: CMO Weekly Executive Digest & Competitor Network Map</span>
+                </div>
+                <span class="badge badge-green">✅ Implemented</span>
+                <span class="badge badge-amber">⚠️ PDF export never built; tab never visually verified</span>
+            </div>
+            <p style="color: var(--text-muted); margin-bottom: 1rem;">Aggregates background findings across all 5 Swarm Agents, applies competitor-only filtering (excluding internal E2E noise), and projects an interactive link graph network.</p>
+            <div class="diagram-container">
+                <div class="mermaid">
+flowchart TD
+    subgraph SwarmAgents ["🤖 5 Background Swarm Agents"]
+        A1["🎨 Branding Agent"]
+        A2["📰 PR Agent"]
+        A3["🔮 Social Agent"]
+        A4["🚀 Product Marketing"]
+        A5["🎪 Events Agent"]
+    end
+
+    subgraph Aggregator ["⚙️ Digest Aggregator Engine (app/graph/digest.py)"]
+        Filter["Competitor Movement Filter\n(Excludes Internal E2E Noise)"]
+        Synthesizer["Cross-Agent Digest Synthesizer"]
+    end
+
+    subgraph ExecutiveUI ["🖥️ CMO Executive Dashboard"]
+        Tab["Left Sidebar: Weekly Digest Tab"]
+        GraphMap["Interactive Node/Link Graph Map\n(Clickable Competitor Nodes)"]
+        PDF["Weekly Intelligence Brief (.pdf)"]
+    end
+
+    A1 & A2 & A3 & A4 & A5 --> Filter --> Synthesizer
+    Synthesizer --> Tab & GraphMap & PDF
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <footer>
+        <p>Marketing OS v2.0 Architecture Documentation &copy; 2026 E2E Networks Limited. All rights reserved.</p>
+    </footer>
+
+    <script>
+        mermaid.initialize({
+            startOnLoad: true,
+            theme: 'dark',
+            securityLevel: 'loose',
+            flowchart: {
+                useMaxWidth: true,
+                htmlLabels: true,
+                curve: 'basis'
+            }
+        });
+    </script>
+</body>
+</html>
