@@ -353,7 +353,9 @@ def api_me():
 @app.route("/api/login", methods=["POST"])
 def api_login():
     data = request.get_json(silent=True) or {}
-    if data.get("username") == settings.ADMIN_USER and data.get("password") == settings.ADMIN_PASSWORD:
+    user = (data.get("username") or "").strip()
+    pwd = (data.get("password") or "").strip()
+    if user.lower() == settings.ADMIN_USER.lower() and pwd == settings.ADMIN_PASSWORD:
         resp = jsonify({"success": True, "username": settings.ADMIN_USER})
         resp.set_cookie(SESSION_COOKIE, SESSION_TOKEN, max_age=86400, httponly=True, samesite="Lax")
         return resp
@@ -578,8 +580,8 @@ class Settings:
     DEFAULT_MODEL: str = os.environ.get("DEFAULT_MODEL", "gemini-3.6-flash")
 
     # Auth (single-admin; override in production via env)
-    ADMIN_USER: str = os.environ.get("ADMIN_USER", "admin")
-    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD", "marketing2026")
+    ADMIN_USER: str = os.environ.get("ADMIN_USER") or os.environ.get("APP_USERNAME") or "admin"
+    ADMIN_PASSWORD: str = os.environ.get("ADMIN_PASSWORD") or os.environ.get("APP_PASSWORD") or "marketing2026"
     
     # LangFuse Observability Settings
     LANGFUSE_PUBLIC_KEY: str = os.environ.get("LANGFUSE_PUBLIC_KEY", "")
