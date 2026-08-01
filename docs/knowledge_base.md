@@ -4584,7 +4584,7 @@ COPY --from=build-frontend /app/frontend/dist /app/frontend/dist
 ENV PYTHONPATH=/app
 EXPOSE 5000
 
-CMD ["python3", "app/main.py"]
+CMD ["sh", "-c", "python3 -m app.db.grounded_seed && python3 -m app.main"]
 ```
 
 ### File: `docker-compose.yml`
