@@ -70,7 +70,7 @@ python -m app.main
 
 Serves on port 5000. Run from the repository root — `-m` places it on the import path.
 
-To build the frontend:
+To build the frontend — requires **Node ≥ 20.19 or ≥ 22.12** (Vite 8's engine constraint; on an older Node, `npm install` skips the bundler's native binding without failing and the build then dies at `MODULE_NOT_FOUND`):
 
 ```bash
 cd frontend
