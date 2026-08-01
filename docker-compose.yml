@@ -5,8 +5,19 @@ services:
       - "80:5000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-3.6-flash}
       - APP_USERNAME=${APP_USERNAME:-admin}
       - APP_PASSWORD=${APP_PASSWORD:-marketing2026}
-      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-marketing-os-secret-key-2026}
+    volumes:
+      # SQLite lives here. Without this the database is inside the container and
+      # every `docker compose up --build` destroys agent memory, threads and
+      # decisions — the corpus re-seeds on boot, but memory cannot be re-derived.
+      #
+      # Named volume, not a bind mount, on purpose: Docker seeds an empty named
+      # volume from the image, so the baked-in deep_scrape_results.json that the
+      # seeder reads survives. A bind mount would shadow it and break seeding.
+      - marketing-os-data:/app/app/data
     restart: always
+
+volumes:
+  marketing-os-data:

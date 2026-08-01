@@ -588,8 +588,10 @@ class Settings:
     LANGFUSE_SECRET_KEY: str = os.environ.get("LANGFUSE_SECRET_KEY", "")
     LANGFUSE_HOST: str = os.environ.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
     
-    # Database
-    DATABASE_URL: str = os.environ.get("DATABASE_URL", f"sqlite:///{DB_PATH}")
+    # Database. DB_PATH is the single source of truth — app/db/database.py opens
+    # connections with sqlite3.connect(DB_PATH) directly. There was a DATABASE_URL
+    # setting here that nothing ever read, so setting it (to Postgres, say) silently
+    # did nothing; removed rather than left as a lie about what is configurable.
     DB_PATH: Path = DB_PATH
 
 settings = Settings()
@@ -4596,11 +4598,22 @@ services:
       - "80:5000"
     environment:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - DEFAULT_MODEL=${DEFAULT_MODEL:-gemini-3.6-flash}
       - APP_USERNAME=${APP_USERNAME:-admin}
       - APP_PASSWORD=${APP_PASSWORD:-marketing2026}
-      - FLASK_SECRET_KEY=${FLASK_SECRET_KEY:-marketing-os-secret-key-2026}
+    volumes:
+      # SQLite lives here. Without this the database is inside the container and
+      # every `docker compose up --build` destroys agent memory, threads and
+      # decisions — the corpus re-seeds on boot, but memory cannot be re-derived.
+      #
+      # Named volume, not a bind mount, on purpose: Docker seeds an empty named
+      # volume from the image, so the baked-in deep_scrape_results.json that the
+      # seeder reads survives. A bind mount would shadow it and break seeding.
+      - marketing-os-data:/app/app/data
     restart: always
+
+volumes:
+  marketing-os-data:
 ```
 
 ### File: `requirements.txt`

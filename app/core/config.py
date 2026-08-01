@@ -28,8 +28,10 @@ class Settings:
     LANGFUSE_SECRET_KEY: str = os.environ.get("LANGFUSE_SECRET_KEY", "")
     LANGFUSE_HOST: str = os.environ.get("LANGFUSE_HOST", "https://cloud.langfuse.com")
     
-    # Database
-    DATABASE_URL: str = os.environ.get("DATABASE_URL", f"sqlite:///{DB_PATH}")
+    # Database. DB_PATH is the single source of truth — app/db/database.py opens
+    # connections with sqlite3.connect(DB_PATH) directly. There was a DATABASE_URL
+    # setting here that nothing ever read, so setting it (to Postgres, say) silently
+    # did nothing; removed rather than left as a lie about what is configurable.
     DB_PATH: Path = DB_PATH
 
 settings = Settings()
