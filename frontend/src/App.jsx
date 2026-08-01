@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import {
   Sparkles, Copy, Check, FileText, ChevronDown, AlertCircle, LogOut,
   History, Database, Settings, LayoutDashboard, User, Lock, ArrowRight,
-  Eye, EyeOff, Menu, X, ShieldCheck, Network, Printer, RefreshCw
+  Eye, EyeOff, Menu, X, ShieldCheck, Network, Printer, RefreshCw, MessageSquare
 } from 'lucide-react';
 import CompetitorNetwork from './components/CompetitorNetwork';
+import ChatPanel from './components/ChatPanel';
 
 // The gradient background pulls in three + @react-three/fiber (~150kB gzipped) for
 // something purely decorative. Lazy so it never sits on the critical path — the app is
@@ -360,6 +361,18 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => setActiveTab('chat')}
+              className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                activeTab === 'chat'
+                  ? 'bg-[#D97757] text-white shadow-xs'
+                  : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
+              }`}
+            >
+              <MessageSquare className="w-4 h-4 shrink-0" />
+              {sidebarOpen && <span>Agent Chat</span>}
+            </button>
+
+            <button
               onClick={() => setActiveTab('history')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                 activeTab === 'history' 
@@ -460,6 +473,7 @@ export default function App() {
           <div>
             <h2 className="text-sm font-semibold text-[#1C1917] capitalize">
               {activeTab === 'workbench' && 'Positioning Workbench'}
+              {activeTab === 'chat' && 'Agent Chat & /triage Bridge'}
               {activeTab === 'history' && 'Decision History'}
               {activeTab === 'digest' && 'CMO Weekly Executive Digest'}
               {activeTab === 'knowledge' && 'Semantic Memory Knowledge Base'}
@@ -467,6 +481,7 @@ export default function App() {
             </h2>
             <p className="text-[11px] text-[#78716C]">
               {activeTab === 'workbench' && 'Formulate positioning strategies and execute autonomous governance loops'}
+              {activeTab === 'chat' && 'Talk to one agent and its memory, or bridge two without their memories mixing'}
               {activeTab === 'history' && 'Audit trail of past strategy executions and CMO ratifications'}
               {activeTab === 'digest' && 'Cross-agent competitor intelligence, grounded in cited sources'}
               {activeTab === 'knowledge' && 'Active knowledge units (facts, assumptions, patterns)'}
@@ -856,6 +871,12 @@ export default function App() {
         )}
 
         {/* Tab 2: Decision History View */}
+        {activeTab === 'chat' && (
+          <div className="max-w-6xl mx-auto px-6 py-6">
+            <ChatPanel provider={provider} />
+          </div>
+        )}
+
         {activeTab === 'history' && (
           <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 space-y-4">
             <h3 className="text-sm font-semibold text-[#1C1917]">Execution History ({history.length})</h3>

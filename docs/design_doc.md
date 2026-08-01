@@ -762,12 +762,39 @@ documented as appropriate for small-to-medium graph workloads.
 
 ### 9.12 UI
 
-The per-agent chat and `/triage` view are a genuine layout change, so the background is
-re-based at the same time: replace the hand-written three.js simplex shader in
+**Three display rules, taken from how the field has converged (2026-07-31 survey).**
+
+1. **Recall is shown, not logged.** Every answer carries the notes and sourced facts it was
+   built from, with their URLs, collapsed by default. The emerging norm for agent interfaces is
+   a complete visual record of what the agent saw and did — an answer nobody can audit is a
+   claim, and this project's whole premise is that claims must be checkable.
+2. **Disagreement gets its own block.** The `/triage` view renders tensions separately and
+   prominently rather than folding them into the merged prose. Recent multi-agent work treats
+   inter-agent disagreement as signal rather than noise — a merged verdict alone cannot show
+   whether two specialists differ because one misread the evidence or because they weight it
+   differently, and that distinction is exactly what a CMO needs. This is the UI half of the
+   merge prompt's existing instruction not to average the two views into mush.
+3. **Isolation is a thing you can click.** The memory inspector switches between `agent:<x>`
+   and `triage:<a>+<b>`, so "the joint turn was written to the pair and to neither private
+   side" is observable rather than asserted. The same claim is covered by
+   `test_triage.py`, but a test convinces a reviewer of the code and this convinces a
+   reviewer of the product.
+
+Each agent's view is rendered beside its **own** recall, which makes visible that the two were
+briefed differently — the property that distinguishes this from a shared-context multi-agent
+chat, and the one most likely to be assumed absent.
+
+The background is re-based at the same time: replace the hand-written three.js simplex shader in
 `ShaderCanvas.jsx` with **`@shadergradient/react`** (`npm i @shadergradient/react
 @react-three/fiber three three-stdlib camera-controls`), using `ShaderGradientCanvas` +
-`ShaderGradient`. Per-agent accent colours can key off the same gradient config so each agent's
-session is visually distinct.
+`ShaderGradient`.
+
+**As built.** `frontend/src/components/ChatPanel.jsx`, mounted as an `Agent Chat` tab.
+`parseTriage()` handles the `/triage <a> <b> <question>` string the API never accepted directly
+— the endpoint takes `{agents: [...]}`, and nothing bridged the two until now. Switching agents
+clears `thread_id` rather than carrying it, because a thread is pinned to one namespace and
+reusing it across agents would file one agent's history under another's. The three parked
+Phase 8 agents are shown but labelled, so the registry is honest about what is answerable.
 
 ### 9.13 Build Milestones
 
@@ -781,7 +808,7 @@ the suite green; nothing is half-wired between commits.
 | **M9.3** | Conversation layer | `POST /api/chat`, per-agent threads, memory-aware `run_agent`, visible recall | Agents are multi-turn and stateful | ✅ `1adfbd1` |
 | **M9.4** | Graph & scoped traversal | `edges` table, deterministic corpus extraction, recursive-CTE traversal | Traversal cannot hop into another agent's private memory | ✅ `1d0e28f` |
 | **M9.5** | `/triage` bridge | `POST /api/triage`, 2-agent parallel fan-out, attributed merge, joint-namespace write | Neither private namespace is touched | ✅ `fb10aa1` |
-| **M9.6** | UI | Per-agent chat panel, `/triage` composer, memory inspector, `@shadergradient/react` swap | The CMO can actually use it | 🔵 **Not started — next** |
+| **M9.6** | UI | `ChatPanel.jsx` — agent rail, `/triage` composer with slash parsing, attributed split-view, per-view recall disclosure, namespace memory inspector | The CMO can actually use it | ✅ **Built** — verified in-browser end to end |
 
 Order rationale: the isolation rule is the part most likely to have a subtle flaw, so it is
 built and tested **first, once, in one place** rather than discovered after five agents and a
@@ -929,7 +956,7 @@ assertion until something counted it.
 | **Phase 6** | Multimodal Image & PDF Ingestion | 📍 Planned | Prompt attachment button (`📎`), Gemini Vision OCR, PDF text chunking |
 | **Phase 7** | Narrative-Shift Detection & Temporal Knowledge | 📍 Planned — **next build** | SCD Type 2 time axis on `knowledge_units`, three-check deterministic cascade (hash → structure → embedding), shift feed, LLM as explainer only. Closes the one PR-agent responsibility that is currently impossible. See §7.0 for why the LLM must not be the detector. |
 | **Phase 8** | Full Activation of Swarm Agents | ⏸️ Parked (2 of 5 active) | All 5 personas live in `AGENT_REGISTRY`, but only `ACTIVE_AGENTS = ("branding", "pr")` reach the M5 digest fan-out. §8.1 specifies social / product_marketing / events in **one bullet each** — not enough to say what a correct output looks like, so they were shipped unvalidatable. Parked pending a scope conversation with the requesting stakeholder. Registry entries are retained: the memory-isolation tests use them as namespace fixtures (`pr` ⊂ `product_marketing` prefix collision). |
-| **Phase 9** | Agent Memory Hub & `/triage` Bridging | 🔵 **In progress — backend done, UI not started** | M9.1–M9.5 committed (`c05eaa3` → `fb10aa1`): namespace store, promotion gate, chat layer, scoped graph, `/triage` bridge. **M9.6 UI not started — the frontend makes zero calls to `/api/chat`, `/api/triage` or `/api/memory`, so none of it is reachable from the product.** |
+| **Phase 9** | Agent Memory Hub & `/triage` Bridging | ✅ **Reachable** — M9.1–M9.6 done | Namespace store, promotion gate, chat layer, scoped graph, `/triage` bridge, and the `Agent Chat` UI that reaches them. Verified in-browser: `/triage branding pr …` parsed from the composer, both views rendered attributed with their own recall, the turn admitted to `triage:branding+pr` as `user:preference` while `agent:branding` and `agent:pr` both stayed empty. M9.7–M9.10 (self-evolving memory, eval harness, retrieval) remain. |
 
 > **Build order (user decision, 2026-07-25): Phase 9 is next.** Phases 6 and 7 are deferred
 > behind it. They are independent of Phase 9 (both write to the L0 shared corpus, which the
