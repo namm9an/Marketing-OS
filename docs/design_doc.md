@@ -899,12 +899,49 @@ calibrate against. Sequencing it here makes it a decision rather than an oversig
 
 | # | Milestone | Contents | Gate to start |
 |---|---|---|---|
-| **M9.8** | Evaluation harness | Retrieval gold set (~50 queries) → Recall@5 / Precision@5 / **F2@5** / MRR. Deterministic groundedness: every number, price, date and URL in an answer must appear verbatim in the retrieved facts — hard fail, not a score. Doc/diagram reconciliation. LangSmith removal. Load test on the VM. | M9.7 merged |
+| **M9.8** | Evaluation harness ✅ **built** | Retrieval gold set (~50 queries) → Recall@5 / Precision@5 / **F2@5** / MRR. Deterministic groundedness: every number, price, date and URL in an answer must appear verbatim in the retrieved facts — hard fail, not a score. Doc/diagram reconciliation. LangSmith removal. Load test on the VM. | M9.7 merged |
 | **M9.9** | Retrieval upgrade | FTS5 replacing `LIKE`. Cross-domain hint (deterministic keyword overlap → suggests `/triage`, never auto-escalates). | M9.8 baseline exists |
 | **M9.10** | Deferred, trigger-gated | Claim-level faithfulness judge; hybrid embeddings, RRF-fused, with a cross-encoder rerank *(trigger: FTS5 Recall@5 < 0.85)*; semantic consensus triples *(trigger: M9.7 gate precision ≥ 0.9)*; N-way `/triage` *(trigger: an arbitration rule is chosen)*. | Its own trigger fires |
 
 **F2 not F1.** A missed fact makes the agent answer ungrounded; a surplus fact costs tokens.
 F1 weights those equally. They are not equal, so recall carries 2×.
+
+### M9.8 — measured, 2026-07-31
+
+`python -m app.eval.retrieval`, 34 hand-checked gold queries against the 91-fact corpus,
+k=5 to match `_FACT_RECALL`:
+
+| Split | n | Recall@5 | Precision@5 | F2@5 | MRR | Zero-hit |
+|---|---|---|---|---|---|---|
+| **Lexical** | 22 | **0.876** | 0.779 | 0.840 | 0.879 | 2 |
+| **Paraphrase** | 12 | **0.167** | 0.117 | 0.147 | 0.194 | **8** |
+| Overall | 34 | 0.625 | 0.546 | 0.595 | 0.637 | 10 |
+
+**The M9.10 trigger has fired.** §9.16 gates hybrid embeddings on Recall@5 < 0.85; the
+measured figure is 0.625. §9.14's deferral of vectors was explicitly held open pending a
+number — this is that number, and it closes the question in favour of building them.
+
+Two things the split makes visible that a blended score would have hidden:
+
+**The gap is entirely paraphrase.** Lexical retrieval is *good* — 0.876 recall, 0.879 MRR.
+Nothing is wrong with the keyword path on queries that share vocabulary with the corpus. It
+collapses to 0.167 the moment the question is worded differently: *"Which competitors have
+Blackwell-generation silicon?"* returns nothing, because the corpus only ever names B200 and
+GB300 and never the architecture. Eight of twelve paraphrase queries retrieve zero relevant
+facts.
+
+**FTS5 will not fix this**, which revises M9.9's expected value downward. FTS5 is better
+lexical matching — stemming, ranking, speed — and every one of the eight failures is a
+vocabulary mismatch no amount of lexical improvement reaches. M9.9 remains worth doing for
+the two failing *lexical* queries and for latency; it should no longer be expected to move
+the headline number.
+
+**Corpus hygiene, discovered by the same run: 12 of 91 rows (13.2%) are scraped error
+pages** — `Official Website Positioning: "404"`, `"Oops! Page Not Found"`. They carry
+genuine `source_url`s, so the grounding pipeline treats them as valid evidence and an agent
+can cite one. Grounded in the sense the code means, worthless in the sense the CMO means.
+The crawler needs an HTTP-status and title check before seeding; tracked as a Phase 1 defect
+rather than a retrieval one, with `test_eval.py` holding the ratio at ≤ 0.15 meanwhile.
 
 **M9.8 runs inside the existing suite, not beside it.** The project already has 92 pytest
 functions; an eval harness that lives in a separate notebook is one nobody runs after the week
