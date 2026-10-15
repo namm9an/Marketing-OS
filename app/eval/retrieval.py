@@ -27,9 +27,9 @@ from app.eval.gold import GOLD, GoldQuery
 K = 5   # matches _FACT_RECALL in app/graph/chat.py — evaluate what the agent actually sees
 
 
-def _score_one(gold: GoldQuery, k: int = K) -> Dict[str, Any]:
+def _score_one(gold: GoldQuery, k: int = K, expand_taxonomy: bool = False) -> Dict[str, Any]:
     """Run one gold query through the real retrieval path and score it."""
-    retrieved = search_knowledge_units(query=gold.query, limit=k, sourced_only=True)
+    retrieved = search_knowledge_units(query=gold.query, limit=k, sourced_only=True, expand_taxonomy=expand_taxonomy)
     corpus = get_all_knowledge_units()
 
     relevant_total = sum(1 for f in corpus if gold.relevance.matches(f))
@@ -60,8 +60,8 @@ def _mean(values: List[float]) -> float:
     return sum(values) / len(values) if values else 0.0
 
 
-def evaluate(k: int = K) -> Dict[str, Any]:
-    rows = [_score_one(g, k) for g in GOLD]
+def evaluate(k: int = K, expand_taxonomy: bool = False) -> Dict[str, Any]:
+    rows = [_score_one(g, k, expand_taxonomy=expand_taxonomy) for g in GOLD]
 
     def summarise(subset: List[Dict[str, Any]]) -> Dict[str, Any]:
         return {
@@ -105,11 +105,12 @@ def corpus_hygiene() -> Dict[str, Any]:
             "examples": junk[:8]}
 
 
-def _report() -> int:
-    result = evaluate()
+def _report(expand_taxonomy: bool = False) -> int:
+    result = evaluate(expand_taxonomy=expand_taxonomy)
     hygiene = corpus_hygiene()
 
-    print(f"\nRetrieval @ k={result['k']}  ({result['overall']['n']} gold queries)")
+    mode_title = " [Taxonomy Expansion Enabled]" if expand_taxonomy else ""
+    print(f"\nRetrieval @ k={result['k']}  ({result['overall']['n']} gold queries){mode_title}")
     print("=" * 62)
     header = f"{'split':<12}{'n':>4}{'recall':>9}{'prec':>8}{'F2':>8}{'MRR':>8}{'0-hit':>7}"
     print(header)
@@ -135,6 +136,9 @@ def _report() -> int:
     for e in hygiene["examples"][:4]:
         print(f"  [{e['organization'][:18]:<18}] {e['content'][:60]}")
 
+    if not expand_taxonomy:
+        print("[Tip] Run with --expand-taxonomy to evaluate with deterministic taxonomy expansion (M2).")
+
     print()
     return 0
 
@@ -142,11 +146,12 @@ def _report() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true", help="machine-readable output")
+    ap.add_argument("--expand-taxonomy", action="store_true", help="evaluate with deterministic taxonomy expansion enabled")
     args = ap.parse_args()
     if args.json:
-        print(json.dumps({"retrieval": evaluate(), "hygiene": corpus_hygiene()}, indent=2))
+        print(json.dumps({"retrieval": evaluate(expand_taxonomy=args.expand_taxonomy), "hygiene": corpus_hygiene()}, indent=2))
         return 0
-    return _report()
+    return _report(expand_taxonomy=args.expand_taxonomy)
 
 
 if __name__ == "__main__":

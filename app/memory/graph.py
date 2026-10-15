@@ -119,6 +119,7 @@ def rebuild_corpus_graph() -> int:
                         currency = "$" if "$" in content else ("₹" if ("₹" in content or "inr" in content.lower()) else "USD")
                         rate_meta = {
                             "knowledge_unit_id": fact_id,
+                            "source_fact_id": fact_id,
                             "amount": clean_rates[0] if clean_rates else None,
                             "rates": clean_rates[:4],
                             "currency": currency,

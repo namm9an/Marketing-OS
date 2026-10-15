@@ -121,9 +121,11 @@ CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_units_fts USING fts5(
 );
 
 CREATE TRIGGER IF NOT EXISTS trg_ku_ai AFTER INSERT ON knowledge_units BEGIN
+    DELETE FROM knowledge_units_fts WHERE id = new.id;
     INSERT INTO knowledge_units_fts(id, organization, knowledge_class, content)
     VALUES (new.id, new.organization, new.knowledge_class, new.content);
 END;
+
 
 CREATE TRIGGER IF NOT EXISTS trg_ku_ad AFTER DELETE ON knowledge_units BEGIN
     DELETE FROM knowledge_units_fts WHERE id = old.id;
