@@ -21,12 +21,7 @@ _STOPWORDS = {
 
 
 def _keywords(text: str) -> List[str]:
-    """Extract meaningful search terms from a goal sentence.
-
-    The old code did `content LIKE '%<entire goal sentence>%'`, which almost never
-    matched a stored fact. We tokenize instead and match on individual terms
-    (GPU names, competitor names, 'pricing', 'B200', ...).
-    """
+    """Extract meaningful search terms from a goal sentence."""
     words = re.findall(r"[A-Za-z0-9]+", text.lower())
     seen, out = set(), []
     for w in words:
@@ -34,6 +29,62 @@ def _keywords(text: str) -> List[str]:
             seen.add(w)
             out.append(w)
     return out
+
+
+_TAXONOMY_EXPANSIONS = {
+    "blackwell": ["b200", "gb200", "gb300"],
+    "hopper": ["h100", "h200", "gh200"],
+    "ada": ["l40s", "l4", "rtx 4090"],
+    "lovelace": ["l40s", "l4", "rtx 4090"],
+    "consumer": ["rtx 4090", "l40", "l40s"],
+    "rupee": ["inr", "rs", "pricing", "rate"],
+    "rupees": ["inr", "rs", "pricing", "rate"],
+    "hourly": ["hr", '"/hr"', "pricing", "rate"],
+    "hour": ["hr", '"/hr"', "pricing", "rate"],
+    "cost": ["pricing", "rate", "rate card"],
+    "cheapest": ["pricing", "rate", "rate card"],
+    "rental": ["pricing", "cloud", "instance"],
+    "capacity": ["pricing", "cloud"],
+    "sells": ["pricing", "rate"],
+    "india": ["sovereign", "meity", "india"],
+    "indian": ["sovereign", "meity", "india"],
+    "residency": ["sovereign", "india", "meity", "compliance"],
+    "tagline": ["positioning", "official"],
+    "describe": ["positioning", "cloud"],
+    "our": [settings.TARGET_ORGANIZATION.lower()],
+    "own": [settings.TARGET_ORGANIZATION.lower()],
+}
+
+
+def _format_fts5_token(term: str) -> str:
+    """Format a term or phrase into a quote-safe FTS5 token."""
+    t = term.strip(" \"'")
+    if not t:
+        return ""
+    escaped = t.replace('"', '""')
+    return f'"{escaped}"'
+
+
+def _expand_query_terms(query: str, expand_taxonomy: bool = True) -> str:
+    """Expand user query into a quote-safe disjunctive FTS5 MATCH expression."""
+    raw_words = re.findall(r"[A-Za-z0-9_]+", (query or "").lower())
+    terms: List[str] = []
+    seen = set()
+    for w in raw_words:
+        if expand_taxonomy and w in _TAXONOMY_EXPANSIONS:
+            for exp in _TAXONOMY_EXPANSIONS[w]:
+                clean = exp.strip(" \"'")
+                if clean and clean not in seen:
+                    seen.add(clean)
+                    terms.append(clean)
+        if w not in _STOPWORDS and len(w) >= 2 and w not in seen:
+            seen.add(w)
+            terms.append(w)
+    if not terms:
+        return ""
+    formatted = [_format_fts5_token(t) for t in terms]
+    return " OR ".join(f for f in formatted if f)
+
 
 SCHEMA = """
 PRAGMA journal_mode=WAL;
