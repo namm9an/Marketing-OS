@@ -6,11 +6,17 @@ in the audit remediation. Reintroduce a dataclass only when something actually c
 
 import uuid
 import datetime
+import hashlib
 
 
 def new_id() -> str:
-    return str(uuid.uuid4())[:8]
+    return uuid.uuid4().hex
+
+
+def content_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 
 def now_iso() -> str:
     return datetime.datetime.now(datetime.timezone.utc).isoformat()
+
