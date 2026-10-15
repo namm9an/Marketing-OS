@@ -288,48 +288,51 @@ def save_knowledge_unit(
         conn.close()
 
 def search_knowledge_units(
-    query: str = "", limit: int = 15, sourced_only: bool = False
+    query: str = "",
+    limit: int = 15,
+    sourced_only: bool = False,
+    expand_taxonomy: bool = False,
 ) -> List[Dict[str, Any]]:
-    """`sourced_only` restricts results to the crawled corpus (L0).
+    """Search knowledge units using SQLite FTS5 BM25 engine-level ranking.
 
-    Agent-written rows are excluded when it is set, so a model's own earlier prose can
-    never come back as a grounded fact. Retrieval paths pass True; the knowledge browser
-    leaves it False, because it should show what is actually in the table.
+    `sourced_only` restricts results to the crawled corpus (L0).
+    `expand_taxonomy` applies deterministic domain expansion before FTS5 search.
     """
     init_db()
-    keywords = _keywords(query) if query else []
     agent_filter = " AND enriched_by NOT LIKE '%agent%'" if sourced_only else ""
     conn = get_connection()
     try:
-        if not keywords:
+        match_query = _expand_query_terms(query, expand_taxonomy=expand_taxonomy) if query else ""
+        if not match_query:
             cursor = conn.execute(
                 f"SELECT * FROM knowledge_units WHERE 1=1{agent_filter} ORDER BY created_at DESC LIMIT ?",
                 (limit,),
             )
             return [dict(row) for row in cursor.fetchall()]
 
-        # Match ANY keyword, then rank by how many keywords each fact hits.
-        # ponytail: substring OR-match is fine at this volume; move to SQLite FTS5 if the KB grows large.
-        where = " OR ".join(["content LIKE ? OR organization LIKE ?"] * len(keywords))
-        params: List[Any] = []
-        for k in keywords:
-            params.extend([f"%{k}%", f"%{k}%"])
-        params.append(limit * 3)
-        cursor = conn.execute(
-            f"SELECT * FROM knowledge_units WHERE ({where}){agent_filter} "
-            f"ORDER BY created_at DESC LIMIT ?",
-            params,
-        )
-        rows = [dict(row) for row in cursor.fetchall()]
-
-        def score(row: Dict[str, Any]) -> int:
-            blob = f"{row['content']} {row['organization']}".lower()
-            return sum(1 for k in keywords if k in blob)
-
-        rows.sort(key=score, reverse=True)
-        return rows[:limit]
+        agent_filter_k = " AND k.enriched_by NOT LIKE '%agent%'" if sourced_only else ""
+        sql = f"""
+        SELECT k.id, k.organization, k.knowledge_class, k.confidence, k.content, k.source_url, k.enriched_by, k.created_at,
+               bm25(knowledge_units_fts) AS rank
+        FROM knowledge_units_fts fts
+        JOIN knowledge_units k ON fts.id = k.id
+        WHERE knowledge_units_fts MATCH ?{agent_filter_k}
+        ORDER BY rank ASC
+        LIMIT ?
+        """
+        try:
+            cursor = conn.execute(sql, (match_query, limit))
+            return [dict(row) for row in cursor.fetchall()]
+        except sqlite3.OperationalError as e:
+            log.warning(f"[FTS5] MATCH failed on {match_query!r}: {e}, falling back to table scan")
+            cursor = conn.execute(
+                f"SELECT * FROM knowledge_units WHERE 1=1{agent_filter} ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            )
+            return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
+
 
 def get_all_knowledge_units() -> List[Dict[str, Any]]:
     return search_knowledge_units(limit=100)
