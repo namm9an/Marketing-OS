@@ -105,12 +105,30 @@ def rebuild_corpus_graph() -> int:
             org = (fact.get("organization") or "").strip()
             if not org:
                 continue
-            rel = _REL_FOR_CLASS.get(fact.get("knowledge_class"), _DEFAULT_REL)
-            for sku in extract_entities(fact.get("content", "")):
+            k_class = fact.get("knowledge_class")
+            rel = _REL_FOR_CLASS.get(k_class, _DEFAULT_REL)
+            content = fact.get("content", "")
+            fact_id = fact.get("id", "")
+            for sku in extract_entities(content):
                 if sku in _SKUS:
-                    _add_edge(conn, org, rel, sku, CORPUS_NS,
-                              provenance=f"knowledge_unit:{fact['id']}")
+                    provenance = f"knowledge_unit:{fact_id}"
+                    if k_class == "pricing":
+                        rate_part = content.split(":", 1)[1] if ":" in content else content
+                        rates = re.findall(r"([$₹€£]?\s*\d+(?:\.\d+)?\s*(?:/[a-zA-Z]+)?)", rate_part)
+                        clean_rates = [r.strip() for r in rates if r.strip() and any(c.isdigit() for c in r)]
+                        currency = "$" if "$" in content else ("₹" if ("₹" in content or "inr" in content.lower()) else "USD")
+                        rate_meta = {
+                            "knowledge_unit_id": fact_id,
+                            "amount": clean_rates[0] if clean_rates else None,
+                            "rates": clean_rates[:4],
+                            "currency": currency,
+                            "unit": "/hr" if "/hr" in content.lower() else "on-demand",
+                        }
+                        provenance = json.dumps(rate_meta)
+                    _add_edge(conn, org, rel, sku, CORPUS_NS, provenance=provenance)
+
         conn.commit()
+
         total = conn.execute(
             "SELECT COUNT(*) AS n FROM edges WHERE namespace = ?", (CORPUS_NS,)
         ).fetchone()["n"]
