@@ -184,10 +184,12 @@ def save_knowledge_unit(
     k_class: str,
     confidence: str,
     content: str,
-    organization: str = "E2E Networks",
+    organization: Optional[str] = None,
     source_url: Optional[str] = None,
     enriched_by: str = "system"
 ):
+    if organization is None:
+        organization = settings.TARGET_ORGANIZATION
     init_db()
     conn = get_connection()
     try:
@@ -251,8 +253,8 @@ def get_all_knowledge_units() -> List[Dict[str, Any]]:
     return search_knowledge_units(limit=100)
 
 
-def get_competitor_facts(limit: int = 200) -> List[Dict[str, Any]]:
-    """The digest's 'Competitor Movement Filter': rival facts only, no internal E2E noise.
+def get_competitor_facts(limit: int = 200, target_org: Optional[str] = None) -> List[Dict[str, Any]]:
+    """The digest's 'Competitor Movement Filter': rival facts only, no internal target org or legacy noise.
 
     Agent-enriched rows are excluded too — the digest must cite scraped, sourced
     competitor intelligence, not our own model's earlier output (that would let a
@@ -262,19 +264,24 @@ def get_competitor_facts(limit: int = 200) -> List[Dict[str, Any]]:
     adding the SCD Type 2 columns and writing dated re-crawl rows first; filtering the
     one-shot seed by created_at would return noise.
     """
+    if target_org is None:
+        target_org = settings.TARGET_ORGANIZATION
     init_db()
     conn = get_connection()
     try:
         cursor = conn.execute(
             """
             SELECT * FROM knowledge_units
-            WHERE organization NOT LIKE '%E2E%'
+            WHERE organization != ?
+              AND organization NOT LIKE ?
+              AND organization NOT LIKE '%E2E%'
+              AND organization NOT LIKE '%(Us)%'
               AND enriched_by NOT LIKE '%agent%'
               AND source_url IS NOT NULL AND source_url != ''
             ORDER BY organization, knowledge_class
             LIMIT ?
             """,
-            (limit,),
+            (target_org, f"%{target_org}%", limit),
         )
         return [dict(row) for row in cursor.fetchall()]
     finally:

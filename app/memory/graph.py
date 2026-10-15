@@ -33,6 +33,7 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
+from app.core.config import settings
 from app.core.primitives import new_id
 from app.db.database import get_connection, init_db, search_knowledge_units
 from app.memory.store import CORPUS_NS, validate_ns
@@ -47,6 +48,8 @@ _ORG_ALIASES = {
     "runpod": "RunPod", "together ai": "Together AI", "crusoe": "Crusoe Cloud",
     "vast data": "VAST Data", "voltage park": "Voltage Park",
     "hyperstack": "Hyperstack", "foundry": "Foundry",
+    "vanguard": settings.TARGET_ORGANIZATION,
+    "vanguard cloud": settings.TARGET_ORGANIZATION,
 }
 _SKUS = ("B200", "H200", "H100", "A100", "L40S", "HGX")
 

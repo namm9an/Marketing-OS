@@ -13,6 +13,7 @@ from pathlib import Path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
+from app.core.config import settings
 from app.db.database import init_db, get_competitor_facts, save_knowledge_unit
 from app.core.primitives import new_id
 from app.db.grounded_seed import seed_grounded_knowledge
@@ -28,6 +29,7 @@ class TestCompetitorFilter(unittest.TestCase):
     def test_excludes_internal_e2e_noise(self):
         for f in get_competitor_facts():
             self.assertNotIn("E2E", f["organization"])
+            self.assertNotIn(settings.TARGET_ORGANIZATION, f["organization"])
 
     def test_excludes_agent_enriched_rows(self):
         # An agent's own output must not come back as a citable competitor "fact".
@@ -91,6 +93,7 @@ class TestNetworkMap(unittest.TestCase):
         hubs = [n for n in net["nodes"] if n["group"] == "us"]
         competitors = [n for n in net["nodes"] if n["group"] == "competitor"]
         self.assertEqual(len(hubs), 1)
+        self.assertEqual(hubs[0]["id"], settings.TARGET_ORGANIZATION)
         self.assertTrue(competitors)
         hub_links = [l for l in net["links"] if l["kind"] == "hub"]
         self.assertEqual(len(hub_links), len(competitors), "one hub edge per rival")

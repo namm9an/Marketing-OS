@@ -39,7 +39,7 @@ class TestAPIRoutes(unittest.TestCase):
 
     def test_run_agent_pipeline(self):
         payload = {
-            "goal": "Position E2E Networks B200 GPU infrastructure for Indian AI startups",
+            "goal": f"Position {settings.TARGET_ORGANIZATION} B200 GPU infrastructure for AI enterprises",
             "provider": "gemini-3.6-flash",
             "agent_type": "branding"
         }
@@ -48,6 +48,8 @@ class TestAPIRoutes(unittest.TestCase):
         data = json.loads(res.data)
         self.assertTrue(data.get("success"))
         self.assertIn("decision", data)
+        self.assertIn("positioning", data)
+        self.assertIn(settings.TARGET_ORGANIZATION, data["positioning"]["statement"])
 
     def test_decision_history_endpoint(self):
         res = self.client.get('/api/history')
@@ -64,6 +66,8 @@ class TestAPIRoutes(unittest.TestCase):
         self.assertIn("nodes", data)
         self.assertIn("links", data)
         self.assertIn("total_facts", data)
+        hub = next(n for n in data["nodes"] if n["group"] == "us")
+        self.assertEqual(hub["id"], settings.TARGET_ORGANIZATION)
         competitor = next(n for n in data["nodes"] if n["group"] == "competitor")
         for key in ("id", "fact_count", "classes", "citations"):
             self.assertIn(key, competitor)

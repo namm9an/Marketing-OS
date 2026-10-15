@@ -24,6 +24,7 @@ from typing import TypedDict, List, Dict, Any, Annotated
 
 from langgraph.graph import StateGraph, START, END
 
+from app.core.config import settings
 from app.agents.base import ACTIVE_AGENTS, DEFAULT_PROVIDER, run_agent, _strip_code_fence
 from app.core.primitives import now_iso
 from app.core.schemas import DigestSchema
@@ -75,7 +76,7 @@ def _make_digest_worker(agent_type: str):
         lens = _DIGEST_LENS[agent_type]
         goal = (
             f"WEEKLY COMPETITOR DIGEST. Review only the competitor evidence below and report "
-            f"{lens}. Focus exclusively on rival movements — do not describe E2E Networks' own "
+            f"{lens}. Focus exclusively on rival movements — do not describe {settings.TARGET_ORGANIZATION}'s own "
             f"activity. Be specific and name the competitors you are drawing from."
         )
         parsed = run_agent(
@@ -98,8 +99,8 @@ def _make_digest_worker(agent_type: str):
     return worker
 
 
-_SYNTH_PROMPT = """You are the Chief of Staff to the CMO of E2E Networks (NSE: E2E), an Indian
-sovereign GPU cloud. Five specialist marketing agents each reviewed the same grounded competitor
+_SYNTH_PROMPT = f"""You are the Chief of Staff to the CMO of {settings.TARGET_ORGANIZATION}, an enterprise
+{settings.TARGET_INDUSTRY.lower()} provider. Five specialist marketing agents each reviewed the same grounded competitor
 evidence. Merge their briefs into ONE executive digest for a CMO who has 3 minutes.
 
 Rules: competitors only (Yotta, Neysa, Nebius, CoreWeave, RunPod, Together AI, Lambda Labs,
@@ -107,12 +108,12 @@ Crusoe, Hyperstack, Voltage Park, VAST Data, Foundry). Do not invent numbers, da
 use only what appears in the evidence. Name specific rivals in each movement.
 
 Return valid JSON only:
-{
+{{
   "headline": "one-line executive headline on the week's competitive picture",
   "executive_summary": "3-5 sentence cross-agent summary for the CMO",
   "competitor_movements": ["specific rival move, naming the competitor", "..."],
-  "recommended_actions": ["concrete action E2E should take", "..."]
-}"""
+  "recommended_actions": ["concrete action {settings.TARGET_ORGANIZATION} should take", "..."]
+}}"""
 
 
 def _fallback_digest(state: DigestState) -> Dict[str, Any]:
@@ -204,7 +205,7 @@ def build_network() -> Dict[str, Any]:
         grouped[f["organization"]].append(f)
 
     nodes = [{
-        "id": "E2E Networks",
+        "id": settings.TARGET_ORGANIZATION,
         "group": "us",
         "fact_count": 0,
         "citations": [],
@@ -225,7 +226,7 @@ def build_network() -> Dict[str, Any]:
                 for f in org_facts
             ],
         })
-        links.append({"source": "E2E Networks", "target": org, "weight": len(org_facts),
+        links.append({"source": settings.TARGET_ORGANIZATION, "target": org, "weight": len(org_facts),
                       "kind": "hub"})
 
     known = {n["id"] for n in nodes}
@@ -266,5 +267,8 @@ if __name__ == "__main__":
     assert len(out["agent_briefs"]) == len(ACTIVE_AGENTS), out["agent_briefs"]
     assert out["headline"] and out["executive_summary"]
     assert out["network"]["total_facts"] > 0
-    assert all("E2E" not in c["organization"] for c in out["citations"])
+    assert all(
+        "E2E" not in c["organization"] and settings.TARGET_ORGANIZATION not in c["organization"]
+        for c in out["citations"]
+    )
     print("digest.py self-check OK:", out["headline"])

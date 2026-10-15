@@ -50,4 +50,10 @@ class LLMService:
 
     @staticmethod
     def _fallback_mock_response(prompt: str) -> str:
-        return '{\n  "selected_option": "Sovereign AI Infrastructure Strategy",\n  "statement": "E2E Networks delivers sovereign GPU Cloud infrastructure for Indian AI developers with sub-50ms latency.",\n  "rationale": "Positioning around MeitY empanelment, B200 availability at ₹671/hr, and 16+ years cloud experience.",\n  "risks": "Hyperscaler pricing pressure on standard compute instances.",\n  "confidence": "High"\n}'
+        return json.dumps({
+            "selected_option": f"Enterprise {settings.TARGET_INDUSTRY} Strategy",
+            "statement": f"{settings.TARGET_ORGANIZATION} delivers enterprise {settings.TARGET_INDUSTRY.lower()} infrastructure with sub-50ms latency.",
+            "rationale": f"Positioning around certified compliance, B200 availability, and high-performance SLA for {settings.TARGET_ORGANIZATION}.",
+            "risks": "Hyperscaler pricing pressure on standard compute instances.",
+            "confidence": "High",
+        }, indent=2)

@@ -3,25 +3,18 @@ Shared agent execution core.
 
 All five marketing agents (branding, PR, social, product-marketing, events) run the
 exact same pipeline — retrieve grounded facts, prompt the LLM, parse + validate JSON —
-differing only by persona. That body lives here once; each agent is just a registry entry. The old per-agent files repeated this
-~90-line body five times, which meant a retrieval or validation fix had to be made
-(and was made inconsistently) in five places.
+differing only by persona. That body lives here once; each agent is just a registry entry.
 """
 
 import json
 from typing import Dict, Any
 
+from app.core.config import settings
 from app.services.llm_service import LLMService
 from app.db.database import search_knowledge_units
 from app.core.schemas import AgentResponseSchema
 
 DEFAULT_PROVIDER = "gemini-3.6-flash"
-
-_COMPETITORS = (
-    "India Top 3: E2E Networks (Us), Yotta Data Services, Neysa AI. "
-    "Global Top 10: CoreWeave, Nebius, Lambda Labs, RunPod, Together AI, Crusoe Cloud, "
-    "VAST Data, Voltage Park, Hyperstack, Foundry."
-)
 
 _JSON_CONTRACT = """
 Return a JSON object matching this schema and output valid JSON only:
@@ -34,50 +27,90 @@ Return a JSON object matching this schema and output valid JSON only:
 }
 """
 
-# agent_type -> (persona, knowledge_class, provenance source_url).
-# `persona` is the agent's identity on its own, with no output contract attached: the
-# structured pipeline appends _JSON_CONTRACT to it, while the Phase 9 chat layer wants the
-# same identity speaking prose. One source of truth per agent, two output modes.
-AGENT_REGISTRY: Dict[str, Dict[str, str]] = {
-    "branding": {
-        "persona": f"""You are the Lead Branding & Positioning Strategist for E2E Networks (NSE: E2E).
-Infrastructure: NVIDIA B200 (from Rs671/hr), H200, H100, L40S, HGX. MeitY Empaneled, 99.95% SLA, SOC2.
+_PERSONA_TEMPLATES = {
+    "branding": """You are the Lead Branding & Positioning Strategist for {target_org}.
+Domain: {target_industry}.
+Infrastructure: NVIDIA B200 (from Rs671/hr), H200, H100, L40S, HGX. Enterprise Empaneled, 99.95% SLA, SOC2.
 Cloud branding archetypes: Enterprise-Centric (compliance/SLA), Developer-Focused (fast launch, self-serve
 CLI, transparent per-hour pricing), Research-Focused (batch clusters, benchmarks, raw Slurm).
-COMPETITOR TAXONOMY: {_COMPETITORS}
+COMPETITOR TAXONOMY: {competitors}
 """,
-    },
-    "pr": {
-        "persona": f"""You are the Lead PR & Competitive Intelligence Strategist for E2E Networks (NSE: E2E).
+    "pr": """You are the Lead PR & Competitive Intelligence Strategist for {target_org}.
+Domain: {target_industry}.
 Synthesize competitor press releases, newsletters/blogs, social activity (LinkedIn/X by named CEOs/CTOs),
 and founder/executive discourse (podcasts, interviews) into a counter-narrative and media positioning brief.
-COMPETITORS MONITORED: {_COMPETITORS}
+COMPETITORS MONITORED: {competitors}
 """,
-    },
-    "social": {
-        "persona": f"""You are the Lead Social Media Strategist for E2E Networks (NSE: E2E).
-E2E: B200 from Rs671/hr, H100 from Rs334/hr, MeitY Empaneled, 1-click model scaling.
+    "social": """You are the Lead Social Media Strategist for {target_org}.
+Domain: {target_industry}.
+Fleet: B200 from Rs671/hr, H100 from Rs334/hr, Enterprise Empaneled, 1-click model scaling.
 Platforms: LinkedIn (B2B decision makers, C-suite, VP of AI) and X/Twitter (AI researchers, OSS devs).
 Produce campaign hooks, viral thread concepts, and executive thought-leadership posts.
-COMPETITOR TAXONOMY: {_COMPETITORS}
+COMPETITOR TAXONOMY: {competitors}
 """,
-    },
-    "product_marketing": {
-        "persona": f"""You are the Lead Product Marketing Manager (PMM) for E2E Networks (NSE: E2E).
+    "product_marketing": """You are the Lead Product Marketing Manager (PMM) for {target_org}.
+Domain: {target_industry}.
 Products: B200/H200/H100 clusters, fast InfiniBand storage, RAG engine, Indic Voice AI.
 Segments: Enterprise CTOs, AI founders, ML engineers, sovereign govt agencies.
 Produce feature messaging, competitive battlecards, tier pricing, and GTM launch plans.
-COMPETITOR TAXONOMY: {_COMPETITORS}
+COMPETITOR TAXONOMY: {competitors}
 """,
-    },
-    "events": {
-        "persona": f"""You are the Lead Events & Field Marketing Strategist for E2E Networks.
+    "events": """You are the Lead Events & Field Marketing Strategist for {target_org}.
+Domain: {target_industry}.
 Portfolio: developer hackathons, AI summits, enterprise executive roundtables, Indic AI expos.
 Produce keynote concepts, booth demos, sponsorship ROI, and developer-activation strategies.
-COMPETITOR TAXONOMY: {_COMPETITORS}
+COMPETITOR TAXONOMY: {competitors}
 """,
-    },
 }
+
+
+class _DynamicAgentRegistry(dict):
+    """Dynamic registry mapping agent_type -> {"persona": ...} with runtime settings injection."""
+
+    def _render_persona(self, key: str) -> str:
+        target_org = settings.TARGET_ORGANIZATION
+        target_industry = settings.TARGET_INDUSTRY
+        competitors = (
+            f"Domestic Top 3: {target_org} (Us), Yotta Data Services, Neysa AI. "
+            "Global Top 10: CoreWeave, Nebius, Lambda Labs, RunPod, Together AI, Crusoe Cloud, "
+            "VAST Data, Voltage Park, Hyperstack, Foundry."
+        )
+        return _PERSONA_TEMPLATES[key].format(
+            target_org=target_org,
+            target_industry=target_industry,
+            competitors=competitors,
+        )
+
+    def __getitem__(self, key: str) -> Dict[str, str]:
+        if key not in _PERSONA_TEMPLATES:
+            raise KeyError(key)
+        return {"persona": self._render_persona(key)}
+
+    def get(self, key: str, default: Any = None) -> Any:
+        if key in _PERSONA_TEMPLATES:
+            return {"persona": self._render_persona(key)}
+        return default
+
+    def __contains__(self, key: object) -> bool:
+        return key in _PERSONA_TEMPLATES
+
+    def __iter__(self):
+        return iter(_PERSONA_TEMPLATES)
+
+    def __len__(self) -> int:
+        return len(_PERSONA_TEMPLATES)
+
+    def keys(self):
+        return _PERSONA_TEMPLATES.keys()
+
+    def items(self):
+        return [(k, {"persona": self._render_persona(k)}) for k in _PERSONA_TEMPLATES]
+
+    def values(self):
+        return [{"persona": self._render_persona(k)} for k in _PERSONA_TEMPLATES]
+
+
+AGENT_REGISTRY: Dict[str, Dict[str, str]] = _DynamicAgentRegistry()
 
 # Agents whose output reaches a user. The other three registry entries (social,
 # product_marketing, events) were built from a 3-bullet spec in design_doc Phase 8 and are
@@ -129,20 +162,12 @@ def run_agent(
     except Exception:
         parsed = {
             "selected_option": f"{agent_type.replace('_', ' ').title()} Strategy",
-            "statement": text or "E2E Networks delivers sovereign GPU cloud infrastructure for Indian AI developers.",
-            "rationale": "Grounded in MeitY empanelment, B200 availability, and 16+ years of cloud experience.",
+            "statement": text or f"{settings.TARGET_ORGANIZATION} delivers enterprise {settings.TARGET_INDUSTRY.lower()} infrastructure.",
+            "rationale": f"Grounded in enterprise compliance, certified SLA, and proven reliability for {settings.TARGET_ORGANIZATION}.",
             "risks": "Hyperscaler pricing pressure on standard compute instances.",
             "confidence": "High",
         }
 
-    # 4. No write-back to knowledge_units. That table is L0, the grounded corpus: every row
-    #    is meant to be crawler-sourced with a real source_url, and agents are readers only
-    #    (design_doc.md §9.3/§9.5). The old enrichment wrote synthesized prose back into it
-    #    under a boilerplate E2E URL, which is what made `enriched_by NOT LIKE '%agent%'`
-    #    necessary in M5 to stop model output being cited as competitor intelligence. It was
-    #    also redundant — save_decision() in the governance node already logs every decision,
-    #    in the table meant for it. Conversation-derived learning now goes to L1 through the
-    #    promotion gate instead (app/memory/gate.py).
     return parsed
 
 
@@ -157,9 +182,8 @@ class AgentNode:
 
 
 if __name__ == "__main__":
-    # ponytail self-check: registry is complete and the pipeline returns a valid contract.
     assert set(AGENT_REGISTRY) == {"branding", "pr", "social", "product_marketing", "events"}
     assert set(ACTIVE_AGENTS) < set(AGENT_REGISTRY), "active agents must be registered agents"
-    out = run_agent("branding", "Position B200 against Nebius on price")  # uses mock LLM without keys
+    out = run_agent("branding", "Position B200 against Nebius on price")
     assert {"selected_option", "statement", "rationale", "risks", "confidence"} <= set(out)
     print("base.py self-check OK:", out["selected_option"])

@@ -31,6 +31,7 @@ from typing import TypedDict, List, Dict, Any, Optional
 
 from langgraph.graph import StateGraph, START, END
 
+from app.core.config import settings
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER
 from app.db.database import search_knowledge_units
 from app.memory import gate, graph, store
@@ -44,8 +45,8 @@ _FACT_RECALL = 5
 _GRAPH_RECALL = 3     # extra memories reached by traversal rather than by keyword
 _GRAPH_DEPTH = 2      # memory -> entity -> related entity -> memory
 
-_CHAT_CONTRACT = """
-You are in a live conversation with the CMO of E2E Networks. Reply in plain prose — no JSON,
+_CHAT_CONTRACT = f"""
+You are in a live conversation with the CMO of {settings.TARGET_ORGANIZATION}. Reply in plain prose — no JSON,
 no headings, no bullet lists unless you are asked for one. Be direct and specific; two to five
 sentences unless the question genuinely needs more.
 

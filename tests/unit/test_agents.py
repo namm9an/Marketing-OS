@@ -3,6 +3,7 @@ Unit Tests for Branding & PR Agent Nodes with Pydantic Schema Guardrails
 """
 
 import sys
+import json
 import unittest
 from pathlib import Path
 
@@ -46,6 +47,47 @@ class TestAgentNodes(unittest.TestCase):
         # Validate Pydantic Schema
         validated = AgentResponseSchema(**res)
         self.assertIsNotNone(validated.statement)
+
+    def test_personas_reflect_target_organization(self):
+        from app.agents.base import AGENT_REGISTRY
+        from app.core.config import settings
+
+        for agent_name, cfg in AGENT_REGISTRY.items():
+            persona = cfg["persona"]
+            self.assertIn(
+                settings.TARGET_ORGANIZATION,
+                persona,
+                f"{agent_name} persona missing target organization: {settings.TARGET_ORGANIZATION}",
+            )
+            self.assertNotIn(
+                "E2E Networks (NSE: E2E)",
+                persona,
+                f"{agent_name} persona contains hardcoded vendor ticker",
+            )
+
+    def test_dynamic_persona_update_on_settings_change(self):
+        from app.agents.base import AGENT_REGISTRY
+        from app.core.config import settings
+
+        orig = settings.TARGET_ORGANIZATION
+        try:
+            settings.TARGET_ORGANIZATION = "Acme GPU Cloud"
+            branding_persona = AGENT_REGISTRY["branding"]["persona"]
+            self.assertIn("Acme GPU Cloud", branding_persona)
+            self.assertIn("Acme GPU Cloud (Us)", branding_persona)
+        finally:
+            settings.TARGET_ORGANIZATION = orig
+
+    def test_llm_mock_response_reflects_target_organization(self):
+        from app.services.llm_service import LLMService
+        from app.core.config import settings
+        from app.core.schemas import AgentResponseSchema
+
+        resp = LLMService.generate("sys", "user")
+        data = json.loads(resp["text"])
+        validated = AgentResponseSchema(**data)
+        self.assertIn(settings.TARGET_ORGANIZATION, validated.statement)
+        self.assertNotIn("E2E Networks", validated.statement)
 
 class TestCorpusBoundary(unittest.TestCase):
     """L0 is crawler-sourced and read-only to agents (design_doc.md §9.3/§9.5)."""

@@ -23,6 +23,8 @@ score hide a total paraphrase failure, which is the failure this corpus actually
 from dataclasses import dataclass, field
 from typing import List, Optional
 
+from app.core.config import settings
+
 
 @dataclass(frozen=True)
 class Relevance:
@@ -38,8 +40,14 @@ class Relevance:
     def matches(self, fact: dict) -> bool:
         content = (fact.get("content") or "").lower()
         organization = (fact.get("organization") or "").lower()
-        if self.org and self.org.lower() not in organization:
-            return False
+        if self.org:
+            target_org = settings.TARGET_ORGANIZATION.lower()
+            org_lower = self.org.lower()
+            if org_lower == target_org:
+                if not (target_org in organization or "(us)" in organization or "e2e" in organization):
+                    return False
+            elif org_lower not in organization:
+                return False
         if not all(term.lower() in content for term in self.all_of):
             return False
         if self.any_of and not any(term.lower() in content for term in self.any_of):
@@ -81,8 +89,8 @@ GOLD: List[GoldQuery] = [
               Relevance(org="Voltage Park", all_of=["pricing"]), "lexical"),
     GoldQuery("Hyperstack GPU fleet",
               Relevance(org="Hyperstack", all_of=["hardware fleet"]), "lexical"),
-    GoldQuery("E2E Networks TIR platform",
-              Relevance(org="E2E", all_of=["TIR"]), "lexical"),
+    GoldQuery(f"{settings.TARGET_ORGANIZATION} TIR platform",
+              Relevance(org=settings.TARGET_ORGANIZATION, all_of=["TIR"]), "lexical"),
     GoldQuery("MeitY empanelled", Relevance(all_of=["MeitY"]), "lexical"),
     GoldQuery("sovereign digital infrastructure",
               Relevance(all_of=["sovereign"]), "lexical"),
@@ -103,7 +111,7 @@ GOLD: List[GoldQuery] = [
               Relevance(all_of=["₹"]), "paraphrase", "currency symbol, not the word rupee"),
     GoldQuery("Which vendors are Indian?",
               Relevance(any_of=["India", "sovereign", "MeitY"]), "paraphrase",
-              "E2E / Yotta / Neysa are Indian but most rows never say so"),
+              f"{settings.TARGET_ORGANIZATION} / Yotta / Neysa are Indian but most rows never say so"),
     GoldQuery("Who markets themselves on data residency?",
               Relevance(any_of=["sovereign", "India"]), "paraphrase"),
     GoldQuery("Which competitors have Blackwell-generation silicon?",
@@ -113,7 +121,7 @@ GOLD: List[GoldQuery] = [
               Relevance(any_of=["H100", "H200"]), "paraphrase",
               "'Hopper' likewise never appears in the corpus"),
     GoldQuery("What is our own tagline?",
-              Relevance(org="E2E", all_of=["positioning"]), "paraphrase"),
+              Relevance(org=settings.TARGET_ORGANIZATION, all_of=["positioning"]), "paraphrase"),
     GoldQuery("How do rivals describe their AI cloud?",
               Relevance(all_of=["positioning"]), "paraphrase"),
     GoldQuery("Which providers target enterprise buyers rather than developers?",

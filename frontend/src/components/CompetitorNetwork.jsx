@@ -28,6 +28,15 @@ export default function CompetitorNetwork({ network, onSelect }) {
     [network]
   );
 
+  const hubNode = useMemo(
+    () => (network?.nodes || []).find((n) => n.group === 'us'),
+    [network]
+  );
+  const hubLabel = (hubNode?.id || 'Vanguard Cloud').toUpperCase();
+  const [hubMain, hubSub] = hubLabel.includes(' ')
+    ? [hubLabel.split(' ')[0], hubLabel.split(' ').slice(1).join(' ')]
+    : [hubLabel, ''];
+
   const positioned = useMemo(() => {
     const max = Math.max(1, ...competitors.map((c) => c.fact_count));
     return competitors.map((node, i) => {
@@ -77,9 +86,11 @@ export default function CompetitorNetwork({ network, onSelect }) {
 
           {/* Hub */}
           <circle cx={CX} cy={CY} r={34} fill="#1C1917" />
-          <text x={CX} y={CY - 2} textAnchor="middle" fill="#FBF9F5"
-                fontSize="11" fontWeight="700">E2E</text>
-          <text x={CX} y={CY + 11} textAnchor="middle" fill="#A8A29E" fontSize="8">NETWORKS</text>
+          <text x={CX} y={hubSub ? CY - 2 : CY + 4} textAnchor="middle" fill="#FBF9F5"
+                fontSize="10" fontWeight="700">{hubMain}</text>
+          {hubSub && (
+            <text x={CX} y={CY + 11} textAnchor="middle" fill="#A8A29E" fontSize="8" fontWeight="600">{hubSub}</text>
+          )}
 
           {positioned.map((n) => {
             const on = hovered === n.id || selected === n.id;

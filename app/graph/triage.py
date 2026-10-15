@@ -36,6 +36,7 @@ from typing import Annotated, Any, Dict, List, Optional, TypedDict
 
 from langgraph.graph import StateGraph, START, END
 
+from app.core.config import settings
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER, _strip_code_fence
 from app.graph.chat import _facts_block, _memory_block, recall_for
 from app.memory import gate, store
@@ -43,8 +44,8 @@ from app.services.llm_service import LLMService
 
 log = logging.getLogger(__name__)
 
-_VIEW_CONTRACT = """
-You are one of TWO specialists answering the CMO of E2E Networks together. Give YOUR
+_VIEW_CONTRACT = f"""
+You are one of TWO specialists answering the CMO of {settings.TARGET_ORGANIZATION} together. Give YOUR
 discipline's view only — the other specialist covers theirs, and a bridge will merge the two.
 
 Reply in plain prose, 2-4 sentences. Lead with your actual position, not a preamble.
@@ -55,8 +56,8 @@ NOTES are standing instructions this CMO gave you earlier — follow them, but d
 them as evidence. If you would need something neither gives you, say so.
 """
 
-_MERGE_PROMPT = """You are the Chief of Staff to the CMO of E2E Networks (NSE: E2E), an Indian
-sovereign GPU cloud. Two specialist agents answered the same question independently. Merge
+_MERGE_PROMPT = f"""You are the Chief of Staff to the CMO of {settings.TARGET_ORGANIZATION}, an enterprise
+{settings.TARGET_INDUSTRY.lower()} provider. Two specialist agents answered the same question independently. Merge
 their views into ONE answer the CMO can act on.
 
 Rules:
@@ -66,12 +67,12 @@ Rules:
 - Add no new facts, numbers, dates or URLs. You are merging, not researching.
 
 Return valid JSON only:
-{
+{{
   "answer": "3-6 sentence merged answer for the CMO, attributing points to the agents by name",
   "agreements": ["point both agents support"],
   "tensions": ["where the two views pull against each other, and the trade-off"],
   "recommended_action": "the single next step"
-}"""
+}}"""
 
 
 class TriageState(TypedDict, total=False):
