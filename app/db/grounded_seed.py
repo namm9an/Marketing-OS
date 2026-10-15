@@ -93,13 +93,15 @@ def seed_grounded_knowledge():
 
                 # 2. Fact: Rate Cards & Pricing
                 if pricing:
-                    pricing_fact = f"Empirical Pricing & Rate Card Terms: {', '.join(pricing[:4])}."
+                    sorted_skus = f" for {', '.join(sorted(gpus))}" if gpus else ""
+                    pricing_fact = f"Empirical Pricing & Rate Card Terms{sorted_skus}: {', '.join(pricing[:4])}."
                     fact_id = content_hash(f"{org_name}|pricing|{url}|{pricing_fact}")
                     conn.execute(
                         "INSERT INTO knowledge_units (id, organization, knowledge_class, confidence, content, source_url, enriched_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
                         (fact_id, org_name, "pricing", "high", pricing_fact, url, "grounded_crawler")
                     )
                     total_facts += 1
+
 
                 # 3. Fact: Verified Positioning Headings
                 if first_heading and not any(sig in first_heading.lower() for sig in JUNK_SIGNATURES):
