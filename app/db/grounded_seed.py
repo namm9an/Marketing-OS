@@ -37,26 +37,20 @@ def seed_grounded_knowledge():
         return
 
     raw_data = json.loads(DEEP_SCRAPE_PATH.read_text())
-    init_db()
     conn = get_connection()
-
     try:
         # Ensure fresh schema
+        conn.execute("DROP TABLE IF EXISTS knowledge_units_fts")
         conn.execute("DROP TABLE IF EXISTS knowledge_units")
-        conn.execute("""
-        CREATE TABLE IF NOT EXISTS knowledge_units (
-            id TEXT PRIMARY KEY,
-            organization TEXT NOT NULL,
-            knowledge_class TEXT NOT NULL,
-            confidence TEXT NOT NULL,
-            content TEXT NOT NULL,
-            source_url TEXT NOT NULL,
-            enriched_by TEXT NOT NULL DEFAULT 'grounded_playwright_crawler',
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
-        );
-        """)
+        conn.commit()
+    finally:
+        conn.close()
 
+    init_db(force=True)
+    conn = get_connection()
+    try:
         total_facts = 0
+
 
         for org in raw_data:
             org_name = org["name"]

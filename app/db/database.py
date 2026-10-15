@@ -52,7 +52,7 @@ CREATE TABLE IF NOT EXISTS decisions (
 
 CREATE TABLE IF NOT EXISTS knowledge_units (
     id TEXT PRIMARY KEY,
-    organization TEXT NOT NULL DEFAULT 'E2E Networks',
+    organization TEXT NOT NULL DEFAULT 'Vanguard Cloud',
     knowledge_class TEXT NOT NULL,
     confidence TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -60,6 +60,29 @@ CREATE TABLE IF NOT EXISTS knowledge_units (
     enriched_by TEXT NOT NULL DEFAULT 'system',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_units_fts USING fts5(
+    id UNINDEXED,
+    organization,
+    knowledge_class,
+    content,
+    tokenize = 'porter unicode61 remove_diacritics 2'
+);
+
+CREATE TRIGGER IF NOT EXISTS trg_ku_ai AFTER INSERT ON knowledge_units BEGIN
+    INSERT INTO knowledge_units_fts(id, organization, knowledge_class, content)
+    VALUES (new.id, new.organization, new.knowledge_class, new.content);
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_ku_ad AFTER DELETE ON knowledge_units BEGIN
+    DELETE FROM knowledge_units_fts WHERE id = old.id;
+END;
+
+CREATE TRIGGER IF NOT EXISTS trg_ku_au AFTER UPDATE ON knowledge_units BEGIN
+    DELETE FROM knowledge_units_fts WHERE id = old.id;
+    INSERT INTO knowledge_units_fts(id, organization, knowledge_class, content)
+    VALUES (new.id, new.organization, new.knowledge_class, new.content);
+END;
 
 -- Phase 9 (M9.1): per-agent memory. Additive — nothing above changes.
 -- `namespace` is the isolation boundary: 'agent:branding', 'triage:branding+pr',
@@ -129,11 +152,19 @@ def init_db(force: bool = False):
     conn = get_connection()
     try:
         conn.executescript(SCHEMA)
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO knowledge_units_fts(id, organization, knowledge_class, content)
+            SELECT id, organization, knowledge_class, content FROM knowledge_units
+            WHERE id NOT IN (SELECT id FROM knowledge_units_fts)
+            """
+        )
         conn.commit()
         _INITIALIZED = True
         log.info(f"[SQLite DB] Initialized at {settings.DB_PATH}")
     finally:
         conn.close()
+
 
 def save_decision(
     decision_id: str,
