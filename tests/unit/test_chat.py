@@ -125,6 +125,38 @@ class TestChatLayer(unittest.TestCase):
             agent_turn["recalled_ids"], [m["id"] for m in second["recall"]["memories"]]
         )
 
+    # --- universal governance wiring ---
+
+    def test_chat_governance_normal_turn_persists_decision(self):
+        res = chat.run_chat("branding", "What is our messaging strategy?")
+        self.assertIn("governance", res)
+        self.assertIn("decision_id", res)
+        self.assertFalse(res["governance"]["escalated"])
+        self.assertFalse(res["escalated"])
+        self.assertIsNotNone(res["decision_id"])
+        self.assertEqual(len(res["decision_id"]), 32)
+
+        # Confirm persisted in SQLite decisions table
+        decisions = database.get_all_decisions()
+        self.assertTrue(any(d["id"] == res["decision_id"] for d in decisions))
+
+    def test_chat_governance_escalates_on_high_risk_lexicon(self):
+        res = chat.run_chat("pr", "lawsuit risk on pricing comparison")
+        self.assertTrue(res["governance"]["escalated"])
+        self.assertTrue(res["escalated"])
+        self.assertIn("lawsuit", res["governance"]["escalation_reason"])
+        self.assertIsNotNone(res["decision_id"])
+
+    def test_chat_resilience_and_low_confidence_escalation_on_worker_error(self):
+        import unittest.mock
+        with unittest.mock.patch("app.graph.chat.LLMService.generate", side_effect=RuntimeError("Simulated LLM outage")):
+            res = chat.run_chat("branding", "What is our fallback stance?")
+            self.assertTrue(res["success"])
+            self.assertTrue(res["governance"]["escalated"])
+            self.assertTrue(res["escalated"])
+            self.assertIn("Low", res["governance"]["escalation_reason"])
+            self.assertIsNotNone(res["decision_id"])
+
 
 if __name__ == "__main__":
     unittest.main()

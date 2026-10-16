@@ -9,6 +9,8 @@ from app.core.schemas import (
     DecisionRecordSchema,
     MemoryRecordSchema,
     ChatTurnSchema,
+    ChatOutputSchema,
+    ChatResponseSchema,
     TriageOutputSchema,
     TriageResponseSchema,
     AgentResponseSchema,
@@ -73,14 +75,32 @@ def test_chat_turn_schema():
     assert turn.recalled_memories == []
 
 
+def test_chat_output_schema_and_alias():
+    out = ChatOutputSchema(
+        agent="branding",
+        namespace="agent:branding",
+        thread_id="th_chat_1",
+        reply="Positioning recommendations for B200",
+        escalated=True,
+        escalation_reason="Price war term detected",
+        decision_id="dec_12345",
+    )
+    assert out.success is True
+    assert out.escalated is True
+    assert ChatResponseSchema is ChatOutputSchema
+
+
 def test_triage_output_schema_and_alias():
     out = TriageOutputSchema(
         agents=["branding", "pr"],
         namespace="triage:branding+pr",
         thread_id="th_triage_1",
         answer="Coordinated positioning across PR and brand",
+        escalated=False,
+        decision_id="dec_triage_1",
     )
     assert out.success is True
+    assert out.escalated is False
     assert TriageResponseSchema is TriageOutputSchema
 
 

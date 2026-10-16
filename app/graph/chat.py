@@ -27,17 +27,21 @@ M9.5's /triage bridge fans these same nodes out across two agents.
 """
 
 import logging
-from typing import TypedDict, List, Dict, Any, Optional
+from typing import TypedDict, List, Dict, Any, Optional, Tuple
 
 from langgraph.graph import StateGraph, START, END
 
 from app.core.config import settings
+from app.core.primitives import new_id
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER
-from app.db.database import search_knowledge_units
+from app.db.database import search_knowledge_units, save_decision
 from app.memory import gate, graph, store
 from app.services.llm_service import LLMService
 
 log = logging.getLogger(__name__)
+
+# Risk phrases that force human (CMO) ratification regardless of confidence.
+_HIGH_RISK_TERMS = ("legal", "lawsuit", "compliance breach", "misleading", "defamation", "price war")
 
 _HISTORY_TURNS = 12   # ponytail: fixed window. Summarise older turns only if threads get long.
 _MEMORY_RECALL = 6
@@ -73,6 +77,11 @@ class ChatState(TypedDict, total=False):
     graph_paths: List[Dict[str, Any]]
     reply: str
     memory_verdict: Dict[str, Any]
+    confidence: str
+    risks: str
+    escalated: bool
+    escalation_reason: Optional[str]
+    decision_id: str
 
 
 # --- Context blocks ---------------------------------------------------------------
@@ -178,16 +187,20 @@ def _respond(state: ChatState) -> Dict[str, Any]:
         f"{_history_block(state.get('history', []))}\n"
         f"CMO's message: {state['message']}"
     )
-    result = LLMService.generate(
-        system_prompt=persona + _CHAT_CONTRACT,
-        user_prompt=user_prompt,
-        provider=state.get("provider", DEFAULT_PROVIDER),
-        temperature=0.5,
-        max_tokens=900,
-    )
-    if result.get("model_used", "").endswith("fallback"):
-        return {"reply": _fallback_reply(state)}
-    return {"reply": result["text"].strip()}
+    try:
+        result = LLMService.generate(
+            system_prompt=persona + _CHAT_CONTRACT,
+            user_prompt=user_prompt,
+            provider=state.get("provider", DEFAULT_PROVIDER),
+            temperature=0.5,
+            max_tokens=900,
+        )
+        if result.get("model_used", "").endswith("fallback"):
+            return {"reply": _fallback_reply(state), "confidence": "High"}
+        return {"reply": result["text"].strip(), "confidence": "High"}
+    except Exception as err:
+        log.warning(f"[Chat/{agent_type}] worker error, generating fallback reply: {err}")
+        return {"reply": _fallback_reply(state), "confidence": "Low"}
 
 
 def _remember(state: ChatState) -> Dict[str, Any]:
@@ -206,14 +219,59 @@ def _remember(state: ChatState) -> Dict[str, Any]:
     return {"memory_verdict": verdict}
 
 
+def _governance_check(confidence: str, message: str, reply: str, risks: str = "") -> Tuple[bool, Optional[str]]:
+    """Human-in-the-loop gate: escalate low-confidence or high-risk chat decisions to the CMO."""
+    scan_text = f"{message} {reply} {risks}".lower()
+    for term in _HIGH_RISK_TERMS:
+        if term in scan_text:
+            return True, f"High-risk factor detected ('{term}') — requires CMO ratification."
+    if (confidence or "").strip().lower() == "low":
+        return True, "Low decision confidence — requires CMO ratification."
+    return False, None
+
+
+def _governance(state: ChatState) -> Dict[str, Any]:
+    """CMO governance gate + decision persistence for chat."""
+    confidence = state.get("confidence", "High")
+    risks = state.get("risks", "")
+    message = state.get("message", "")
+    reply = state.get("reply", "")
+    escalated, reason = _governance_check(confidence, message, reply, risks)
+    record_id = new_id()
+    agent_type = state.get("agent_type", "branding")
+    source = f"langgraph:chat:{agent_type}:{state.get('provider', DEFAULT_PROVIDER)}"
+    try:
+        save_decision(
+            decision_id=record_id,
+            goal_statement=message,
+            selected_option=f"Chat Turn ({agent_type})",
+            confidence=confidence,
+            escalated=escalated,
+            reasoning_source=source,
+            rationale=reply[:500] if reply else f"Chat consultation with {agent_type}",
+            risks=reason or risks or "None identified",
+        )
+    except Exception as db_err:  # pragma: no cover
+        log.warning(f"[DB Warning] Could not persist chat decision: {db_err}")
+    return {
+        "escalated": escalated,
+        "escalation_reason": reason,
+        "decision_id": record_id,
+        "confidence": confidence,
+        "risks": risks,
+    }
+
+
 def _build_chat_graph():
     builder = StateGraph(ChatState)
     builder.add_node("recall", _recall)
     builder.add_node("respond", _respond)
+    builder.add_node("governance", _governance)
     builder.add_node("remember", _remember)
     builder.add_edge(START, "recall")
     builder.add_edge("recall", "respond")
-    builder.add_edge("respond", "remember")
+    builder.add_edge("respond", "governance")
+    builder.add_edge("governance", "remember")
     builder.add_edge("remember", END)
     return builder.compile()
 
@@ -273,6 +331,14 @@ def run_chat(
         },
         # What the turn taught the agent, and why — shown rather than done silently.
         "memory": final.get("memory_verdict", {}),
+        "governance": {
+            "escalated": final.get("escalated", False),
+            "escalation_reason": final.get("escalation_reason"),
+            "decision_id": final.get("decision_id"),
+        },
+        "escalated": final.get("escalated", False),
+        "escalation_reason": final.get("escalation_reason"),
+        "decision_id": final.get("decision_id"),
     }
 
 

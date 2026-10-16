@@ -89,6 +89,30 @@ class ChatTurnSchema(SchemaBase):
     created_at: Optional[str] = Field(default=None, description="ISO-8601 timestamp")
 
 
+class ChatOutputSchema(SchemaBase):
+    """Output contract for single-agent conversational turn."""
+
+    success: bool = Field(default=True, description="Execution success status")
+    agent: str = Field(..., description="Specialist agent identifier")
+    namespace: str = Field(..., description="Agent private namespace")
+    thread_id: str = Field(..., description="Conversation thread identifier")
+    reply: str = Field(..., description="Agent conversational reply text")
+    recall: Dict[str, Any] = Field(
+        default_factory=dict, description="Recalled memories, grounded facts, and graph paths"
+    )
+    memory: Dict[str, Any] = Field(default_factory=dict, description="Memory promotion gate verdict")
+    governance: Optional[Dict[str, Any]] = Field(
+        default=None, description="Governance escalation status and decision audit record"
+    )
+    escalated: bool = Field(default=False, description="Whether escalation was triggered")
+    escalation_reason: Optional[str] = Field(default=None, description="Escalation rationale")
+    decision_id: Optional[str] = Field(default=None, description="Audit decision record ID")
+
+
+# Convenience alias for ChatOutputSchema
+ChatResponseSchema = ChatOutputSchema
+
+
 class TriageOutputSchema(SchemaBase):
     """Output contract for two-agent joint triage synthesis."""
 
@@ -104,6 +128,12 @@ class TriageOutputSchema(SchemaBase):
         default_factory=list, description="Individual specialist perspectives"
     )
     memory: Dict[str, Any] = Field(default_factory=dict, description="Memory promotion gate verdict")
+    governance: Optional[Dict[str, Any]] = Field(
+        default=None, description="Governance escalation status and decision audit record"
+    )
+    escalated: bool = Field(default=False, description="Whether escalation was triggered")
+    escalation_reason: Optional[str] = Field(default=None, description="Escalation rationale")
+    decision_id: Optional[str] = Field(default=None, description="Audit decision record ID")
 
 
 # Convenience alias for TriageOutputSchema

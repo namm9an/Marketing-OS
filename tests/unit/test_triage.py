@@ -138,6 +138,38 @@ class TestTriageBridge(unittest.TestCase):
         with self.assertRaises(ValueError):
             triage.run_triage(["branding", "pr"], "valid question", thread_id="nope")
 
+    # --- universal governance wiring ---
+
+    def test_triage_governance_normal_persists_decision(self):
+        res = triage.run_triage(["branding", "pr"], "Formulate product positioning strategy")
+        self.assertIn("governance", res)
+        self.assertIn("decision_id", res)
+        self.assertFalse(res["governance"]["escalated"])
+        self.assertFalse(res["escalated"])
+        self.assertIsNotNone(res["decision_id"])
+        self.assertEqual(len(res["decision_id"]), 32)
+
+        # Confirm persisted in SQLite decisions table
+        decisions = database.get_all_decisions()
+        self.assertTrue(any(d["id"] == res["decision_id"] for d in decisions))
+
+    def test_triage_governance_escalates_on_high_risk_phrase(self):
+        res = triage.run_triage(["branding", "pr"], "Should we trigger a price war against rivals?")
+        self.assertTrue(res["governance"]["escalated"])
+        self.assertTrue(res["escalated"])
+        self.assertIn("price war", res["governance"]["escalation_reason"])
+        self.assertIsNotNone(res["decision_id"])
+
+    def test_triage_resilience_and_low_confidence_escalation_on_worker_error(self):
+        import unittest.mock
+        with unittest.mock.patch("app.graph.triage.LLMService.generate", side_effect=RuntimeError("Simulated LLM network drop")):
+            res = triage.run_triage(["branding", "pr"], "Joint contingency strategy")
+            self.assertTrue(res["success"])
+            self.assertTrue(res["governance"]["escalated"])
+            self.assertTrue(res["escalated"])
+            self.assertIn("Low", res["governance"]["escalation_reason"])
+            self.assertIsNotNone(res["decision_id"])
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,17 +32,22 @@ namespace algebra sorts two members; an n-way bridge is a different product deci
 import json
 import logging
 import operator
-from typing import Annotated, Any, Dict, List, Optional, TypedDict
+from typing import Annotated, Any, Dict, List, Optional, Tuple, TypedDict
 
 from langgraph.graph import StateGraph, START, END
 
 from app.core.config import settings
+from app.core.primitives import new_id
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER, _strip_code_fence
+from app.db.database import save_decision
 from app.graph.chat import _facts_block, _memory_block, recall_for
 from app.memory import gate, store
 from app.services.llm_service import LLMService
 
 log = logging.getLogger(__name__)
+
+# Risk phrases that force human (CMO) ratification regardless of confidence.
+_HIGH_RISK_TERMS = ("legal", "lawsuit", "compliance breach", "misleading", "defamation", "price war")
 
 _VIEW_CONTRACT = f"""
 You are one of TWO specialists answering the CMO of {settings.TARGET_ORGANIZATION} together. Give YOUR
@@ -85,6 +90,11 @@ class TriageState(TypedDict, total=False):
     views: Annotated[List[Dict[str, Any]], operator.add]  # 2 parallel writers
     merged: Dict[str, Any]
     memory_verdict: Dict[str, Any]
+    confidence: str
+    risks: str
+    escalated: bool
+    escalation_reason: Optional[str]
+    decision_id: str
 
 
 # --- Nodes --------------------------------------------------------------------------
@@ -105,24 +115,31 @@ def _make_view_worker(index: int):
         message = state["message"]
         recall = recall_for(agent_type, message)
 
-        result = LLMService.generate(
-            system_prompt=AGENT_REGISTRY[agent_type]["persona"] + _VIEW_CONTRACT,
-            user_prompt=(
-                f"{_memory_block(recall['memories'])}\n\n"
-                f"{_facts_block(recall['facts'])}\n\n"
-                f"The CMO asks: {message}"
-            ),
-            provider=state.get("provider", DEFAULT_PROVIDER),
-            temperature=0.5,
-            max_tokens=700,
-        )
-        if result.get("model_used", "").endswith("fallback"):
+        try:
+            result = LLMService.generate(
+                system_prompt=AGENT_REGISTRY[agent_type]["persona"] + _VIEW_CONTRACT,
+                user_prompt=(
+                    f"{_memory_block(recall['memories'])}\n\n"
+                    f"{_facts_block(recall['facts'])}\n\n"
+                    f"The CMO asks: {message}"
+                ),
+                provider=state.get("provider", DEFAULT_PROVIDER),
+                temperature=0.5,
+                max_tokens=700,
+            )
+            if result.get("model_used", "").endswith("fallback"):
+                view = (
+                    f"[{agent_type}] working from {len(recall['facts'])} sourced fact(s) and "
+                    f"{len(recall['memories'])} remembered note(s); LLM synthesis unavailable."
+                )
+            else:
+                view = result["text"].strip()
+        except Exception as err:
+            log.warning(f"[Triage/{agent_type}] view worker error, using fallback view: {err}")
             view = (
                 f"[{agent_type}] working from {len(recall['facts'])} sourced fact(s) and "
-                f"{len(recall['memories'])} remembered note(s); LLM synthesis unavailable."
+                f"{len(recall['memories'])} remembered note(s); degraded mode fallback: {err}."
             )
-        else:
-            view = result["text"].strip()
 
         return {"views": [{
             "agent": agent_type,
@@ -178,15 +195,73 @@ def _merge(state: TriageState) -> Dict[str, Any]:
         merged = json.loads(_strip_code_fence(result["text"]))
         if not isinstance(merged.get("answer"), str) or not merged["answer"].strip():
             raise ValueError("merge returned no answer")
-        return {"merged": {
-            "answer": merged["answer"],
-            "agreements": list(merged.get("agreements") or []),
-            "tensions": list(merged.get("tensions") or []),
-            "recommended_action": merged.get("recommended_action", ""),
-        }}
+        return {
+            "merged": {
+                "answer": merged["answer"],
+                "agreements": list(merged.get("agreements") or []),
+                "tensions": list(merged.get("tensions") or []),
+                "recommended_action": merged.get("recommended_action", ""),
+            },
+            "confidence": "High",
+        }
     except Exception as err:
         log.info(f"[Triage] falling back to unmerged attributed views: {err}")
         return {"merged": _fallback_merge(views)}
+
+
+def _governance_check(
+    confidence: str,
+    message: str,
+    merged: Dict[str, Any],
+    views: List[Dict[str, Any]],
+    risks: str = "",
+) -> Tuple[bool, Optional[str]]:
+    """Human-in-the-loop gate: escalate low-confidence or high-risk triage decisions to the CMO."""
+    views_text = " ".join(v.get("view", "") for v in views)
+    tensions_text = " ".join(merged.get("tensions", []))
+    answer_text = merged.get("answer", "")
+    action_text = merged.get("recommended_action", "")
+    scan_text = f"{message} {answer_text} {action_text} {tensions_text} {views_text} {risks}".lower()
+    for term in _HIGH_RISK_TERMS:
+        if term in scan_text:
+            return True, f"High-risk factor detected ('{term}') — requires CMO ratification."
+    if (confidence or "").strip().lower() == "low":
+        return True, "Low decision confidence — requires CMO ratification."
+    return False, None
+
+
+def _governance(state: TriageState) -> Dict[str, Any]:
+    """CMO governance gate + decision persistence for triage bridge."""
+    views = state.get("views", [])
+    confidence = state.get("confidence", "High")
+    if any("degraded mode fallback" in v.get("view", "") for v in views):
+        confidence = "Low"
+    merged = state.get("merged", {})
+    message = state.get("message", "")
+    risks = state.get("risks", "")
+    escalated, reason = _governance_check(confidence, message, merged, views, risks)
+    record_id = new_id()
+    agents_label = "+".join(sorted(state.get("agents", [])))
+    source = f"langgraph:triage:{agents_label}:{state.get('provider', DEFAULT_PROVIDER)}"
+    try:
+        save_decision(
+            decision_id=record_id,
+            goal_statement=message,
+            selected_option=merged.get("recommended_action") or f"Triage Consensus ({agents_label})",
+            confidence=confidence,
+            escalated=escalated,
+            reasoning_source=source,
+            rationale=merged.get("answer", "")[:500] if merged.get("answer") else f"Triage synthesis between {agents_label}",
+            risks=reason or "; ".join(merged.get("tensions", [])) or risks or "None identified",
+        )
+    except Exception as db_err:  # pragma: no cover
+        log.warning(f"[DB Warning] Could not persist triage decision: {db_err}")
+    return {
+        "escalated": escalated,
+        "escalation_reason": reason,
+        "decision_id": record_id,
+        "confidence": confidence,
+    }
 
 
 def _remember(state: TriageState) -> Dict[str, Any]:
@@ -209,6 +284,7 @@ def _build_triage_graph():
     builder = StateGraph(TriageState)
     builder.add_node("prepare", _prepare)
     builder.add_node("merge", _merge)
+    builder.add_node("governance", _governance)
     builder.add_node("remember", _remember)
     builder.add_edge(START, "prepare")
     for index in (0, 1):
@@ -216,7 +292,8 @@ def _build_triage_graph():
         builder.add_node(node, _make_view_worker(index))
         builder.add_edge("prepare", node)   # fan out — both run in one superstep
         builder.add_edge(node, "merge")     # aggregate — merge waits for both
-    builder.add_edge("merge", "remember")
+    builder.add_edge("merge", "governance")
+    builder.add_edge("governance", "remember")
     builder.add_edge("remember", END)
     return builder.compile()
 
@@ -275,6 +352,14 @@ def run_triage(
         # Each agent's own view and its own recall, kept separate and attributed.
         "views": sorted(final.get("views", []), key=lambda v: agents.index(v["agent"])),
         "memory": final.get("memory_verdict", {}),
+        "governance": {
+            "escalated": final.get("escalated", False),
+            "escalation_reason": final.get("escalation_reason"),
+            "decision_id": final.get("decision_id"),
+        },
+        "escalated": final.get("escalated", False),
+        "escalation_reason": final.get("escalation_reason"),
+        "decision_id": final.get("decision_id"),
     }
 
 
