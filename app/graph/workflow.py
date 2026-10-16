@@ -40,13 +40,19 @@ log = logging.getLogger(__name__)
 _HIGH_RISK_TERMS = ("legal", "lawsuit", "compliance breach", "misleading", "defamation", "price war")
 
 
-def _governance_check(confidence: str, risks: str) -> Tuple[bool, Optional[str]]:
+def _governance_check(
+    confidence: str,
+    risks: str = "",
+    goal_statement: str = "",
+    statement: str = "",
+    rationale: str = "",
+) -> Tuple[bool, Optional[str]]:
     """Human-in-the-loop gate: escalate low-confidence or high-risk decisions to the CMO."""
     if (confidence or "").strip().lower() == "low":
         return True, "Low decision confidence — requires CMO ratification."
-    risks_l = (risks or "").lower()
+    scan_text = f"{risks} {goal_statement} {statement} {rationale}".lower()
     for term in _HIGH_RISK_TERMS:
-        if term in risks_l:
+        if term in scan_text:
             return True, f"High-risk factor detected ('{term}') — requires CMO ratification."
     return False, None
 
@@ -77,16 +83,26 @@ def _supervisor(state: SwarmState) -> Dict[str, Any]:
 def _make_worker(agent_type: str):
     """One worker body per registry entry — distinct traced node, shared implementation."""
     def worker(state: SwarmState) -> Dict[str, Any]:
-        parsed = run_agent(
-            agent_type, state["goal_statement"], provider=state.get("provider", DEFAULT_PROVIDER)
-        )
-        return {
-            "selected_option": parsed.get("selected_option"),
-            "positioning_statement": parsed.get("statement"),
-            "rationale": parsed.get("rationale"),
-            "risks": parsed.get("risks"),
-            "confidence": parsed.get("confidence", "High"),
-        }
+        try:
+            parsed = run_agent(
+                agent_type, state["goal_statement"], provider=state.get("provider", DEFAULT_PROVIDER)
+            )
+            return {
+                "selected_option": parsed.get("selected_option"),
+                "positioning_statement": parsed.get("statement"),
+                "rationale": parsed.get("rationale"),
+                "risks": parsed.get("risks"),
+                "confidence": parsed.get("confidence", "High"),
+            }
+        except Exception as err:
+            log.warning(f"[{agent_type}] worker error, generating fallback response: {err}")
+            return {
+                "selected_option": f"{agent_type.replace('_', ' ').title()} Strategy (Fallback)",
+                "positioning_statement": f"Operational briefing fallback for {agent_type} under degraded mode.",
+                "rationale": f"Execution fallback triggered due to: {err}",
+                "risks": "Low-confidence fallback output.",
+                "confidence": "Low",
+            }
     worker.__name__ = f"{agent_type}_agent"
     return worker
 
@@ -95,19 +111,28 @@ def _governance(state: SwarmState) -> Dict[str, Any]:
     """CMO governance gate + decision persistence."""
     confidence = state.get("confidence", "High")
     risks = state.get("risks", "")
-    escalated, reason = _governance_check(confidence, risks)
+    goal_statement = state.get("goal_statement", "")
+    statement = state.get("positioning_statement", "")
+    rationale = state.get("rationale", "")
+    escalated, reason = _governance_check(
+        confidence,
+        risks=risks,
+        goal_statement=goal_statement,
+        statement=statement,
+        rationale=rationale,
+    )
     record_id = new_id()
     source = f"langgraph:{state.get('active_agent')}:{state.get('provider')}"
     try:
         save_decision(
             decision_id=record_id,
-            goal_statement=state["goal_statement"],
+            goal_statement=goal_statement,
             selected_option=state.get("selected_option") or "Strategy Brief",
             confidence=confidence,
             escalated=escalated,
             reasoning_source=source,
-            rationale=state.get("rationale") or "",
-            risks=risks,
+            rationale=rationale,
+            risks=reason or risks or "None identified",
         )
     except Exception as db_err:  # pragma: no cover - persistence is best-effort
         log.warning(f"[DB Warning] Could not persist decision: {db_err}")

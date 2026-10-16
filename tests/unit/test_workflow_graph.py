@@ -41,6 +41,27 @@ class TestWorkflowGraph(unittest.TestCase):
         out = swarm_engine.run("Generic goal", agent_type="does_not_exist")
         self.assertTrue(out["decision"]["reasoning_source"].startswith("langgraph:branding:"))
 
+    def test_routes_to_all_registered_specialists(self):
+        for agent in AGENT_REGISTRY:
+            out = swarm_engine.run(f"Goal for {agent}", agent_type=agent)
+            self.assertTrue(out["success"])
+            self.assertTrue(out["decision"]["reasoning_source"].startswith(f"langgraph:{agent}:"))
+
+    def test_worker_exception_fallback(self):
+        import unittest.mock
+        with unittest.mock.patch("app.graph.workflow.run_agent", side_effect=RuntimeError("Simulated LLM network failure")):
+            out = swarm_engine.run("Test failure handling", agent_type="branding")
+            self.assertTrue(out["success"])
+            self.assertEqual(out["decision"]["confidence"], "Low")
+            self.assertTrue(out["decision"]["escalated"])
+            self.assertIn("Fallback", out["decision"]["selected_option"])
+
+    def test_high_risk_goal_escalates_governance(self):
+        out = swarm_engine.run("Should we start a price war against Nebius?", agent_type="branding")
+        self.assertTrue(out["success"])
+        self.assertTrue(out["decision"]["escalated"])
+        self.assertIn("price war", out["decision"]["escalation_reason"])
+
 
 if __name__ == "__main__":
     unittest.main()
