@@ -1,12 +1,38 @@
+# Dependencies and virtual environments
+.venv/
+venv/
+ENV/
+env/
 node_modules/
 frontend/node_modules/
 frontend/dist/
-app/data/*.db
+
+# Scratch & development directories
+scratch/
+
+# Testing & coverage caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Python cache & compiled files
 __pycache__/
-*.pyc
+*.py[cod]
+*$py.class
+*.so
+
+# Environment files & secrets
 .env
+.env.*
+!.env.example
+
+# Local SQLite databases & runtime data
+app/data/*.db
+*.sqlite3
+*.db
+
+# OS & IDE artifacts
 .DS_Store
 .claude/
-
-.venv/
-venv/
+.idea/
+.vscode/
