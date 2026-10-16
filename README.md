@@ -18,46 +18,40 @@ Marketing OS deploys five specialized AI agents—Branding, PR, Social Media, Pr
 
 ## Architecture
 
-```
-                              +-----------------------+
-                              |     CMO Executive     |
-                              |  (Decision / Triage)  |
-                              +-----------+-----------+
-                                          |
-                                          v
-                              +-----------------------+
-                              |  Universal Governance |
-                              |   (Risk Evaluation)   |
-                              +-----------+-----------+
-                                          |
-            +-----------------------------+-----------------------------+
-            |                             |                             |
-            v                             v                             v
-  +-------------------+         +-------------------+         +-------------------+
-  |  Branding Agent   |         |     PR Agent      |         | Product Marketing |
-  |   (Positioning)   |         | (Comms / Policy)  |         | (Battlecards/PMM) |
-  +---------+---------+         +---------+---------+         +---------+---------+
-            |                             |                             |
-            v                             v                             v
-    [agent:branding]                 [agent:pr]            [agent:product_marketing]
-            \                             |                             /
-             +----------------------------+----------------------------+
-                                          |
-                                          v
-    =============================================================================
-    FOUR-TIER MEMORY HIERARCHY
-    =============================================================================
-    L0    Grounded Corpus   Verified competitor facts carrying explicit source URLs
-    L0.5  Entity Graph      Deterministic relationship edges across organizations
-    L1    Private Memory    Strictly isolated per-agent private memory
-    L2    Joint Triage      Isolated pair namespaces for two-agent collaboration
-    =============================================================================
-                                          |
-                                          v
-    +---------------------------------------------------------------------------+
-    | Promotion Gate: Only user-validated inputs become long-term memory.       |
-    | Blocks model/assistant prose to eliminate self-referential hallucination. |
-    +---------------------------------------------------------------------------+
+```mermaid
+flowchart TD
+    CMO["CMO Executive<br/>(Strategic Inquiries & Triage Routing)"]
+    Gov["Universal Governance<br/>(Risk & Policy Evaluation: Confidence Gate)"]
+    
+    CMO --> Gov
+
+    subgraph Swarm ["Five Specialized Agent Swarm"]
+        direction TB
+        subgraph Col1 ["Narrative & Communications"]
+            direction TB
+            A1["Branding Specialist<br/>Memory: [agent:branding]"]
+            A2["PR & Policy Specialist<br/>Memory: [agent:pr]"]
+            A3["Social Media Specialist<br/>Memory: [agent:social]"]
+        end
+        subgraph Col2 ["Commercial & Field Strategy"]
+            direction TB
+            A4["Product Marketing (PMM)<br/>Memory: [agent:product_marketing]"]
+            A5["Field Events Specialist<br/>Memory: [agent:events]"]
+        end
+    end
+
+    Gov --> Swarm
+    Swarm --> Gate["Promotion Gate<br/>Filter: role == 'user' (Blocks model prose)<br/>Promotes to semantic at hit_count >= 3"]
+
+    subgraph Memory ["Four-Tier Memory Hierarchy"]
+        direction TB
+        L0[("L0: Grounded Corpus (75 facts with source URLs | FTS5 BM25)")]
+        L05[("L0.5: Entity Graph (50 deterministic relationship edges)")]
+        L1[("L1: Private Memory (5 isolated namespaces: agent_type in ns)")]
+        L2[("L2: Joint Triage Memory (Order-stable pair namespaces)")]
+    end
+
+    Gate --> Memory
 ```
 
 ### Core Components
