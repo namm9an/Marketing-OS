@@ -40,9 +40,54 @@ class TestMemoryStore(unittest.TestCase):
         self.assertEqual(store.triage_ns("branding", "pr"), "triage:branding+pr")
 
     def test_invalid_namespace_rejected(self):
-        for bad in ("", "agent:brand ing", "agent:'; DROP TABLE memories;--", "../etc"):
-            with self.assertRaises(ValueError):
+        bad_namespaces = (
+            "",
+            "agent:brand ing",
+            "agent:'; DROP TABLE memories;--",
+            "../etc",
+            "agent:",
+            "triage:",
+            "triage:onlyone",
+            "corpus:",
+            "invalid_prefix",
+            "unknown:something",
+            ":::",
+            "agent:foo:bar",
+        )
+        for bad in bad_namespaces:
+            with self.assertRaises(ValueError, msg=f"Should reject: {bad}"):
                 store.add_memory(bad, "x")
+
+    def test_agent_ns_validation(self):
+        self.assertEqual(store.agent_ns("branding"), "agent:branding")
+        self.assertEqual(store.agent_ns("product_marketing"), "agent:product_marketing")
+        for bad in ("", "bad name", "pr;drop", "pr+social"):
+            with self.assertRaises(ValueError):
+                store.agent_ns(bad)
+
+    def test_triage_ns_validation(self):
+        self.assertEqual(store.triage_ns("pr", "social"), "triage:pr+social")
+        for bad_a, bad_b in (
+            ("", "pr"),
+            ("branding", ""),
+            ("bad name", "pr"),
+            ("pr;drop", "social"),
+            ("branding", "branding"),
+        ):
+            with self.assertRaises(ValueError):
+                store.triage_ns(bad_a, bad_b)
+
+    def test_ns_members_algebra(self):
+        self.assertEqual(store.ns_members("agent:branding"), {"branding"})
+        self.assertEqual(store.ns_members("triage:branding+pr"), {"branding", "pr"})
+        self.assertEqual(store.ns_members(store.CORPUS_NS), set())
+        self.assertEqual(store.ns_members(""), set())
+        self.assertEqual(store.ns_members(None), set())
+
+    def test_readable_namespaces_rejects_invalid_agent(self):
+        for bad in ("", "bad agent", "agent:pr", "pr;drop"):
+            with self.assertRaises(ValueError):
+                store.readable_namespaces(bad)
 
     # --- the isolation rule ---
 
@@ -59,6 +104,31 @@ class TestMemoryStore(unittest.TestCase):
         self.assertNotIn(ns, store.readable_namespaces("pr"))
         self.assertIn(ns, store.readable_namespaces("social"))
         self.assertIn(ns, store.readable_namespaces("product_marketing"))
+
+    def test_exact_match_prevents_substring_collision_all_pairs(self):
+        """Cross-check all active agents against multiple joint triage namespaces."""
+        ns_pm_soc = store.triage_ns("product_marketing", "social")
+        ns_brand_pr = store.triage_ns("branding", "pr")
+        ns_events_pr = store.triage_ns("events", "pr")
+
+        store.add_memory(ns_pm_soc, "pm + social joint note")
+        store.add_memory(ns_brand_pr, "branding + pr joint note")
+        store.add_memory(ns_events_pr, "events + pr joint note")
+
+        pr_scope = store.readable_namespaces("pr")
+        self.assertIn(ns_brand_pr, pr_scope)
+        self.assertIn(ns_events_pr, pr_scope)
+        self.assertNotIn(ns_pm_soc, pr_scope, "pr must NOT see product_marketing joint namespace")
+
+        pm_scope = store.readable_namespaces("product_marketing")
+        self.assertIn(ns_pm_soc, pm_scope)
+        self.assertNotIn(ns_brand_pr, pm_scope)
+        self.assertNotIn(ns_events_pr, pm_scope)
+
+        branding_scope = store.readable_namespaces("branding")
+        self.assertIn(ns_brand_pr, branding_scope)
+        self.assertNotIn(ns_pm_soc, branding_scope)
+        self.assertNotIn(ns_events_pr, branding_scope)
 
     def test_scope_is_shared_plus_own_private_plus_own_joint(self):
         scope = store.readable_namespaces("events")
@@ -106,6 +176,74 @@ class TestMemoryStore(unittest.TestCase):
         store.create_thread(store.agent_ns("events"), "Hackathon Q3")
         self.assertTrue(store.list_threads(store.agent_ns("events")))
         self.assertEqual(store.list_threads(store.agent_ns("pr")), [])
+
+    def test_add_memory_rejects_empty_content(self):
+        ns = store.agent_ns("branding")
+        for bad in ("", "   ", None):
+            with self.assertRaises(ValueError):
+                store.add_memory(ns, bad)
+
+    def test_promote_on_hit_count_validates_threshold(self):
+        for bad in (0, -1, -5):
+            with self.assertRaises(ValueError):
+                store.promote_on_hit_count(threshold=bad)
+
+    def test_search_memories_promotes_only_recalled_memories_in_scope(self):
+        """Cross-namespace isolation: searching branding must NEVER promote episodic memories in pr."""
+        brand_ns = store.agent_ns("branding")
+        pr_ns = store.agent_ns("pr")
+
+        # Memory in PR with hit_count=3 but tier='episodic'
+        pr_mem = store.add_memory(pr_ns, "PR internal press note on latency", tier="episodic")
+        conn = database.get_connection()
+        conn.execute("UPDATE memories SET hit_count = 3 WHERE id = ?", (pr_mem,))
+        conn.commit()
+        conn.close()
+
+        # Memory in Branding with hit_count=2
+        brand_mem = store.add_memory(brand_ns, "Branding flagship campaign on sovereignty", tier="episodic")
+        conn = database.get_connection()
+        conn.execute("UPDATE memories SET hit_count = 2 WHERE id = ?", (brand_mem,))
+        conn.commit()
+        conn.close()
+
+        # Branding searches its own scope — brand_mem will hit 3 and promote
+        results = store.search_memories([brand_ns], "sovereignty")
+        self.assertEqual(len(results), 1)
+        self.assertEqual(results[0]["id"], brand_mem)
+        self.assertEqual(results[0]["tier"], "semantic")
+
+        # Crucial check: pr_mem in PR namespace must REMAIN episodic!
+        pr_rows = store.list_memories(pr_ns)
+        pr_row = next(m for m in pr_rows if m["id"] == pr_mem)
+        self.assertEqual(pr_row["tier"], "episodic", "PR episodic memory must not be mutated by branding search")
+
+    def test_search_memories_does_not_drop_older_memories_beyond_limit_multiplier(self):
+        """Older relevant memories must not be pruned before keyword scoring."""
+        ns = store.agent_ns("branding")
+        # Add target memory first (older)
+        target_id = store.add_memory(ns, "Quantum supercomputer cluster launch target")
+        # Add 55 newer filler memories
+        for i in range(55):
+            store.add_memory(ns, f"Generic positioning update {i}")
+
+        # Search with limit=5; without fix, LIMIT 50 drops target_id
+        hits = store.search_memories([ns], "supercomputer", limit=5)
+        self.assertEqual(len(hits), 1)
+        self.assertEqual(hits[0]["id"], target_id)
+
+    def test_readable_namespaces_discovers_triage_from_threads(self):
+        """Joint namespaces initiated as threads must be discovered even before memories are saved."""
+        triage_tag = store.triage_ns("branding", "pr")
+        store.create_thread(triage_tag, "Joint crisis response")
+
+        scope_branding = store.readable_namespaces("branding")
+        scope_pr = store.readable_namespaces("pr")
+        scope_social = store.readable_namespaces("social")
+
+        self.assertIn(triage_tag, scope_branding)
+        self.assertIn(triage_tag, scope_pr)
+        self.assertNotIn(triage_tag, scope_social)
 
 
 if __name__ == "__main__":

@@ -212,6 +212,25 @@ class TestMemoryGraph(unittest.TestCase):
         self.assertEqual(len(rival), 1)
         self.assertEqual(rival[0]["shared"], ["H100"])
 
+    def test_traversal_cycle_does_not_false_positive_on_substring_nodes(self):
+        """Node 'H100' must not be dropped as a false cycle when following 'H1000'."""
+        conn = database.get_connection()
+        # Insert edges where one node name is a substring of another
+        conn.execute(
+            "INSERT INTO edges (id, src, rel, dst, namespace) VALUES (?, ?, ?, ?, ?)",
+            (new_id(), "SeedCluster", "links", "H1000", graph.CORPUS_NS),
+        )
+        conn.execute(
+            "INSERT INTO edges (id, src, rel, dst, namespace) VALUES (?, ?, ?, ?, ?)",
+            (new_id(), "H1000", "links", "H100", graph.CORPUS_NS),
+        )
+        conn.commit()
+        conn.close()
+
+        reached = {e["node"] for e in graph.traverse([graph.CORPUS_NS], ["SeedCluster"], depth=2)}
+        self.assertIn("H1000", reached)
+        self.assertIn("H100", reached, "Flanked instr check must not falsely flag H100 as a cycle")
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -32,32 +32,43 @@ from app.db.database import _keywords as keywords  # same tokenizer the corpus r
 CORPUS_NS = "corpus:global"
 TIERS = ("episodic", "semantic")
 
-# design_doc.md §9.4. Anchored, so a namespace can never carry SQL/path characters.
-_NAMESPACE_RE = re.compile(r"^[a-zA-Z0-9_:+-]+$")
+# design_doc.md §9.4. Strict namespace schema: corpus:<name>, agent:<name>, or triage:<a_name>+<b_name>
+_NAMESPACE_RE = re.compile(
+    r"^(corpus:[a-zA-Z0-9_-]+|agent:[a-zA-Z0-9_-]+|triage:[a-zA-Z0-9_-]+(?:\+[a-zA-Z0-9_-]+)+)$"
+)
 
 
 # --- Namespace algebra -------------------------------------------------------------
 
 def agent_ns(agent_type: str) -> str:
+    if not agent_type or not re.match(r"^[a-zA-Z0-9_-]+$", agent_type):
+        raise ValueError(f"invalid agent_type: {agent_type!r}")
     return f"agent:{agent_type}"
 
 
 def triage_ns(a: str, b: str) -> str:
     """Members are sorted so the pair tag is stable whichever order they were named."""
+    if not a or not b or not re.match(r"^[a-zA-Z0-9_-]+$", a) or not re.match(r"^[a-zA-Z0-9_-]+$", b):
+        raise ValueError(f"invalid agent names in triage_ns: {a!r}, {b!r}")
+    if a == b:
+        raise ValueError(f"triage requires two distinct agents, got {a!r} and {b!r}")
     return "triage:" + "+".join(sorted([a, b]))
 
 
 def ns_members(namespace: str) -> set:
     """Which agents own this namespace. Empty for the shared corpus."""
+    if not namespace or not isinstance(namespace, str):
+        return set()
     if namespace.startswith("agent:"):
-        return {namespace[len("agent:"):]}
+        member = namespace[len("agent:"):]
+        return {member} if member else set()
     if namespace.startswith("triage:"):
-        return set(namespace[len("triage:"):].split("+"))
+        return {m for m in namespace[len("triage:"):].split("+") if m}
     return set()
 
 
 def validate_ns(namespace: str) -> str:
-    if not namespace or not _NAMESPACE_RE.match(namespace):
+    if not namespace or not isinstance(namespace, str) or not _NAMESPACE_RE.match(namespace):
         raise ValueError(f"invalid namespace: {namespace!r}")
     return namespace
 
@@ -69,17 +80,30 @@ def readable_namespaces(agent_type: str) -> List[str]:
     `LIKE '%pr%'` would hand the PR agent `triage:product_marketing+social`, which is
     precisely the leak /triage exists to prevent.
     """
+    if not agent_type or not re.match(r"^[a-zA-Z0-9_-]+$", agent_type):
+        raise ValueError(f"invalid agent_type: {agent_type!r}")
     own = agent_ns(agent_type)
     validate_ns(own)
     init_db()
     conn = get_connection()
     try:
-        rows = conn.execute(
+        mem_rows = conn.execute(
             "SELECT DISTINCT namespace FROM memories WHERE namespace LIKE 'triage:%'"
         ).fetchall()
+        edge_rows = conn.execute(
+            "SELECT DISTINCT namespace FROM edges WHERE namespace LIKE 'triage:%'"
+        ).fetchall()
+        thread_rows = conn.execute(
+            "SELECT DISTINCT namespace FROM threads WHERE namespace LIKE 'triage:%'"
+        ).fetchall()
+        all_triage = (
+            {r["namespace"] for r in mem_rows}
+            | {r["namespace"] for r in edge_rows}
+            | {r["namespace"] for r in thread_rows}
+        )
     finally:
         conn.close()
-    joint = [r["namespace"] for r in rows if agent_type in ns_members(r["namespace"])]
+    joint = [ns for ns in all_triage if agent_type in ns_members(ns)]
     return [CORPUS_NS, own] + sorted(joint)
 
 
@@ -96,6 +120,8 @@ def add_memory(
     validate_ns(namespace)
     if tier not in TIERS:
         raise ValueError(f"invalid tier: {tier!r}")
+    if not content or not isinstance(content, str) or not content.strip():
+        raise ValueError("memory content must be non-empty text")
     init_db()
     mem_id = new_id()
     conn = get_connection()
@@ -106,7 +132,7 @@ def add_memory(
                 (id, namespace, tier, content, provenance, confidence, source_turn_id)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (mem_id, namespace, tier, content, provenance, confidence, source_turn_id),
+            (mem_id, namespace, tier, content.strip(), provenance, confidence, source_turn_id),
         )
         conn.commit()
     finally:
@@ -129,29 +155,76 @@ def search_memories(namespaces: List[str], query: str = "", limit: int = 5) -> L
     placeholders = ",".join("?" * len(namespaces))
     conn = get_connection()
     try:
-        rows = [
-            dict(r)
-            for r in conn.execute(
-                f"""SELECT * FROM memories WHERE namespace IN ({placeholders})
-                    ORDER BY created_at DESC LIMIT ?""",
-                (*namespaces, limit * 10),
-            ).fetchall()
-        ]
         if terms:
+            rows = [
+                dict(r)
+                for r in conn.execute(
+                    f"SELECT * FROM memories WHERE namespace IN ({placeholders})",
+                    namespaces,
+                ).fetchall()
+            ]
             def score(row: Dict[str, Any]) -> tuple:
                 blob = row["content"].lower()
                 return (sum(1 for t in terms if t in blob), row["tier"] == "semantic")
             rows = [r for r in rows if score(r)[0] > 0]
             rows.sort(key=score, reverse=True)
+        else:
+            rows = [
+                dict(r)
+                for r in conn.execute(
+                    f"""SELECT * FROM memories WHERE namespace IN ({placeholders})
+                        ORDER BY created_at DESC LIMIT ?""",
+                    (*namespaces, limit),
+                ).fetchall()
+            ]
         rows = rows[:limit]
 
         if rows:  # recall is itself the usage signal the decay/promotion logic reads
+            row_ids = [r["id"] for r in rows]
+            id_placeholders = ",".join("?" * len(row_ids))
             conn.executemany(
                 "UPDATE memories SET hit_count = hit_count + 1, last_used_at = datetime('now') WHERE id = ?",
-                [(r["id"],) for r in rows],
+                [(rid,) for rid in row_ids],
+            )
+            # Automatic promotion heuristic: episodic -> semantic when hit_count >= 3
+            # Strictly scoped to recalled rows in authorized namespaces
+            conn.execute(
+                f"UPDATE memories SET tier = 'semantic' WHERE tier = 'episodic' AND hit_count >= 3 AND id IN ({id_placeholders})",
+                row_ids,
             )
             conn.commit()
+            for r in rows:
+                r["hit_count"] = r.get("hit_count", 0) + 1
+                if r.get("tier") == "episodic" and r["hit_count"] >= 3:
+                    r["tier"] = "semantic"
         return rows
+    finally:
+        conn.close()
+
+
+def promote_on_hit_count(threshold: int = 3, namespace: Optional[str] = None) -> int:
+    """Promotes episodic memories to semantic tier when hit_count >= threshold.
+    Returns the number of memories promoted.
+    """
+    if threshold < 1:
+        raise ValueError(f"threshold must be >= 1, got {threshold}")
+    init_db()
+    conn = get_connection()
+    try:
+        if namespace:
+            validate_ns(namespace)
+            cursor = conn.execute(
+                "UPDATE memories SET tier = 'semantic' WHERE tier = 'episodic' AND hit_count >= ? AND namespace = ?",
+                (threshold, namespace),
+            )
+        else:
+            cursor = conn.execute(
+                "UPDATE memories SET tier = 'semantic' WHERE tier = 'episodic' AND hit_count >= ?",
+                (threshold,),
+            )
+        count = cursor.rowcount
+        conn.commit()
+        return count
     finally:
         conn.close()
 

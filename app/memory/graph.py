@@ -178,7 +178,7 @@ WITH RECURSIVE
       UNION ALL
       SELECT s.b, w.depth + 1, w.path || ' > ' || s.b
       FROM walk w JOIN scoped s ON s.a = w.node
-      WHERE w.depth < ? AND instr(w.path, s.b) = 0
+      WHERE w.depth < ? AND instr(' > ' || w.path || ' > ', ' > ' || s.b || ' > ') = 0
   )
 SELECT node, MIN(depth) AS depth, path FROM walk WHERE depth > 0 GROUP BY node
 """
