@@ -12,7 +12,7 @@ from app.graph.chat import run_chat
 from app.graph.triage import run_triage
 from app.graph.digest import run_digest, build_network
 from app.memory import store
-from app.db.database import get_all_decisions, init_db
+from app.db.database import get_all_decisions, init_db, get_connection
 from app.memory.graph import rebuild_corpus_graph
 
 init_db()
@@ -22,6 +22,7 @@ rebuild_corpus_graph()
 
 FRONTEND_DIST = settings.BASE_DIR / "frontend" / "dist"
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path="")
+app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max payload limit
 CORS(app, supports_credentials=True)
 
 # ponytail: single shared session token; swap for real per-user sessions if this ever
@@ -71,7 +72,19 @@ def api_logout():
 
 @app.route("/api/health", methods=["GET"])
 def health():
-    return jsonify({"status": "healthy", "version": settings.VERSION, "project": settings.PROJECT_NAME})
+    db_status = "connected"
+    try:
+        conn = get_connection()
+        conn.execute("SELECT 1")
+        conn.close()
+    except Exception as e:
+        db_status = f"unhealthy: {e}"
+    return jsonify({
+        "status": "healthy" if db_status == "connected" else "degraded",
+        "database": db_status,
+        "version": settings.VERSION,
+        "project": settings.PROJECT_NAME
+    })
 
 
 @app.route("/api/run", methods=["POST"])
@@ -93,10 +106,14 @@ def api_run():
 
 @app.route("/api/history", methods=["GET"])
 def api_history():
-    # Return the raw decision rows — their columns (id, goal_statement, selected_option,
-    # confidence, reasoning_source, rationale, risks, created_at) are exactly the flat
-    # fields the frontend history view reads.
-    return jsonify({"success": True, "history": get_all_decisions()})
+    # Return the raw decision rows — with optional limit/offset pagination support.
+    # Columns (id, goal_statement, selected_option, confidence, reasoning_source, rationale,
+    # risks, created_at) are exactly the flat fields the frontend history view reads.
+    limit_arg = request.args.get("limit")
+    offset_arg = request.args.get("offset", "0")
+    limit = int(limit_arg) if limit_arg and limit_arg.isdigit() else None
+    offset = int(offset_arg) if offset_arg and offset_arg.isdigit() else 0
+    return jsonify({"success": True, "history": get_all_decisions(limit=limit, offset=offset)})
 
 
 @app.route("/api/export/markdown", methods=["POST"])

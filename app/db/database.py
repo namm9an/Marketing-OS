@@ -110,6 +110,7 @@ CREATE TABLE IF NOT EXISTS decisions (
     risks TEXT NOT NULL,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_decisions_created ON decisions(created_at DESC);
 
 CREATE TABLE IF NOT EXISTS knowledge_units (
     id TEXT PRIMARY KEY,
@@ -121,6 +122,7 @@ CREATE TABLE IF NOT EXISTS knowledge_units (
     enriched_by TEXT NOT NULL DEFAULT 'system',
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+CREATE INDEX IF NOT EXISTS idx_ku_org_class ON knowledge_units(organization, knowledge_class);
 
 CREATE VIRTUAL TABLE IF NOT EXISTS knowledge_units_fts USING fts5(
     id UNINDEXED,
@@ -263,11 +265,17 @@ def save_decision(
     finally:
         conn.close()
 
-def get_all_decisions() -> List[Dict[str, Any]]:
+def get_all_decisions(limit: Optional[int] = None, offset: int = 0) -> List[Dict[str, Any]]:
     init_db()
     conn = get_connection()
     try:
-        cursor = conn.execute("SELECT * FROM decisions ORDER BY created_at DESC")
+        if limit is not None:
+            cursor = conn.execute(
+                "SELECT * FROM decisions ORDER BY created_at DESC LIMIT ? OFFSET ?",
+                (limit, offset)
+            )
+        else:
+            cursor = conn.execute("SELECT * FROM decisions ORDER BY created_at DESC")
         rows = cursor.fetchall()
         return [dict(row) for row in rows]
     finally:
