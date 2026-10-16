@@ -71,16 +71,25 @@ def test_overall_retrieval_does_not_regress():
 def test_paraphrase_gap_is_measured_not_assumed():
     """§9.16 gates M9.10 on Recall@5 < 0.85. This records that the trigger has fired.
 
-    Deliberately asserts the gap EXISTS. When hybrid retrieval lands and paraphrase recall
-    rises past the lexical floor, this test should fail and be rewritten — that failure is
-    the signal the upgrade worked.
+    Deliberately asserts the gap EXISTS in baseline unexpanded retrieval.
     """
-    result = evaluate()
+    result = evaluate(expand_taxonomy=False)
     paraphrase, lexical = result["paraphrase"], result["lexical"]
     assert paraphrase["recall@5"] < lexical["recall@5"], (
-        "paraphrase now matches lexical — rewrite this test, the M9.10 upgrade landed"
+        "paraphrase now matches lexical — baseline should exhibit gap"
     )
     assert result["overall"]["recall@5"] < 0.85, "M9.10 trigger condition no longer holds"
+
+
+def test_taxonomy_expansion_achieves_paraphrase_benchmark():
+    """Milestone 5 / Commit 17 verification:
+    With deterministic taxonomy expansion enabled, paraphrase Recall@5 >= 0.85
+    and overall Recall@5 >= 0.88.
+    """
+    result = evaluate(expand_taxonomy=True)
+    assert result["paraphrase"]["recall@5"] >= 0.85, f"Paraphrase Recall@5 below 0.85: {result['paraphrase']}"
+    assert result["overall"]["recall@5"] >= 0.88, f"Overall Recall@5 below 0.88: {result['overall']}"
+    assert result["paraphrase"]["zero_hit"] == 0, f"Paraphrase queries have zero-hit failures: {result['paraphrase']}"
 
 
 # --- Groundedness -------------------------------------------------------------------

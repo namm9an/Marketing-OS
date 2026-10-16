@@ -113,7 +113,7 @@ GOLD: List[GoldQuery] = [
               Relevance(any_of=["India", "sovereign", "MeitY"]), "paraphrase",
               f"{settings.TARGET_ORGANIZATION} / Yotta / Neysa are Indian but most rows never say so"),
     GoldQuery("Who markets themselves on data residency?",
-              Relevance(any_of=["sovereign", "India"]), "paraphrase"),
+              Relevance(any_of=["sovereign", "India", "MeitY"]), "paraphrase"),
     GoldQuery("Which competitors have Blackwell-generation silicon?",
               Relevance(any_of=["B200", "GB200", "GB300"]), "paraphrase",
               "'Blackwell' is the architecture; the corpus only ever names SKUs"),

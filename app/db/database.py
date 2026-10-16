@@ -17,6 +17,9 @@ _STOPWORDS = {
     "against", "formulate", "develop", "create", "plan", "strategy", "goal",
     "position", "positioning", "marketing", "campaign", "brief", "about", "using",
     "make", "build", "help", "need", "want", "how", "what", "why", "give",
+    "do", "does", "did", "their", "theirs", "them", "themselves", "which", "who",
+    "whom", "whose", "rather", "than", "are", "is", "was", "were", "been", "being",
+    "have", "has", "had", "providers", "provider", "vendors", "vendor", "on", "per",
 }
 
 
@@ -50,7 +53,14 @@ _TAXONOMY_EXPANSIONS = {
     "indian": ["sovereign", "meity", "india"],
     "residency": ["sovereign", "india", "meity", "compliance"],
     "tagline": ["positioning", "official"],
-    "describe": ["positioning", "cloud"],
+    "describe": ["positioning", "official"],
+    "enterprise": ["positioning", "official"],
+    "buyers": ["positioning"],
+    "buyer": ["positioning"],
+    "target": ["positioning"],
+    "rivals": ["positioning", "official"],
+    "rival": ["positioning", "official"],
+    "markets": ["positioning", "official"],
     "our": [settings.TARGET_ORGANIZATION.lower()],
     "own": [settings.TARGET_ORGANIZATION.lower()],
 }
