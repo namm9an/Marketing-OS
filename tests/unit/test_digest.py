@@ -82,6 +82,25 @@ class TestDigestGraph(unittest.TestCase):
             self.assertNotIn("E2E", c["organization"])
             self.assertTrue(c["source_url"])
 
+    def test_digest_worker_exception_resilience(self):
+        import unittest.mock
+        import app.graph.digest as digest_mod
+
+        orig_run = digest_mod.run_agent
+
+        def fail_branding(agent_type, *args, **kwargs):
+            if agent_type == "branding":
+                raise RuntimeError("Simulated specialist worker timeout/failure")
+            return orig_run(agent_type, *args, **kwargs)
+
+        with unittest.mock.patch("app.graph.digest.run_agent", side_effect=fail_branding):
+            out = run_digest()
+            self.assertTrue(out["success"])
+            self.assertEqual(len(out["agent_briefs"]), len(ACTIVE_AGENTS))
+            branding_brief = next(b for b in out["agent_briefs"] if b["agent"] == "branding")
+            self.assertEqual(branding_brief["confidence"], "Low")
+            self.assertIn("Fallback", branding_brief["headline"])
+
 
 class TestNetworkMap(unittest.TestCase):
     def setUp(self):
@@ -94,11 +113,28 @@ class TestNetworkMap(unittest.TestCase):
         competitors = [n for n in net["nodes"] if n["group"] == "competitor"]
         self.assertEqual(len(hubs), 1)
         self.assertEqual(hubs[0]["id"], settings.TARGET_ORGANIZATION)
+        self.assertEqual(net.get("center_name"), settings.TARGET_ORGANIZATION)
         self.assertTrue(competitors)
         hub_links = [l for l in net["links"] if l["kind"] == "hub"]
         self.assertEqual(len(hub_links), len(competitors), "one hub edge per rival")
         for n in competitors:
             self.assertEqual(n["fact_count"], len(n["citations"]))
+
+    def test_dynamic_center_node_parameterization(self):
+        orig_org = settings.TARGET_ORGANIZATION
+        try:
+            settings.TARGET_ORGANIZATION = "Olympus Sovereign Cloud"
+            net = build_network()
+            self.assertEqual(net["center_name"], "Olympus Sovereign Cloud")
+            hub = next(n for n in net["nodes"] if n["group"] == "us")
+            self.assertEqual(hub["id"], "Olympus Sovereign Cloud")
+            self.assertEqual(hub["name"], "Olympus Sovereign Cloud")
+            self.assertEqual(hub["label"], "Olympus Sovereign Cloud")
+            hub_links = [l for l in net["links"] if l["kind"] == "hub"]
+            for link in hub_links:
+                self.assertEqual(link["source"], "Olympus Sovereign Cloud")
+        finally:
+            settings.TARGET_ORGANIZATION = orig_org
 
     def test_rival_links_are_derived_and_every_endpoint_is_a_real_node(self):
         """M9.4 added rival<->rival edges. They must be evidenced (a named shared SKU)

@@ -64,7 +64,7 @@ class DigestState(TypedDict, total=False):
 # --- Nodes -----------------------------------------------------------------------
 
 def _load_facts(state: DigestState) -> Dict[str, Any]:
-    """Competitor Movement Filter — rival facts only, internal E2E noise excluded."""
+    """Competitor Movement Filter — rival facts only, internal enterprise noise excluded."""
     facts = get_competitor_facts()
     log.info(f"[Digest] loaded {len(facts)} grounded competitor facts")
     return {"facts": facts}
@@ -79,22 +79,35 @@ def _make_digest_worker(agent_type: str):
             f"{lens}. Focus exclusively on rival movements — do not describe {settings.TARGET_ORGANIZATION}'s own "
             f"activity. Be specific and name the competitors you are drawing from."
         )
-        parsed = run_agent(
-            agent_type,
-            goal,
-            provider=state.get("provider", DEFAULT_PROVIDER),
-            extra_context=_facts_block(state.get("facts", [])),
-        )
-        return {
-            "briefs": [{
-                "agent": agent_type,
-                "headline": parsed.get("selected_option", ""),
-                "finding": parsed.get("statement", ""),
-                "rationale": parsed.get("rationale", ""),
-                "risks": parsed.get("risks", ""),
-                "confidence": parsed.get("confidence", "High"),
-            }]
-        }
+        try:
+            parsed = run_agent(
+                agent_type,
+                goal,
+                provider=state.get("provider", DEFAULT_PROVIDER),
+                extra_context=_facts_block(state.get("facts", [])),
+            )
+            return {
+                "briefs": [{
+                    "agent": agent_type,
+                    "headline": parsed.get("selected_option", ""),
+                    "finding": parsed.get("statement", ""),
+                    "rationale": parsed.get("rationale", ""),
+                    "risks": parsed.get("risks", ""),
+                    "confidence": parsed.get("confidence", "High"),
+                }]
+            }
+        except Exception as err:
+            log.warning(f"[Digest/{agent_type}] worker error, generating fallback brief: {err}")
+            return {
+                "briefs": [{
+                    "agent": agent_type,
+                    "headline": f"{agent_type.replace('_', ' ').title()} Movement Signal (Fallback)",
+                    "finding": f"Operational briefing fallback for {agent_type} due to execution exception.",
+                    "rationale": f"Competitor evidence processed under degraded mode: {err}",
+                    "risks": "Low-confidence fallback output.",
+                    "confidence": "Low",
+                }]
+            }
     worker.__name__ = f"digest_{agent_type}"
     return worker
 
@@ -188,7 +201,7 @@ _DIGEST_GRAPH = _build_digest_graph()
 # --- Network map (pure DB projection — no LLM, therefore no hallucination) ----------
 
 def build_network() -> Dict[str, Any]:
-    """Node/link map for the CMO's interactive graph: E2E hub, one node per rival.
+    """Node/link map for the CMO's interactive graph: enterprise hub, one node per rival.
 
     Edge weight = number of grounded facts we hold on that rival. Each node carries its
     own citations so a click can show rate cards and sources.
@@ -204,8 +217,11 @@ def build_network() -> Dict[str, Any]:
     for f in facts:
         grouped[f["organization"]].append(f)
 
+    target_org = settings.TARGET_ORGANIZATION
     nodes = [{
-        "id": settings.TARGET_ORGANIZATION,
+        "id": target_org,
+        "name": target_org,
+        "label": target_org,
         "group": "us",
         "fact_count": 0,
         "citations": [],
@@ -226,7 +242,7 @@ def build_network() -> Dict[str, Any]:
                 for f in org_facts
             ],
         })
-        links.append({"source": settings.TARGET_ORGANIZATION, "target": org, "weight": len(org_facts),
+        links.append({"source": target_org, "target": org, "weight": len(org_facts),
                       "kind": "hub"})
 
     known = {n["id"] for n in nodes}
@@ -235,7 +251,12 @@ def build_network() -> Dict[str, Any]:
         for link in shared_sku_links()
         if link["source"] in known and link["target"] in known
     ]
-    return {"nodes": nodes, "links": links, "total_facts": len(facts)}
+    return {
+        "nodes": nodes,
+        "links": links,
+        "total_facts": len(facts),
+        "center_name": target_org,
+    }
 
 
 def run_digest(provider: str = DEFAULT_PROVIDER) -> Dict[str, Any]:

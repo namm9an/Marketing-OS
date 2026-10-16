@@ -151,3 +151,65 @@
 - **Promotion Integrity:**
   - Verbatim restatement: promotes in-place, increments `hit_count`, 0 duplicates.
   - Retrieval repetition: `hit_count >= 3` triggers automatic transition from `episodic` to `semantic` scoped strictly to recalled rows.
+
+---
+
+## Milestone 4: LangGraph Deterministic State Machine & Universal Governance
+
+### Status: Complete | Ready for Parent Architect Review
+
+### 1. Systems Accomplishments & Scope
+- **Full 5-Agent Specialist Swarm Activation:**
+  - Activated all five specialist agents (`branding`, `pr`, `social`, `product_marketing`, `events`) across `ACTIVE_AGENTS` and `AGENT_REGISTRY` in `app/agents/base.py`.
+  - Supervisor routing in `app/graph/workflow.py` normalized to dispatch requests cleanly across all 5 specialist nodes in the state graph.
+  - Implemented worker-level exception handling in `_make_worker` in `workflow.py`, returning structured fallback strategy briefs (`confidence="Low"`) under degraded execution rather than crashing the StateGraph.
+- **Universal Governance Node Across Chat & Triage Graphs:**
+  - Hardened state graph execution across all three pathways (`workflow.py`, `chat.py`, `triage.py`) by embedding a first-class `governance` node prior to memory persistence:
+    - Chat topology: `START -> recall -> respond -> governance -> remember -> END`.
+    - Triage topology: `START -> prepare -> { view_0 || view_1 } -> merge -> governance -> remember -> END`.
+  - Implemented `_governance_check` evaluating confidence gates (`confidence.lower() == "low"`) and high-risk regulatory/legal lexicon `("legal", "lawsuit", "compliance breach", "misleading", "defamation", "price war")` across prompts, model responses, and specialist views.
+  - Recorded 100% auditable decisions with 128-bit hex UUID identifiers into SQLite WAL `decisions` table via `save_decision()`.
+  - Enriched both `ChatState` and `TriageState` to return structured governance metadata (`governance: {"escalated": bool, "escalation_reason": str | None, "decision_id": str}`), as well as direct top-level escalation attributes.
+- **Resilient 5-Agent Parallel Digest Fan-Out with Fallback Merge:**
+  - Extended `_build_digest_graph` in `app/graph/digest.py` to concurrently fan out across all 5 active specialist workers (`digest_branding`, `digest_pr`, `digest_social`, `digest_product_marketing`, `digest_events`).
+  - Wrapped `_make_digest_worker` execution in `try / except` blocks with structured fallback briefs (`confidence="Low"`, `headline="... Movement Signal (Fallback)"`), ensuring worker timeouts or LLM failures degrade gracefully without interrupting synthesis.
+  - Parameterized radial network center node in `build_network()` to `settings.TARGET_ORGANIZATION`, setting `center_name`, `name`, `label`, and hub links dynamically.
+- **Comprehensive Unit & Integration Test Expansion:**
+  - Expanded `tests/unit/test_workflow_graph.py` to 5 tests covering full 5-agent routing and worker exception fallback simulation.
+  - Expanded `tests/unit/test_chat.py` to 12 tests validating decision persistence, non-escalation on normal turns, and immediate escalation on high-risk queries.
+  - Expanded `tests/unit/test_triage.py` to 12 tests confirming joint decision persistence and price war risk escalation.
+  - Expanded `tests/unit/test_digest.py` to 10 tests confirming 5-agent fan-out, worker failure resilience, and dynamic center node parameterization.
+
+### 2. Granular Commits
+- Commit 14: `3eb700f` `feat(agents): activate full 5-agent parallel specialist swarm in supervisor registry`
+- Commit 15: `049c6fa` `fix(graph): wire universal governance node across chat and triage execution graphs`
+- Commit 16: `feat(digest): implement resilient 5-agent parallel digest fan-out with fallback merge`
+
+### 3. Files Modified
+- `app/agents/base.py`
+- `app/graph/workflow.py`
+- `app/graph/chat.py`
+- `app/graph/triage.py`
+- `app/graph/digest.py`
+- `app/core/schemas.py`
+- `tests/unit/test_workflow_graph.py`
+- `tests/unit/test_chat.py`
+- `tests/unit/test_triage.py`
+- `tests/unit/test_digest.py`
+- `tests/unit/test_schemas.py`
+- `docs/MILESTONE_LOG.md`
+
+### 4. Verification Metrics & System State
+- **Full Test Suite:** **162 passed in 16.73s** (100% green across unit and integration test suites, up from 150).
+- **Swarm Specialist Coverage:**
+  - Active Specialist Agents: **5 / 5** (`branding`, `pr`, `social`, `product_marketing`, `events`).
+  - Supervisor Graph Nodes: 7 nodes (`START`, `supervisor`, 5 workers, `governance`, `END`).
+  - Weekly Digest Fan-Out: 5 concurrent worker nodes producing 5 attributed domain briefs.
+- **Universal Governance Audit:**
+  - Supervisor Workflow Pathway: Evaluated and logged to `decisions` table with audit UUID. High-risk terms in goals, positioning, and risks escalate (`escalated=True`).
+  - Chat Pathway: Evaluated and logged to `decisions` table with audit UUID. High-risk terms (`lawsuit`) escalate (`escalated=True`), and worker exceptions degrade with `confidence="Low"` and escalate.
+  - Triage Pathway: Evaluated and logged to `decisions` table with audit UUID. Price war terms escalate (`escalated=True`), and view worker exceptions degrade with `confidence="Low"` and escalate.
+- **Resilience Guarantees:**
+  - Workflow worker failure: degrades to fallback brief with `confidence="Low"`, triggers CMO ratification.
+  - Digest worker failure: degrades to fallback movement signal, synthesis succeeds without crash.
+  - Chat & Triage view worker failure: degrades to structured fallback view with `confidence="Low"`, triggers CMO ratification without throwing unhandled exceptions.
