@@ -96,3 +96,58 @@
 - **Retrieval Engine Performance:**
   - Engine-level FTS5 BM25 Baseline (`python -m app.eval.retrieval`): Lexical Recall@5 = **0.967**, MRR = **1.000**, Zero-hit = **0**; Overall Recall@5 = **0.726**.
   - Taxonomy Expansion Enabled (`python -m app.eval.retrieval --expand-taxonomy`): Overall Recall@5 = **0.905**, Paraphrase Recall@5 = **0.792**, Zero-hit = **0**.
+
+---
+
+## Milestone 3: Memory Isolation Engine (L0–L2) & Promotion Gate
+
+### Status: Complete | Ready for Parent Architect Review
+
+### 1. Systems Accomplishments & Scope
+- **Strict Namespace Schema & Exact-Match Algebra:**
+  - Hardened `_NAMESPACE_RE` to enforce strict anchored format `^(corpus:[a-zA-Z0-9_-]+|agent:[a-zA-Z0-9_-]+|triage:[a-zA-Z0-9_-]+(?:\+[a-zA-Z0-9_-]+)+)$` across all memory entry points.
+  - Added strict parameter validation to `agent_ns()` and `triage_ns()`, rejecting whitespace, SQL injection payloads, and self-triage attempts (`a == b`).
+  - Enforced exact set membership algebra in `ns_members()` and `readable_namespaces(agent_type)`, querying `memories`, `edges`, and `threads` tables and ensuring agent membership is evaluated via `agent_type in ns_members(ns)` (eradicating the substring collision vulnerability where `pr` collided with `product_marketing`).
+  - Added non-empty content validation in `add_memory()`, preventing blank memory row insertion.
+  - Resolved premature `LIMIT` truncation in `search_memories()` so that older relevant memories beyond `limit * 10` are not pruned prior to keyword scoring.
+  - Scoped automatic promotion in `search_memories()` strictly to recalled memory IDs within authorized namespaces (`WHERE id IN ({id_placeholders})`), preventing cross-namespace memory tier mutation.
+  - Enforced delimiter-flanked cycle detection in recursive CTE traversal (`graph.py`) to eliminate false-positive cycle pruning on substring node names.
+- **Promotion Gate Hardening & Contamination Defense:**
+  - Enforced strict user-turn invariant in `app/memory/gate.py`: `role == "user"` is mandatory for admission. Model prose, agent outputs, and assistant messages are unconditionally blocked, eliminating temporal memory contamination.
+  - Added upfront namespace validation in `gate.admit()`, immediately rejecting invalid namespace strings with `ValueError` regardless of turn role or content.
+  - Hardened deterministic regex intent classifiers across all three admitted categories:
+    - `correction`: `r"(^no\b|\b(don'?t|do not|never|stop|avoid|wrong|incorrect|instead of|rather than|not\s+[^,.!?\n]+\s*,?\s*but)\b)"` (high confidence, handles commas and multi-word phrases).
+    - `decision`: `r"\b(approved?|ratified?|signed? off|go with|going with|we(?:'ve| have) decided|decided|decided on|ship it|lock\s+(?:it|this|that\s+)?in|lock in)\b"` (high confidence, handles phrase variants).
+    - `preference`: `r"\b(prefer(?:s|ence)?|always|from now on|going forward|remember that|make sure|keep it|our (?:tone|voice|style|brand|line)|we (?:want|like|need)|tone should|positioning should|developer-first)\b"` (medium confidence, handles inflections like `prefers`).
+- **Episodic-to-Semantic Promotion Heuristics:**
+  - Embedded automatic episodic-to-semantic promotion in `store.search_memories()`: when an episodic memory is retrieved and reaches `hit_count >= 3`, SQLite promotes it directly to `semantic`. Returned row dicts reflect the updated tier and counter.
+  - Implemented `store.promote_on_hit_count(threshold=3, namespace=None)` with strict threshold validation (`threshold >= 1`) for batch evaluation of qualifying episodic memories.
+  - Implemented connection-safe `gate.check_hit_count_promotion(memory_id, threshold=3)` to evaluate memory promotion readiness without SQLite WAL lock contention.
+  - In `gate.admit()`, verbatim restatement increments `hit_count` and promotes the existing memory in place without duplicate row accumulation.
+- **Comprehensive Isolation & Gate Unit Test Suites:**
+  - Expanded `tests/unit/test_memory_store.py` to 20 tests covering regex schema validation, agent/triage name guards, self-triage rejection, empty content rejection, threshold validation, cross-namespace promotion isolation, older memory retrieval without premature truncation, and thread discovery.
+  - Expanded `tests/unit/test_memory_gate.py` to 16 tests covering mandatory user role enforcement across 7 non-user roles, upfront namespace validation, intent classification verification across standard and extended punctuation/morphology phrases, step-by-step episodic-to-semantic promotion on hit count thresholds, and batch promotion.
+  - Expanded `tests/unit/test_memory_graph.py` to 16 tests confirming scoped recursive CTE traversal and cycle detection without substring collisions.
+
+### 2. Granular Commits
+- Commit 12: `refactor(memory): enforce strict regex validation and exact-match namespace algebra`
+- Commit 13: `feat(memory): harden promotion gate with episodic-to-semantic promotion heuristics`
+
+### 3. Files Modified
+- `app/memory/store.py`
+- `app/memory/gate.py`
+- `app/memory/graph.py`
+- `tests/unit/test_memory_store.py`
+- `tests/unit/test_memory_gate.py`
+- `tests/unit/test_memory_graph.py`
+- `docs/MILESTONE_LOG.md`
+
+### 4. Verification Metrics & System State
+- **Full Test Suite:** **150 passed in 12.03s** (100% green across all unit and integration test suites).
+- **Memory Isolation Tests:** **52 passed in 5.23s** (`test_memory_store.py`: 20 passed, `test_memory_gate.py`: 16 passed, `test_memory_graph.py`: 16 passed).
+- **Namespace Isolation:**
+  - Substring collision leak (`pr` $\subset$ `product_marketing`): 0.0% leak rate.
+  - Non-user prose rejection: 100% blocked across `agent`, `assistant`, `model`, `system`, and empty roles.
+- **Promotion Integrity:**
+  - Verbatim restatement: promotes in-place, increments `hit_count`, 0 duplicates.
+  - Retrieval repetition: `hit_count >= 3` triggers automatic transition from `episodic` to `semantic` scoped strictly to recalled rows.

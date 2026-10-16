@@ -38,7 +38,7 @@ _CATEGORY_PATTERNS = (
         "correction",
         re.compile(
             r"(^no\b|\b(don'?t|do not|never|stop|avoid|wrong|incorrect|"
-            r"instead of|rather than|not\s+\w+\s+but)\b)",
+            r"instead of|rather than|not\s+[^,.!?\n]+\s*,?\s*but)\b)",
             re.I,
         ),
     ),
@@ -46,16 +46,16 @@ _CATEGORY_PATTERNS = (
         "decision",
         re.compile(
             r"\b(approved?|ratified?|signed? off|go with|going with|"
-            r"we(?:'ve| have) decided|decided on|ship it|lock (?:it|this) in)\b",
+            r"we(?:'ve| have) decided|decided|decided on|ship it|lock\s+(?:it|this|that\s+)?in|lock in)\b",
             re.I,
         ),
     ),
     (
         "preference",
         re.compile(
-            r"\b(prefer(?:ence)?|always|from now on|going forward|remember that|"
+            r"\b(prefer(?:s|ence)?|always|from now on|going forward|remember that|"
             r"make sure|keep it|our (?:tone|voice|style|brand|line)|"
-            r"we (?:want|like|need)|tone should|positioning should)\b",
+            r"we (?:want|like|need)|tone should|positioning should|developer-first)\b",
             re.I,
         ),
     ),
@@ -107,12 +107,37 @@ def _near_duplicates(namespace: str, content: str) -> List[Dict[str, Any]]:
     return out
 
 
+def check_hit_count_promotion(memory_id: str, threshold: int = _PROMOTE_AFTER) -> bool:
+    """Evaluate episodic-to-semantic promotion when hit_count reaches or exceeds threshold (3)."""
+    store.init_db()
+    conn = store.get_connection()
+    try:
+        row = conn.execute(
+            "SELECT tier, hit_count FROM memories WHERE id = ?", (memory_id,)
+        ).fetchone()
+        should_promote = bool(row and row["tier"] == "episodic" and row["hit_count"] >= threshold)
+    finally:
+        conn.close()
+    if should_promote:
+        store.promote_memory(memory_id, tier="semantic")
+        return True
+    return False
+
+
 def admit(namespace: str, role: str, content: str, turn_id: str = "") -> Dict[str, Any]:
     """Run one turn past the gate. Writes at most one memory, only to `namespace`.
 
     Returns the verdict either way — the chat layer surfaces it, so the user can see
     what was remembered and what was not rather than guessing.
     """
+    store.validate_ns(namespace)
+    if role != "user":
+        return {
+            "admitted": False,
+            "reason": "model prose is strictly blocked from memory (role != 'user')",
+            "memory_id": None,
+        }
+
     category = classify(role, content)
     if category is None:
         return {"admitted": False, "reason": "not user-sourced signal", "memory_id": None}
@@ -120,8 +145,18 @@ def admit(namespace: str, role: str, content: str, turn_id: str = "") -> Dict[st
     dupes = _near_duplicates(namespace, content)
     exact = next((d for d in dupes if _norm(d["content"]) == _norm(content)), None)
     if exact:
-        # Restating something verbatim IS the repetition signal — promote in place
-        # rather than accumulating identical rows.
+        # Restating something verbatim IS the repetition signal — increment hit_count
+        # and promote in place rather than accumulating identical rows.
+        conn = store.get_connection()
+        try:
+            conn.execute(
+                "UPDATE memories SET hit_count = hit_count + 1, last_used_at = datetime('now') WHERE id = ?",
+                (exact["id"],),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
         if exact["tier"] != "semantic":
             store.promote_memory(exact["id"])
         return {
