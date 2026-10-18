@@ -7,14 +7,14 @@ differing only by persona. That body lives here once; each agent is just a regis
 """
 
 import json
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 from app.core.config import settings
 from app.services.llm_service import LLMService
 from app.db.database import search_knowledge_units
 from app.core.schemas import AgentResponseSchema
 
-DEFAULT_PROVIDER = "gemini-3.6-flash"
+DEFAULT_PROVIDER = "gemini-3.8-flash"
 
 _JSON_CONTRACT = """
 Return a JSON object matching this schema and output valid JSON only:
@@ -129,6 +129,9 @@ def run_agent(
     goal_statement: str,
     provider: str = DEFAULT_PROVIDER,
     extra_context: str = "",
+    api_key: Optional[str] = None,
+    client_ip: Optional[str] = None,
+    request_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one agent. `extra_context` replaces the default retrieval when supplied —
     the weekly digest uses it to ground agents on competitor-only facts."""
@@ -149,7 +152,12 @@ def run_agent(
 
     # 2. Call the LLM.
     result = LLMService.generate(
-        system_prompt=cfg["persona"] + _JSON_CONTRACT, user_prompt=user_prompt, provider=provider
+        system_prompt=cfg["persona"] + _JSON_CONTRACT,
+        user_prompt=user_prompt,
+        provider=provider,
+        api_key=api_key,
+        client_ip=client_ip,
+        request_id=request_id,
     )
     text = _strip_code_fence(result["text"])
 
@@ -164,6 +172,8 @@ def run_agent(
             "risks": "Hyperscaler pricing pressure on standard compute instances.",
             "confidence": "High",
         }
+    if result.get("notice"):
+        parsed["notice"] = result["notice"]
 
     return parsed
 
@@ -174,8 +184,22 @@ class AgentNode:
     def __init__(self, agent_type: str):
         self.agent_type = agent_type
 
-    def process(self, goal_statement: str, provider: str = DEFAULT_PROVIDER) -> Dict[str, Any]:
-        return run_agent(self.agent_type, goal_statement, provider=provider)
+    def process(
+        self,
+        goal_statement: str,
+        provider: str = DEFAULT_PROVIDER,
+        api_key: Optional[str] = None,
+        client_ip: Optional[str] = None,
+        request_id: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        return run_agent(
+            self.agent_type,
+            goal_statement,
+            provider=provider,
+            api_key=api_key,
+            client_ip=client_ip,
+            request_id=request_id,
+        )
 
 
 if __name__ == "__main__":

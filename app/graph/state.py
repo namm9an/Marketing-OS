@@ -20,3 +20,7 @@ class SwarmState(TypedDict):
     escalated: Optional[bool]
     escalation_reason: Optional[str]
     decision_id: Optional[str]
+    api_key: Optional[str]
+    client_ip: Optional[str]
+    request_id: Optional[str]
+    notice: Optional[str]

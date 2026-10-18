@@ -202,12 +202,55 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique ON edges(src, rel, dst, names
 CREATE INDEX IF NOT EXISTS idx_edges_ns ON edges(namespace);
 """
 
-def get_connection():
-    conn = sqlite3.connect(str(settings.DB_PATH))
+def get_connection(timeout: float = 10.0):
+    conn = sqlite3.connect(str(settings.DB_PATH), timeout=timeout)
     conn.row_factory = sqlite3.Row
+    conn.execute("PRAGMA journal_mode = WAL;")
+    conn.execute("PRAGMA busy_timeout = 5000;")
+    conn.execute("PRAGMA synchronous = NORMAL;")
     return conn
 
 _INITIALIZED = False
+
+
+def reset_db_state():
+    """Clear the _INITIALIZED singleton flag for test fixture hermeticity."""
+    global _INITIALIZED
+    _INITIALIZED = False
+
+
+import functools
+import random
+import time
+
+
+def retry_on_locked(max_retries: int = 5, base_delay: float = 0.05, backoff_factor: float = 2.0):
+    """
+    Decorator adding exponential backoff retry on SQLite write transactions
+    to eliminate 'database is locked' operational errors during concurrent bursts.
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            delay = base_delay
+            last_exc = None
+            for attempt in range(max_retries):
+                try:
+                    return func(*args, **kwargs)
+                except sqlite3.OperationalError as e:
+                    err_msg = str(e).lower()
+                    if "locked" in err_msg or "busy" in err_msg:
+                        last_exc = e
+                        if attempt < max_retries - 1:
+                            jitter = random.uniform(0.01, 0.05)
+                            time.sleep(delay + jitter)
+                            delay *= backoff_factor
+                            continue
+                    raise
+            if last_exc:
+                raise last_exc
+        return wrapper
+    return decorator
 
 
 def init_db(force: bool = False):
@@ -231,6 +274,7 @@ def init_db(force: bool = False):
         conn.close()
 
 
+@retry_on_locked()
 def save_decision(
     decision_id: str,
     goal_statement: str,
@@ -241,6 +285,8 @@ def save_decision(
     rationale: str,
     risks: str
 ):
+    from app.services.llm_service import redact_credentials
+
     init_db()
     conn = get_connection()
     try:
@@ -252,13 +298,13 @@ def save_decision(
             """,
             (
                 decision_id,
-                goal_statement,
-                selected_option,
+                redact_credentials(goal_statement),
+                redact_credentials(selected_option),
                 confidence,
                 1 if escalated else 0,
                 reasoning_source,
-                rationale,
-                risks
+                redact_credentials(rationale),
+                redact_credentials(risks),
             )
         )
         conn.commit()
@@ -281,6 +327,7 @@ def get_all_decisions(limit: Optional[int] = None, offset: int = 0) -> List[Dict
     finally:
         conn.close()
 
+@retry_on_locked()
 def save_knowledge_unit(
     id_str: str,
     k_class: str,
@@ -290,6 +337,8 @@ def save_knowledge_unit(
     source_url: Optional[str] = None,
     enriched_by: str = "system"
 ):
+    from app.services.llm_service import redact_credentials
+
     if organization is None:
         organization = settings.TARGET_ORGANIZATION
     init_db()
@@ -301,7 +350,15 @@ def save_knowledge_unit(
             (id, organization, knowledge_class, confidence, content, source_url, enriched_by) 
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (id_str, organization, k_class, confidence, content, source_url, enriched_by)
+            (
+                id_str,
+                organization,
+                k_class,
+                confidence,
+                redact_credentials(content),
+                source_url,
+                enriched_by,
+            )
         )
         conn.commit()
     finally:
@@ -352,6 +409,17 @@ def search_knowledge_units(
             return [dict(row) for row in cursor.fetchall()]
     finally:
         conn.close()
+
+
+def add_memory(*args, **kwargs):
+    from app.memory.store import add_memory as _add_memory
+    return _add_memory(*args, **kwargs)
+
+
+def add_turn(*args, **kwargs):
+    from app.memory.store import add_turn as _add_turn
+    return _add_turn(*args, **kwargs)
+
 
 
 def get_all_knowledge_units() -> List[Dict[str, Any]]:

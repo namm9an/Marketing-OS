@@ -85,7 +85,12 @@ def _make_worker(agent_type: str):
     def worker(state: SwarmState) -> Dict[str, Any]:
         try:
             parsed = run_agent(
-                agent_type, state["goal_statement"], provider=state.get("provider", DEFAULT_PROVIDER)
+                agent_type,
+                state["goal_statement"],
+                provider=state.get("provider", DEFAULT_PROVIDER),
+                api_key=state.get("api_key"),
+                client_ip=state.get("client_ip"),
+                request_id=state.get("request_id"),
             )
             return {
                 "selected_option": parsed.get("selected_option"),
@@ -93,6 +98,7 @@ def _make_worker(agent_type: str):
                 "rationale": parsed.get("rationale"),
                 "risks": parsed.get("risks"),
                 "confidence": parsed.get("confidence", "High"),
+                "notice": parsed.get("notice"),
             }
         except Exception as err:
             log.warning(f"[{agent_type}] worker error, generating fallback response: {err}")
@@ -166,7 +172,13 @@ class SwarmWorkflowEngine:
     graph = _GRAPH  # exposed for tests / visualization (graph.get_graph().draw_mermaid())
 
     def run(
-        self, goal_statement: str, agent_type: str = "branding", provider: str = DEFAULT_PROVIDER
+        self,
+        goal_statement: str,
+        agent_type: str = "branding",
+        provider: str = DEFAULT_PROVIDER,
+        api_key: Optional[str] = None,
+        client_ip: Optional[str] = None,
+        request_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         initial: SwarmState = {
             "goal_statement": goal_statement,
@@ -174,6 +186,9 @@ class SwarmWorkflowEngine:
             "provider": provider,
             "messages": [],
             "knowledge_units": [],
+            "api_key": api_key,
+            "client_ip": client_ip,
+            "request_id": request_id,
         }
         config: Dict[str, Any] = {}
         handler = _langfuse_handler()
@@ -185,7 +200,7 @@ class SwarmWorkflowEngine:
         selected_option = final.get("selected_option") or "Strategy Brief"
         confidence = final.get("confidence") or "High"
         active = final.get("active_agent", agent_type)
-        return {
+        res = {
             "success": True,
             "positioning": {
                 "statement": final.get("positioning_statement") or "",
@@ -210,6 +225,9 @@ class SwarmWorkflowEngine:
                 }
             ],
         }
+        if final.get("notice"):
+            res["notice"] = final["notice"]
+        return res
 
 
 swarm_engine = SwarmWorkflowEngine()

@@ -26,7 +26,7 @@ import re
 from typing import Any, Dict, List, Optional
 
 from app.core.primitives import new_id
-from app.db.database import get_connection, init_db
+from app.db.database import get_connection, init_db, retry_on_locked
 from app.db.database import _keywords as keywords  # same tokenizer the corpus retrieval uses
 
 CORPUS_NS = "corpus:global"
@@ -109,6 +109,7 @@ def readable_namespaces(agent_type: str) -> List[str]:
 
 # --- Memories ----------------------------------------------------------------------
 
+@retry_on_locked()
 def add_memory(
     namespace: str,
     content: str,
@@ -117,6 +118,8 @@ def add_memory(
     confidence: str = "medium",
     source_turn_id: Optional[str] = None,
 ) -> str:
+    from app.services.llm_service import redact_credentials
+
     validate_ns(namespace)
     if tier not in TIERS:
         raise ValueError(f"invalid tier: {tier!r}")
@@ -132,7 +135,15 @@ def add_memory(
                 (id, namespace, tier, content, provenance, confidence, source_turn_id)
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
-            (mem_id, namespace, tier, content.strip(), provenance, confidence, source_turn_id),
+            (
+                mem_id,
+                namespace,
+                tier,
+                redact_credentials(content.strip()),
+                provenance,
+                confidence,
+                source_turn_id,
+            ),
         )
         conn.commit()
     finally:
@@ -140,6 +151,7 @@ def add_memory(
     return mem_id
 
 
+@retry_on_locked()
 def search_memories(namespaces: List[str], query: str = "", limit: int = 5) -> List[Dict[str, Any]]:
     """Recall within an explicit namespace list — callers pass readable_namespaces().
 
@@ -202,6 +214,7 @@ def search_memories(namespaces: List[str], query: str = "", limit: int = 5) -> L
         conn.close()
 
 
+@retry_on_locked()
 def promote_on_hit_count(threshold: int = 3, namespace: Optional[str] = None) -> int:
     """Promotes episodic memories to semantic tier when hit_count >= threshold.
     Returns the number of memories promoted.
@@ -255,6 +268,7 @@ def get_memories(memory_ids: List[str], namespaces: List[str]) -> List[Dict[str,
     return [by_id[m] for m in memory_ids if m in by_id]  # caller's order = relevance order
 
 
+@retry_on_locked()
 def promote_memory(memory_id: str, tier: str = "semantic") -> None:
     """Move a memory up a tier. Repetition is the only thing that triggers this (M9.2)."""
     if tier not in TIERS:
@@ -287,6 +301,7 @@ def list_memories(namespace: str, limit: int = 100) -> List[Dict[str, Any]]:
 
 # --- Threads & turns ---------------------------------------------------------------
 
+@retry_on_locked()
 def create_thread(namespace: str, title: str = "") -> str:
     validate_ns(namespace)
     init_db()
@@ -329,17 +344,20 @@ def list_threads(namespace: str, limit: int = 50) -> List[Dict[str, Any]]:
         conn.close()
 
 
+@retry_on_locked()
 def add_turn(
     thread_id: str, role: str, content: str, recalled_ids: Optional[List[str]] = None
 ) -> str:
     """`recalled_ids` is what made this turn's context — the audit trail behind visible recall."""
+    from app.services.llm_service import redact_credentials
+
     init_db()
     turn_id = new_id()
     conn = get_connection()
     try:
         conn.execute(
             "INSERT INTO turns (id, thread_id, role, content, recalled_ids) VALUES (?, ?, ?, ?, ?)",
-            (turn_id, thread_id, role, content, json.dumps(recalled_ids or [])),
+            (turn_id, thread_id, role, redact_credentials(content), json.dumps(recalled_ids or [])),
         )
         conn.commit()
     finally:

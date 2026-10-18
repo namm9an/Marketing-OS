@@ -86,6 +86,10 @@ class TriageState(TypedDict, total=False):
     thread_id: str
     message: str
     provider: str
+    api_key: Optional[str]
+    client_ip: Optional[str]
+    request_id: Optional[str]
+    notice: Optional[str]
     user_turn_id: str
     views: Annotated[List[Dict[str, Any]], operator.add]  # 2 parallel writers
     merged: Dict[str, Any]
@@ -114,6 +118,7 @@ def _make_view_worker(index: int):
         agent_type = state["agents"][index]
         message = state["message"]
         recall = recall_for(agent_type, message)
+        notice = None
 
         try:
             result = LLMService.generate(
@@ -124,9 +129,13 @@ def _make_view_worker(index: int):
                     f"The CMO asks: {message}"
                 ),
                 provider=state.get("provider", DEFAULT_PROVIDER),
+                api_key=state.get("api_key"),
+                client_ip=state.get("client_ip"),
+                request_id=state.get("request_id"),
                 temperature=0.5,
                 max_tokens=700,
             )
+            notice = result.get("notice")
             if result.get("model_used", "").endswith("fallback"):
                 view = (
                     f"[{agent_type}] working from {len(recall['facts'])} sourced fact(s) and "
@@ -141,7 +150,7 @@ def _make_view_worker(index: int):
                 f"{len(recall['memories'])} remembered note(s); degraded mode fallback: {err}."
             )
 
-        return {"views": [{
+        view_dict = {
             "agent": agent_type,
             "view": view,
             # Visible recall, per agent — the CMO can see the two were briefed differently.
@@ -158,7 +167,10 @@ def _make_view_worker(index: int):
                 ],
                 "graph": recall["graph_paths"],
             },
-        }]}
+        }
+        if notice:
+            view_dict["notice"] = notice
+        return {"views": [view_dict]}
     worker.__name__ = f"view_{index}"
     return worker
 
@@ -185,28 +197,41 @@ def _merge(state: TriageState) -> Dict[str, Any]:
     """Merge the two VIEWS. The two memories never meet — only their conclusions do."""
     views = sorted(state.get("views", []), key=lambda v: state["agents"].index(v["agent"]))
     block = "\n\n".join(f"[{v['agent'].upper()} AGENT]\n{v['view']}" for v in views)
+    notice = None
     try:
         result = LLMService.generate(
             system_prompt=_MERGE_PROMPT,
             user_prompt=f"The CMO asked: {state['message']}\n\nTHE TWO VIEWS:\n{block}\n\nMerge them.",
             provider=state.get("provider", DEFAULT_PROVIDER),
+            api_key=state.get("api_key"),
+            client_ip=state.get("client_ip"),
+            request_id=state.get("request_id"),
             max_tokens=1200,
         )
-        merged = json.loads(_strip_code_fence(result["text"]))
-        if not isinstance(merged.get("answer"), str) or not merged["answer"].strip():
+        notice = result.get("notice")
+        parsed = json.loads(_strip_code_fence(result["text"]))
+        if "selected_option" in parsed and "answer" not in parsed:
+            return {"merged": _fallback_merge(views), "notice": notice or "Quota reached"}
+        if not isinstance(parsed.get("answer"), str) or not parsed["answer"].strip():
             raise ValueError("merge returned no answer")
-        return {
+        res = {
             "merged": {
-                "answer": merged["answer"],
-                "agreements": list(merged.get("agreements") or []),
-                "tensions": list(merged.get("tensions") or []),
-                "recommended_action": merged.get("recommended_action", ""),
+                "answer": parsed["answer"],
+                "agreements": list(parsed.get("agreements") or []),
+                "tensions": list(parsed.get("tensions") or []),
+                "recommended_action": parsed.get("recommended_action", ""),
             },
             "confidence": "High",
         }
+        if notice:
+            res["notice"] = notice
+        return res
     except Exception as err:
         log.info(f"[Triage] falling back to unmerged attributed views: {err}")
-        return {"merged": _fallback_merge(views)}
+        fallback_res = {"merged": _fallback_merge(views)}
+        if notice:
+            fallback_res["notice"] = notice
+        return fallback_res
 
 
 def _governance_check(
@@ -308,6 +333,9 @@ def run_triage(
     message: str,
     thread_id: Optional[str] = None,
     provider: str = DEFAULT_PROVIDER,
+    api_key: Optional[str] = None,
+    client_ip: Optional[str] = None,
+    request_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """One /triage turn across exactly two agents."""
     agents = [a.strip() for a in (agents or []) if a and a.strip()]
@@ -331,16 +359,20 @@ def run_triage(
     else:
         thread_id = store.create_thread(namespace, title=message.strip()[:80])
 
+    req_id = request_id or new_id()
     final = _TRIAGE_GRAPH.invoke({
         "agents": agents,
         "namespace": namespace,
         "thread_id": thread_id,
         "message": message.strip(),
         "provider": provider,
+        "api_key": api_key,
+        "client_ip": client_ip,
+        "request_id": req_id,
     })
 
     merged = final.get("merged", {})
-    return {
+    res = {
         "success": True,
         "agents": agents,
         "namespace": namespace,
@@ -361,6 +393,15 @@ def run_triage(
         "escalation_reason": final.get("escalation_reason"),
         "decision_id": final.get("decision_id"),
     }
+    notice = final.get("notice")
+    if not notice:
+        for v in final.get("views", []):
+            if v.get("notice"):
+                notice = v["notice"]
+                break
+    if notice:
+        res["notice"] = notice
+    return res
 
 
 if __name__ == "__main__":

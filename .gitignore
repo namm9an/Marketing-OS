@@ -36,3 +36,4 @@ app/data/*.db
 .claude/
 .idea/
 .vscode/
+.agents/

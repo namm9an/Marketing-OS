@@ -20,13 +20,13 @@ import json
 import logging
 import operator
 from collections import defaultdict
-from typing import TypedDict, List, Dict, Any, Annotated
+from typing import TypedDict, List, Dict, Any, Annotated, Optional
 
 from langgraph.graph import StateGraph, START, END
 
 from app.core.config import settings
 from app.agents.base import ACTIVE_AGENTS, DEFAULT_PROVIDER, run_agent, _strip_code_fence
-from app.core.primitives import now_iso
+from app.core.primitives import now_iso, new_id
 from app.core.schemas import DigestSchema
 from app.db.database import get_competitor_facts
 from app.memory.graph import shared_sku_links
@@ -53,8 +53,12 @@ def _facts_block(facts: List[Dict[str, Any]], limit: int = 40) -> str:
 
 class DigestState(TypedDict, total=False):
     provider: str
+    api_key: Optional[str]
+    client_ip: Optional[str]
+    request_id: Optional[str]
+    notice: Optional[str]
     facts: List[Dict[str, Any]]
-    briefs: Annotated[List[Dict[str, str]], operator.add]  # 5 parallel writers
+    briefs: Annotated[List[Dict[str, Any]], operator.add]  # 5 parallel writers
     headline: str
     executive_summary: str
     competitor_movements: List[str]
@@ -85,17 +89,21 @@ def _make_digest_worker(agent_type: str):
                 goal,
                 provider=state.get("provider", DEFAULT_PROVIDER),
                 extra_context=_facts_block(state.get("facts", [])),
+                api_key=state.get("api_key"),
+                client_ip=state.get("client_ip"),
+                request_id=state.get("request_id"),
             )
-            return {
-                "briefs": [{
-                    "agent": agent_type,
-                    "headline": parsed.get("selected_option", ""),
-                    "finding": parsed.get("statement", ""),
-                    "rationale": parsed.get("rationale", ""),
-                    "risks": parsed.get("risks", ""),
-                    "confidence": parsed.get("confidence", "High"),
-                }]
+            brief_data = {
+                "agent": agent_type,
+                "headline": parsed.get("selected_option", ""),
+                "finding": parsed.get("statement", ""),
+                "rationale": parsed.get("rationale", ""),
+                "risks": parsed.get("risks", ""),
+                "confidence": parsed.get("confidence", "High"),
             }
+            if parsed.get("notice"):
+                brief_data["notice"] = parsed["notice"]
+            return {"briefs": [brief_data]}
         except Exception as err:
             log.warning(f"[Digest/{agent_type}] worker error, generating fallback brief: {err}")
             return {
@@ -129,7 +137,7 @@ Return valid JSON only:
 }}"""
 
 
-def _fallback_digest(state: DigestState) -> Dict[str, Any]:
+def _fallback_digest(state: DigestState, notice: Optional[str] = None) -> Dict[str, Any]:
     """Deterministic, fully grounded digest — used when the LLM is unavailable or off-contract.
 
     Built from DB facts and the agents' own briefs, so the digest degrades to something
@@ -140,7 +148,7 @@ def _fallback_digest(state: DigestState) -> Dict[str, Any]:
     for f in facts:
         by_org[f["organization"]] += 1
     ranked = sorted(by_org.items(), key=lambda kv: kv[1], reverse=True)
-    return {
+    res = {
         "headline": f"{len(by_org)} rival platforms tracked across {len(facts)} grounded competitor facts",
         "executive_summary": (
             f"Cross-agent digest assembled from {len(state.get('briefs', []))} specialist briefs over "
@@ -156,6 +164,9 @@ def _fallback_digest(state: DigestState) -> Dict[str, Any]:
             b["headline"] for b in state.get("briefs", []) if b.get("headline")
         ][:5],
     }
+    if notice:
+        res["notice"] = notice
+    return res
 
 
 def _synthesize(state: DigestState) -> Dict[str, Any]:
@@ -168,17 +179,28 @@ def _synthesize(state: DigestState) -> Dict[str, Any]:
         f"COMPETITOR EVIDENCE:\n{_facts_block(state.get('facts', []))}\n\n"
         f"SPECIALIST AGENT BRIEFS:\n{briefs_block}\n\nProduce the CMO digest."
     )
+    notice = None
     try:
         result = LLMService.generate(
             system_prompt=_SYNTH_PROMPT,
             user_prompt=user_prompt,
             provider=state.get("provider", DEFAULT_PROVIDER),
+            api_key=state.get("api_key"),
+            client_ip=state.get("client_ip"),
+            request_id=state.get("request_id"),
             max_tokens=1600,
         )
-        return DigestSchema(**json.loads(_strip_code_fence(result["text"]))).model_dump()
+        notice = result.get("notice")
+        parsed = json.loads(_strip_code_fence(result["text"]))
+        if "selected_option" in parsed and "headline" not in parsed:
+            return _fallback_digest(state, notice=notice or "Quota reached")
+        data = DigestSchema(**parsed).model_dump()
+        if notice:
+            data["notice"] = notice
+        return data
     except Exception as err:
         log.info(f"[Digest] falling back to grounded synthesis: {err}")
-        return _fallback_digest(state)
+        return _fallback_digest(state, notice=notice)
 
 
 def _build_digest_graph():
@@ -259,11 +281,23 @@ def build_network() -> Dict[str, Any]:
     }
 
 
-def run_digest(provider: str = DEFAULT_PROVIDER) -> Dict[str, Any]:
+def run_digest(
+    provider: str = DEFAULT_PROVIDER,
+    api_key: Optional[str] = None,
+    client_ip: Optional[str] = None,
+    request_id: Optional[str] = None,
+) -> Dict[str, Any]:
     """Public entry point for POST /api/digest."""
-    final = _DIGEST_GRAPH.invoke({"provider": provider, "briefs": []})
+    req_id = request_id or new_id()
+    final = _DIGEST_GRAPH.invoke({
+        "provider": provider,
+        "briefs": [],
+        "api_key": api_key,
+        "client_ip": client_ip,
+        "request_id": req_id,
+    })
     network = build_network()
-    return {
+    res = {
         "success": True,
         "generated_at": now_iso(),
         "provider": provider,
@@ -280,6 +314,16 @@ def run_digest(provider: str = DEFAULT_PROVIDER) -> Dict[str, Any]:
             for c in n["citations"]
         ],
     }
+    # Notice propagation: if synthesis or any worker was rate-limited
+    notice = final.get("notice")
+    if not notice:
+        for b in final.get("briefs", []):
+            if b.get("notice"):
+                notice = b["notice"]
+                break
+    if notice:
+        res["notice"] = notice
+    return res
 
 
 if __name__ == "__main__":

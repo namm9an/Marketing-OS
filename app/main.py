@@ -1,11 +1,21 @@
 """
-Marketing OS v2.0 Application Server Entrypoint
+Marketing OS v2.0 Application Server Entrypoint (Enterprise Hardened)
 """
 
+import hmac
 import os
-from flask import Flask, request, jsonify, send_from_directory, Response
+from typing import Optional
+from flask import Flask, request, jsonify, send_from_directory, Response, g
 from flask_cors import CORS
 from app.core.config import settings
+from app.core.primitives import new_id
+from app.core.security import (
+    validate_prompt,
+    PayloadTooLargeError,
+    PromptInjectionError,
+    MAX_PAYLOAD_BYTES,
+)
+from app.core.rate_limiter import rate_limiter
 from app.agents.base import AGENT_REGISTRY
 from app.graph.workflow import swarm_engine
 from app.graph.chat import run_chat
@@ -22,23 +32,51 @@ rebuild_corpus_graph()
 
 FRONTEND_DIST = settings.BASE_DIR / "frontend" / "dist"
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path="")
-app.config["MAX_CONTENT_LENGTH"] = 16 * 1024 * 1024  # 16 MB max payload limit
+# Lower payload boundary from 16MB to 64KB
+app.config["MAX_CONTENT_LENGTH"] = MAX_PAYLOAD_BYTES  # 64 KB max payload limit
 CORS(app, supports_credentials=True)
 
-# ponytail: single shared session token; swap for real per-user sessions if this ever
-# serves more than the one admin. The point of this pass was that login/logout/me were
-# called by the frontend but did not exist on the backend at all.
+# Single shared session token; timing-safe verification via hmac.compare_digest
 SESSION_COOKIE = "auth_session"
 SESSION_TOKEN = "authenticated_admin"
 _OPEN_API_PATHS = {"/api/health", "/api/login", "/api/logout", "/api/me"}
 
 
+def _safe_digest_compare(a: Optional[str], b: Optional[str]) -> bool:
+    """Timing-safe string comparison that encodes to UTF-8 to prevent non-ASCII string TypeError crashes."""
+    if not isinstance(a, str) or not isinstance(b, str):
+        return False
+    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+
+
 def _is_authed() -> bool:
-    return request.cookies.get(SESSION_COOKIE) == SESSION_TOKEN
+    """Timing-safe session cookie verification to prevent side-channel timing attacks."""
+    cookie_val = request.cookies.get(SESSION_COOKIE) or ""
+    return _safe_digest_compare(cookie_val, SESSION_TOKEN)
+
+
+def _get_client_context():
+    """Extract client IP and optional BYOK X-API-Key header."""
+    client_ip = (
+        request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1")
+        .split(",")[0]
+        .strip()
+    )
+    api_key = request.headers.get("X-API-Key")
+    return client_ip, api_key
+
+
+@app.errorhandler(413)
+def request_entity_too_large(error):
+    return jsonify({
+        "error": "Payload exceeds 64KB limit",
+        "message": "Payload too large",
+    }), 413
 
 
 @app.before_request
-def _require_auth():
+def _before_request():
+    g.request_id = new_id()
     path = request.path
     if path.startswith("/api/") and path not in _OPEN_API_PATHS and not _is_authed():
         return jsonify({"error": "Authentication required"}), 401
@@ -56,7 +94,10 @@ def api_login():
     data = request.get_json(silent=True) or {}
     user = (data.get("username") or "").strip()
     pwd = (data.get("password") or "").strip()
-    if user.lower() == settings.ADMIN_USER.lower() and pwd == settings.ADMIN_PASSWORD:
+    # Timing-safe comparison on admin username and password (resilient to non-ASCII strings)
+    if _safe_digest_compare(user.lower(), settings.ADMIN_USER.lower()) and _safe_digest_compare(
+        pwd, settings.ADMIN_PASSWORD
+    ):
         resp = jsonify({"success": True, "username": settings.ADMIN_USER})
         resp.set_cookie(SESSION_COOKIE, SESSION_TOKEN, max_age=86400, httponly=True, samesite="Lax")
         return resp
@@ -83,22 +124,39 @@ def health():
         "status": "healthy" if db_status == "connected" else "degraded",
         "database": db_status,
         "version": settings.VERSION,
-        "project": settings.PROJECT_NAME
+        "project": settings.PROJECT_NAME,
     })
 
 
 @app.route("/api/run", methods=["POST"])
 def api_run():
     data = request.get_json() or {}
-    goal = data.get("goal", "").strip()
-    provider = data.get("provider", "gemini-3.6-flash").strip()
-    agent_type = data.get("agent_type", "branding").strip()
+    goal = (data.get("goal") or "").strip()
+    provider = (data.get("provider") or "gemini-3.8-flash").strip()
+    agent_type = (data.get("agent_type") or "branding").strip()
+    client_ip, byok_key = _get_client_context()
+    api_key = byok_key or data.get("api_key")
 
     if not goal:
         return jsonify({"error": "Goal statement is required"}), 400
 
     try:
-        res = swarm_engine.run(goal_statement=goal, agent_type=agent_type, provider=provider)
+        goal = validate_prompt(goal)
+    except PayloadTooLargeError as e:
+        return jsonify({"error": str(e)}), 413
+    except PromptInjectionError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+    try:
+        res = swarm_engine.run(
+            goal_statement=goal,
+            agent_type=agent_type,
+            provider=provider,
+            api_key=api_key,
+            client_ip=client_ip,
+        )
         return jsonify(res)
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -106,9 +164,6 @@ def api_run():
 
 @app.route("/api/history", methods=["GET"])
 def api_history():
-    # Return the raw decision rows — with optional limit/offset pagination support.
-    # Columns (id, goal_statement, selected_option, confidence, reasoning_source, rationale,
-    # risks, created_at) are exactly the flat fields the frontend history view reads.
     limit_arg = request.args.get("limit")
     offset_arg = request.args.get("offset", "0")
     limit = int(limit_arg) if limit_arg and limit_arg.isdigit() else None
@@ -139,11 +194,6 @@ def api_export_markdown():
     )
 
 
-# --- Milestone 5: CMO Weekly Executive Digest ---------------------------------------
-# Split in two on purpose: the network map is an instant DB projection, while the digest
-# fans out to every agent in ACTIVE_AGENTS (one LLM call each). Bundling them would make the graph tab wait on
-# synthesis it does not need.
-
 @app.route("/api/digest/network", methods=["GET"])
 def api_digest_network():
     return jsonify({"success": True, **build_network()})
@@ -152,28 +202,48 @@ def api_digest_network():
 @app.route("/api/digest", methods=["POST"])
 def api_digest():
     data = request.get_json(silent=True) or {}
-    provider = (data.get("provider") or "gemini-3.6-flash").strip()
+    provider = (data.get("provider") or "gemini-3.8-flash").strip()
+    client_ip, byok_key = _get_client_context()
+    api_key = byok_key or data.get("api_key")
     try:
-        return jsonify(run_digest(provider=provider))
+        return jsonify(run_digest(provider=provider, api_key=api_key, client_ip=client_ip))
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-# --- Phase 9 M9.3: per-agent conversation ------------------------------------------
-# Talking to an agent is a different shape from /api/run: multi-turn, persistent, and
-# scoped to one agent's memory. The reply carries its own recall so the CMO can see what
-# it was built from instead of taking it on trust.
-
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    provider = (data.get("provider") or "gemini-3.8-flash").strip()
+    agent_type = (data.get("agent") or "branding").strip()
+    thread_id = data.get("thread_id") or None
+    client_ip, byok_key = _get_client_context()
+    api_key = byok_key or data.get("api_key")
+
+    if not message:
+        return jsonify({"error": "message is required"}), 400
+
     try:
-        return jsonify(run_chat(
-            agent_type=(data.get("agent") or "branding").strip(),
-            message=(data.get("message") or "").strip(),
-            thread_id=(data.get("thread_id") or None),
-            provider=(data.get("provider") or "gemini-3.6-flash").strip(),
-        ))
+        message = validate_prompt(message)
+    except PayloadTooLargeError as e:
+        return jsonify({"error": str(e)}), 413
+    except PromptInjectionError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+    try:
+        return jsonify(
+            run_chat(
+                agent_type=agent_type,
+                message=message,
+                thread_id=thread_id,
+                provider=provider,
+                api_key=api_key,
+                client_ip=client_ip,
+            )
+        )
     except ValueError as e:  # unknown agent / unknown thread / empty message
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -181,11 +251,6 @@ def api_chat():
 
 
 def _namespace_from_args():
-    """Resolve ?agent=branding or ?agents=branding,pr to a namespace.
-
-    One resolver for both the thread list and the memory inspector, so the joint view can
-    never be reachable under one and not the other.
-    """
     pair = (request.args.get("agents") or "").strip()
     if pair:
         members = [a.strip() for a in pair.split(",") if a.strip()]
@@ -208,8 +273,11 @@ def api_chat_threads():
         namespace = _namespace_from_args()
     except ValueError as e:
         return jsonify({"error": str(e)}), 400
-    return jsonify({"success": True, "namespace": namespace,
-                    "threads": store.list_threads(namespace)})
+    return jsonify({
+        "success": True,
+        "namespace": namespace,
+        "threads": store.list_threads(namespace),
+    })
 
 
 @app.route("/api/chat/thread/<thread_id>", methods=["GET"])
@@ -222,12 +290,6 @@ def api_chat_thread(thread_id):
 
 @app.route("/api/memory", methods=["GET"])
 def api_memory():
-    """What one agent — or one pair — actually remembers, made inspectable.
-
-    Scoped by namespace, so this endpoint cannot show one agent another's private memory
-    even if asked to: `?agents=a,b` resolves to the joint namespace, never to a union of
-    the two private ones.
-    """
     try:
         namespace = _namespace_from_args()
     except ValueError as e:
@@ -239,19 +301,39 @@ def api_memory():
     })
 
 
-# --- Phase 9 M9.5: the /triage bridge ----------------------------------------------
-
 @app.route("/api/triage", methods=["POST"])
 def api_triage():
-    """Two agents, one answer, neither one's private memory touched."""
     data = request.get_json(silent=True) or {}
+    message = (data.get("message") or "").strip()
+    agents = data.get("agents") or []
+    provider = (data.get("provider") or "gemini-3.8-flash").strip()
+    thread_id = data.get("thread_id") or None
+    client_ip, byok_key = _get_client_context()
+    api_key = byok_key or data.get("api_key")
+
+    if not message:
+        return jsonify({"error": "message is required"}), 400
+
     try:
-        return jsonify(run_triage(
-            agents=data.get("agents") or [],
-            message=(data.get("message") or "").strip(),
-            thread_id=(data.get("thread_id") or None),
-            provider=(data.get("provider") or "gemini-3.6-flash").strip(),
-        ))
+        message = validate_prompt(message)
+    except PayloadTooLargeError as e:
+        return jsonify({"error": str(e)}), 413
+    except PromptInjectionError as e:
+        return jsonify({"error": str(e)}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 400
+
+    try:
+        return jsonify(
+            run_triage(
+                agents=agents,
+                message=message,
+                thread_id=thread_id,
+                provider=provider,
+                api_key=api_key,
+                client_ip=client_ip,
+            )
+        )
     except ValueError as e:  # bad pair / unknown agent / empty message / wrong thread
         return jsonify({"error": str(e)}), 400
     except Exception as e:

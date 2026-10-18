@@ -35,7 +35,7 @@ from typing import Any, Dict, List, Optional
 
 from app.core.config import settings
 from app.core.primitives import new_id
-from app.db.database import get_connection, init_db, search_knowledge_units
+from app.db.database import get_connection, init_db, search_knowledge_units, retry_on_locked
 from app.memory.store import CORPUS_NS, validate_ns
 
 log = logging.getLogger(__name__)
@@ -139,6 +139,7 @@ def rebuild_corpus_graph() -> int:
     return total
 
 
+@retry_on_locked()
 def anchor_memory(memory_id: str, namespace: str, content: str) -> List[str]:
     """Link a memory to the entities it names, inside its own namespace.
 

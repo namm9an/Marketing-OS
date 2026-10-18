@@ -282,7 +282,7 @@ class ModelGrader:
                 provider=provider,
             )
             # If it was a mock-fallback from empty key, return None to trigger calibrated deterministic fallback
-            if res.get("model_used") in ("mock-fallback", "gemini-fallback"):
+            if res.get("model_used") in ("mock-fallback", "gemini-fallback") or res.get("model_used", "").endswith("fallback"):
                 return None
             text = res.get("text", "")
             m = re.search(r"\{.*\}", text, re.DOTALL)

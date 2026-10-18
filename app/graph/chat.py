@@ -70,6 +70,10 @@ class ChatState(TypedDict, total=False):
     thread_id: str
     message: str
     provider: str
+    api_key: Optional[str]
+    client_ip: Optional[str]
+    request_id: Optional[str]
+    notice: Optional[str]
     user_turn_id: str
     history: List[Dict[str, Any]]
     memories: List[Dict[str, Any]]
@@ -103,14 +107,42 @@ def _facts_block(facts: List[Dict[str, Any]]) -> str:
     )
 
 
+def _condense_older_turns(turns: List[Dict[str, Any]]) -> str:
+    """Condense historical turns (1 to N-12) into a concise background context summary."""
+    condensed_items = []
+    for idx, t in enumerate(turns, start=1):
+        role_label = "CMO" if t.get("role") == "user" else "YOU"
+        content = (t.get("content") or "").strip().replace("\n", " ")
+        if len(content) > 150:
+            content = content[:147] + "..."
+        condensed_items.append(f"Turn {idx} [{role_label}]: {content}")
+    return "\n".join(condensed_items)
+
+
 def _history_block(history: List[Dict[str, Any]]) -> str:
     if not history:
         return ""
-    recent = history[-_HISTORY_TURNS:]
-    lines = "\n".join(
-        f"{'CMO' if t['role'] == 'user' else 'YOU'}: {t['content']}" for t in recent
+    if len(history) <= _HISTORY_TURNS:
+        lines = "\n".join(
+            f"{'CMO' if t.get('role') == 'user' else 'YOU'}: {t.get('content', '')}" for t in history
+        )
+        return f"\nCONVERSATION SO FAR:\n{lines}\n"
+
+    # History exceeds 12 turns: partition into older turns (1..N-12) and active window (N-11..N)
+    older_turns = history[:-_HISTORY_TURNS]
+    active_turns = history[-_HISTORY_TURNS:]
+
+    condensed_summary = _condense_older_turns(older_turns)
+    bg_block = (
+        f"<background_context>\n"
+        f"Summary of prior conversation (Turns 1 to {len(older_turns)}):\n"
+        f"{condensed_summary}\n"
+        f"</background_context>"
     )
-    return f"\nCONVERSATION SO FAR:\n{lines}\n"
+    active_lines = "\n".join(
+        f"{'CMO' if t.get('role') == 'user' else 'YOU'}: {t.get('content', '')}" for t in active_turns
+    )
+    return f"\n{bg_block}\n\nACTIVE CONVERSATION (Recent 12 turns):\n{active_lines}\n"
 
 
 # --- Nodes ------------------------------------------------------------------------
@@ -192,12 +224,22 @@ def _respond(state: ChatState) -> Dict[str, Any]:
             system_prompt=persona + _CHAT_CONTRACT,
             user_prompt=user_prompt,
             provider=state.get("provider", DEFAULT_PROVIDER),
+            api_key=state.get("api_key"),
+            client_ip=state.get("client_ip"),
+            request_id=state.get("request_id"),
             temperature=0.5,
             max_tokens=900,
         )
+        notice = result.get("notice")
         if result.get("model_used", "").endswith("fallback"):
-            return {"reply": _fallback_reply(state), "confidence": "High"}
-        return {"reply": result["text"].strip(), "confidence": "High"}
+            resp = {"reply": _fallback_reply(state), "confidence": "High"}
+            if notice:
+                resp["notice"] = notice
+            return resp
+        resp = {"reply": result["text"].strip(), "confidence": "High"}
+        if notice:
+            resp["notice"] = notice
+        return resp
     except Exception as err:
         log.warning(f"[Chat/{agent_type}] worker error, generating fallback reply: {err}")
         return {"reply": _fallback_reply(state), "confidence": "Low"}
@@ -287,6 +329,9 @@ def run_chat(
     thread_id: Optional[str] = None,
     provider: str = DEFAULT_PROVIDER,
     namespace: Optional[str] = None,
+    api_key: Optional[str] = None,
+    client_ip: Optional[str] = None,
+    request_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """One conversational turn with one agent. Creates the thread on first message."""
     if agent_type not in AGENT_REGISTRY:
@@ -306,9 +351,12 @@ def run_chat(
         "thread_id": thread_id,
         "message": message.strip(),
         "provider": provider,
+        "api_key": api_key,
+        "client_ip": client_ip,
+        "request_id": request_id,
     })
 
-    return {
+    res = {
         "success": True,
         "agent": agent_type,
         "namespace": namespace,
@@ -340,6 +388,9 @@ def run_chat(
         "escalation_reason": final.get("escalation_reason"),
         "decision_id": final.get("decision_id"),
     }
+    if final.get("notice"):
+        res["notice"] = final["notice"]
+    return res
 
 
 if __name__ == "__main__":
