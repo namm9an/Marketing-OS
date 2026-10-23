@@ -23,11 +23,13 @@ def test_redact_credentials():
     assert "secret REDACTED" in sanitized
 
 
-def test_dynamic_model_routing_in_url():
+def test_server_model_enforcement_and_no_key_in_url():
     captured_requests = []
+    captured_headers = []
 
     def mock_urlopen(req, timeout=30):
         captured_requests.append(req.full_url)
+        captured_headers.append(dict(req.headers))
         mock_resp = MagicMock()
         mock_resp.__enter__.return_value = mock_resp
         mock_resp.read.return_value = json.dumps({
@@ -35,32 +37,41 @@ def test_dynamic_model_routing_in_url():
         }).encode("utf-8")
         return mock_resp
 
+    test_key = "AIzaSyTestKey12345678901234567890123"
     with patch("urllib.request.urlopen", side_effect=mock_urlopen):
-        # 1. Default model gemini-3.8-flash
+        # 1. Default model gemini-3.8-flash, key authenticated in headers, NOT in URL
         res = LLMService.generate(
             system_prompt="system",
             user_prompt="goal",
-            api_key="AIzaSyTestKey12345678901234567890123",
+            api_key=test_key,
         )
         assert "gemini-3.8-flash:generateContent" in captured_requests[0]
+        assert "key=" not in captured_requests[0]
+        assert test_key not in captured_requests[0]
+        assert captured_headers[0].get("X-goog-api-key") == test_key
         assert res["model_used"] == "gemini-3.8-flash"
 
-        # 2. Custom model routing
+        # 2. Unapproved model routing cannot affect outgoing model name
         res2 = LLMService.generate(
             system_prompt="system",
             user_prompt="goal",
             provider="gemini-2.5-pro",
-            api_key="AIzaSyTestKey12345678901234567890123",
+            api_key=test_key,
         )
-        assert "gemini-2.5-pro:generateContent" in captured_requests[1]
-        assert res2["model_used"] == "gemini-2.5-pro"
+        # Server enforces gemini-3.8-flash; arbitrary unapproved model is ignored
+        assert "gemini-3.8-flash:generateContent" in captured_requests[1]
+        assert "gemini-2.5-pro" not in captured_requests[1]
+        assert "key=" not in captured_requests[1]
+        assert res2["model_used"] == "gemini-3.8-flash"
 
 
-def test_byok_api_key_override():
-    captured_requests = []
+def test_captured_headers_contain_key_without_logging_it():
+    captured_headers = []
+    captured_urls = []
 
     def mock_urlopen(req, timeout=30):
-        captured_requests.append(req.full_url)
+        captured_urls.append(req.full_url)
+        captured_headers.append(dict(req.headers))
         mock_resp = MagicMock()
         mock_resp.__enter__.return_value = mock_resp
         mock_resp.read.return_value = json.dumps({
@@ -68,35 +79,41 @@ def test_byok_api_key_override():
         }).encode("utf-8")
         return mock_resp
 
-    client_byok_key = "AIzaSyClientPersonalKey9999999999999"
+    test_key = "AIzaSySecretAuthKey9999999999999"
     with patch("urllib.request.urlopen", side_effect=mock_urlopen):
         LLMService.generate(
             system_prompt="system",
             user_prompt="goal",
-            api_key=client_byok_key,
+            api_key=test_key,
         )
-        assert f"key={client_byok_key}" in captured_requests[0]
+        assert captured_headers[0].get("X-goog-api-key") == test_key
+        assert "key=" not in captured_urls[0]
+        assert test_key not in captured_urls[0]
+
+        # Verify key is redacted when formatted into log strings
+        log_sample = f"Request to {captured_urls[0]} with headers {captured_headers[0]}"
+        redacted = redact_credentials(log_sample, test_key)
+        assert test_key not in redacted
+        assert "REDACTED" in redacted
 
 
-def test_quota_reached_graceful_fallback():
-    # Force rate limit
-    ip = "192.168.99.1"
+def test_gemini_3_8_flash_remains_configured_default():
+    assert settings.DEFAULT_MODEL == "gemini-3.8-flash"
+
+
+def test_quota_reached_raises_error_no_mock_answer(monkeypatch):
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-server-key")
     rate_limiter.reset()
-    for _ in range(3):
-        rate_limiter.acquire(ip)
+    # Consume global daily quota
+    rate_limiter.acquire_global_gemini(units=rate_limiter.host_daily_limit)
 
-    # 4th burst request exceeds rate limiter
-    res = LLMService.generate(
-        system_prompt="system",
-        user_prompt="goal",
-        client_ip=ip,
-        api_key="AIzaSyTestKey123",
-    )
-    assert res["model_used"] == "mock-fallback"
-    assert res["notice"] == "Quota reached"
-    text = json.loads(res["text"])
-    assert text["notice"] == "Quota reached"
-    assert "Strategy" in text["selected_option"]
+    # Next call must raise RuntimeError, NOT return a synthetic mock answer
+    with pytest.raises(RuntimeError) as exc_info:
+        LLMService.generate(
+            system_prompt="system",
+            user_prompt="goal",
+        )
+    assert "Global daily Gemini API quota reached" in str(exc_info.value)
 
 
 def test_api_byok_header_in_request():
@@ -151,26 +168,23 @@ def test_zero_credential_logging_in_sqlite():
     assert "REDACTED" in memories[0]["content"]
 
 
-def test_digest_and_triage_notice_propagation_on_quota():
+def test_digest_and_triage_fail_when_global_quota_exhausted(monkeypatch):
     from app.graph.digest import run_digest
     from app.graph.triage import run_triage
 
-    # Exhaust quota for a test IP
-    quota_ip = "192.168.88.88"
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-server-key")
+    # Exhaust global quota
     rate_limiter.reset()
-    for _ in range(3):
-        rate_limiter.acquire(quota_ip)
+    rate_limiter.acquire_global_gemini(units=rate_limiter.host_daily_limit)
 
-    # Calling triage with exhausted quota must gracefully return deterministic mock with notice
-    triage_res = run_triage(
-        agents=["branding", "pr"],
-        message="What is our pricing strategy?",
-        client_ip=quota_ip,
-    )
-    assert triage_res["success"] is True
-    assert triage_res.get("notice") == "Quota reached"
+    # Calling triage or digest with exhausted global quota must visibly fail, NOT return mock answers
+    with pytest.raises(RuntimeError) as exc_triage:
+        run_triage(
+            agents=["branding", "pr"],
+            message="What is our pricing strategy?",
+        )
+    assert "Global daily Gemini API quota reached" in str(exc_triage.value)
 
-    # Calling digest with exhausted quota must gracefully return deterministic mock with notice
-    digest_res = run_digest(client_ip=quota_ip)
-    assert digest_res["success"] is True
-    assert digest_res.get("notice") == "Quota reached"
+    with pytest.raises(RuntimeError) as exc_digest:
+        run_digest()
+    assert "Global daily Gemini API quota reached" in str(exc_digest.value)
