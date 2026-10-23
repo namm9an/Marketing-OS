@@ -3,19 +3,29 @@ Marketing OS v2.0 Application Server Entrypoint (Enterprise Hardened)
 """
 
 import hmac
+import ipaddress
 import os
-from typing import Optional
+import re
+from typing import Iterable, Optional
 from flask import Flask, request, jsonify, send_from_directory, Response, g
 from flask_cors import CORS
+from werkzeug.middleware.proxy_fix import ProxyFix
 from app.core.config import settings
 from app.core.primitives import new_id
+from app.core.exceptions import (
+    GlobalQuotaExhaustedError,
+    UpstreamRateLimitError,
+    UpstreamProviderError,
+)
 from app.core.security import (
     validate_prompt,
     PayloadTooLargeError,
     PromptInjectionError,
     MAX_PAYLOAD_BYTES,
+    session_store,
+    login_rate_limiter,
 )
-from app.core.rate_limiter import rate_limiter
+from app.core.rate_limiter import rate_limiter, RateLimiter
 from app.agents.base import AGENT_REGISTRY
 from app.graph.workflow import swarm_engine
 from app.graph.chat import run_chat
@@ -30,15 +40,59 @@ init_db()
 # the corpus without a migration step. Cheap: one pass over ~94 sourced rows.
 rebuild_corpus_graph()
 
+
+class TrustedProxyFix:
+    """Apply forwarded headers only when the immediate socket peer is trusted."""
+
+    def __init__(self, app, trusted_proxies: Iterable[str], num_proxies: int = 1):
+        self.app = app
+        self._trusted_networks = tuple(self._parse_network(proxy) for proxy in trusted_proxies)
+        self._proxy_fix = ProxyFix(
+            app,
+            x_for=num_proxies,
+            x_proto=num_proxies,
+            x_host=num_proxies,
+        )
+
+    @staticmethod
+    def _parse_network(value: str):
+        normalized = str(value).strip()
+        if "/" in normalized:
+            return ipaddress.ip_network(normalized, strict=False)
+        address = ipaddress.ip_address(normalized)
+        suffix = 32 if address.version == 4 else 128
+        return ipaddress.ip_network(f"{address}/{suffix}", strict=False)
+
+    def _is_trusted_peer(self, peer: Optional[str]) -> bool:
+        try:
+            address = ipaddress.ip_address(peer or "")
+        except ValueError:
+            return False
+        if address.version == 6 and address.ipv4_mapped is not None:
+            address = address.ipv4_mapped
+        return any(address in network for network in self._trusted_networks)
+
+    def __call__(self, environ, start_response):
+        if self._is_trusted_peer(environ.get("REMOTE_ADDR")):
+            return self._proxy_fix(environ, start_response)
+        return self.app(environ, start_response)
+
 FRONTEND_DIST = settings.BASE_DIR / "frontend" / "dist"
 app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path="")
 # Lower payload boundary from 16MB to 64KB
 app.config["MAX_CONTENT_LENGTH"] = MAX_PAYLOAD_BYTES  # 64 KB max payload limit
-CORS(app, supports_credentials=True)
+CORS(app, origins=settings.get_allowed_origins(), supports_credentials=True)
 
-# Single shared session token; timing-safe verification via hmac.compare_digest
+# Reverse proxy support is enabled only for explicitly trusted socket peers.
+if settings.TRUST_FORWARDED_FOR:
+    app.wsgi_app = TrustedProxyFix(
+        app.wsgi_app,
+        trusted_proxies=settings.TRUSTED_PROXIES,
+        num_proxies=settings.NUM_PROXIES,
+    )
+
+# Cryptographically random, expiring, revocable session token in browser cookie
 SESSION_COOKIE = "auth_session"
-SESSION_TOKEN = "authenticated_admin"
 _OPEN_API_PATHS = {"/api/health", "/api/login", "/api/logout", "/api/me"}
 
 
@@ -50,20 +104,57 @@ def _safe_digest_compare(a: Optional[str], b: Optional[str]) -> bool:
 
 
 def _is_authed() -> bool:
-    """Timing-safe session cookie verification to prevent side-channel timing attacks."""
+    """Validate server-side session from opaque cookie."""
     cookie_val = request.cookies.get(SESSION_COOKIE) or ""
-    return _safe_digest_compare(cookie_val, SESSION_TOKEN)
+    session_data = session_store.validate_session(cookie_val)
+    if session_data is not None:
+        g.current_user = session_data.get("username", settings.ADMIN_USER)
+        g.session_token = cookie_val
+        return True
+    return False
 
 
 def _get_client_context():
-    """Extract client IP and optional BYOK X-API-Key header."""
-    client_ip = (
-        request.headers.get("X-Forwarded-For", request.remote_addr or "127.0.0.1")
-        .split(",")[0]
-        .strip()
-    )
-    api_key = request.headers.get("X-API-Key")
-    return client_ip, api_key
+    """Return the peer address after trusted-only proxy normalization, if configured."""
+    return request.remote_addr or "127.0.0.1", None
+
+
+def _enforce_quotas(fan_out: int = 1):
+    """
+    Check visitor-action quota and global Gemini capacity before performing LLM work.
+    Returns HTTP 429 response tuple if quota is exceeded, else None.
+    Identity semantics: Tracks quota per browser session as a best-effort visitor identity.
+    The shared admin login does NOT conflate visitor identities. Client IP acts as a higher
+    abuse ceiling (settings.IP_DAILY_LIMIT, default 50/day).
+    """
+    client_ip, _ = _get_client_context()
+    session_id = getattr(g, "session_token", None) or request.cookies.get(SESSION_COOKIE)
+    # Per-session visitor identity (best-effort); fall back to client IP for anonymous requests
+    identity = f"session:{session_id}" if session_id else f"ip:{client_ip}"
+
+    # 1. Global Gemini Capacity Reservation:
+    # Atomically reserve fan-out quota (held during execution; unused units released in finally block)
+    has_cap, res_id, retry_after = rate_limiter.reserve_capacity(fan_out)
+    if not has_cap:
+        return RateLimiter.make_429_response(
+            retry_after,
+            message=f"Insufficient global daily Gemini API quota remaining for workflow (needs {fan_out} calls)",
+        )
+    g.quota_reservation_id = res_id
+
+    # 2. Visitor Action Quota: 10 frontend AI actions/day per visitor identity PLUS IP abuse ceiling
+    v_res = rate_limiter.acquire_visitor_action(identity, client_ip=client_ip)
+    if not v_res.allowed:
+        if hasattr(g, "quota_reservation_id"):
+            rate_limiter.release_reservation(g.quota_reservation_id)
+        msg = (
+            "Daily visitor AI action limit reached (10 actions/day)"
+            if v_res.limit_type == "visitor_action"
+            else "Daily IP address action limit reached (abuse ceiling)"
+        )
+        return RateLimiter.make_429_response(v_res.retry_after, message=msg)
+
+    return None
 
 
 @app.errorhandler(413)
@@ -72,6 +163,30 @@ def request_entity_too_large(error):
         "error": "Payload exceeds 64KB limit",
         "message": "Payload too large",
     }), 413
+
+
+@app.errorhandler(UpstreamRateLimitError)
+def handle_upstream_rate_limit(error: UpstreamRateLimitError):
+    return RateLimiter.make_429_response(
+        error.retry_after,
+        message="Upstream AI provider rate limit reached. Please try again later.",
+    )
+
+
+@app.errorhandler(GlobalQuotaExhaustedError)
+def handle_global_quota_exhausted(error: GlobalQuotaExhaustedError):
+    return RateLimiter.make_429_response(
+        error.retry_after,
+        message=str(error),
+    )
+
+
+@app.errorhandler(UpstreamProviderError)
+def handle_upstream_provider(error: UpstreamProviderError):
+    return jsonify({
+        "error": "upstream_provider_error",
+        "message": "Upstream AI provider unavailable. Please try again later.",
+    }), error.status_code or 502
 
 
 @app.before_request
@@ -85,29 +200,63 @@ def _before_request():
 @app.route("/api/me", methods=["GET"])
 def api_me():
     if _is_authed():
-        return jsonify({"authenticated": True, "username": settings.ADMIN_USER})
+        username = getattr(g, "current_user", settings.ADMIN_USER)
+        return jsonify({"authenticated": True, "username": username})
     return jsonify({"authenticated": False})
 
 
 @app.route("/api/login", methods=["POST"])
 def api_login():
+    client_ip, _ = _get_client_context()
+    allowed, retry_after = login_rate_limiter.check(client_ip)
+    if not allowed:
+        resp, code = RateLimiter.make_429_response(
+            retry_after, message="Too many failed login attempts. Please try again later."
+        )
+        return resp, code
+
     data = request.get_json(silent=True) or {}
     user = (data.get("username") or "").strip()
     pwd = (data.get("password") or "").strip()
+
     # Timing-safe comparison on admin username and password (resilient to non-ASCII strings)
     if _safe_digest_compare(user.lower(), settings.ADMIN_USER.lower()) and _safe_digest_compare(
         pwd, settings.ADMIN_PASSWORD
     ):
+        login_rate_limiter.record_success(client_ip)
+        token = session_store.create_session(settings.ADMIN_USER)
         resp = jsonify({"success": True, "username": settings.ADMIN_USER})
-        resp.set_cookie(SESSION_COOKIE, SESSION_TOKEN, max_age=86400, httponly=True, samesite="Lax")
+        resp.set_cookie(
+            SESSION_COOKIE,
+            token,
+            max_age=86400,
+            httponly=True,
+            samesite="Lax",
+            secure=settings.SESSION_COOKIE_SECURE,
+        )
         return resp
+
+    admitted, retry_after = login_rate_limiter.record_failure_if_allowed(client_ip)
+    if not admitted:
+        resp, code = RateLimiter.make_429_response(
+            retry_after, message="Too many failed login attempts. Please try again later."
+        )
+        return resp, code
     return jsonify({"error": "Invalid credentials"}), 401
 
 
 @app.route("/api/logout", methods=["POST"])
 def api_logout():
+    cookie_val = request.cookies.get(SESSION_COOKIE)
+    if cookie_val:
+        session_store.revoke_session(cookie_val)
     resp = jsonify({"success": True})
-    resp.delete_cookie(SESSION_COOKIE)
+    resp.delete_cookie(
+        SESSION_COOKIE,
+        httponly=True,
+        samesite="Lax",
+        secure=settings.SESSION_COOKIE_SECURE,
+    )
     return resp
 
 
@@ -132,10 +281,9 @@ def health():
 def api_run():
     data = request.get_json() or {}
     goal = (data.get("goal") or "").strip()
-    provider = (data.get("provider") or "gemini-3.8-flash").strip()
     agent_type = (data.get("agent_type") or "branding").strip()
-    client_ip, byok_key = _get_client_context()
-    api_key = byok_key or data.get("api_key")
+    provider = settings.DEFAULT_MODEL
+    client_ip, _ = _get_client_context()
 
     if not goal:
         return jsonify({"error": "Goal statement is required"}), 400
@@ -149,17 +297,29 @@ def api_run():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+    # Quota check before database writes or LLM invocation
+    quota_err = _enforce_quotas(fan_out=1)
+    if quota_err:
+        return quota_err
+
     try:
         res = swarm_engine.run(
             goal_statement=goal,
             agent_type=agent_type,
             provider=provider,
-            api_key=api_key,
             client_ip=client_ip,
         )
         return jsonify(res)
+    except (UpstreamRateLimitError, GlobalQuotaExhaustedError) as e:
+        return RateLimiter.make_429_response(e.retry_after, message=str(e))
+    except UpstreamProviderError as e:
+        return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        res_id = getattr(g, "quota_reservation_id", None)
+        if res_id:
+            rate_limiter.release_reservation(res_id)
 
 
 @app.route("/api/history", methods=["GET"])
@@ -173,9 +333,9 @@ def api_history():
 
 @app.route("/api/export/markdown", methods=["POST"])
 def api_export_markdown():
-    d = request.get_json() or {}
-    decision = d.get("decision", {})
-    positioning = d.get("positioning", {})
+    d = request.get_json(silent=True) or {}
+    decision = d.get("decision") if isinstance(d.get("decision"), dict) else {}
+    positioning = d.get("positioning") if isinstance(d.get("positioning"), dict) else {}
     md = (
         f"# Positioning Strategy Brief\n\n"
         f"**Strategy:** {decision.get('selected_option', 'N/A')}\n"
@@ -186,11 +346,14 @@ def api_export_markdown():
         f"## Strategic Rationale\n{decision.get('rationale', '')}\n\n"
         f"## Identified Risks\n{decision.get('risks', '')}\n"
     )
-    filename = f"positioning-brief-{decision.get('id', 'export')}.md"
+    raw_id = str(decision.get("id") or d.get("id") or "export")
+    # Sanitize ID against CRLF injection and hostile header characters
+    safe_id = re.sub(r"[^a-zA-Z0-9_-]", "_", raw_id).strip("_") or "export"
+    filename = f"positioning-brief-{safe_id}.md"
     return Response(
         md,
         mimetype="text/markdown",
-        headers={"Content-Disposition": f"attachment; filename={filename}"},
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 
@@ -201,25 +364,36 @@ def api_digest_network():
 
 @app.route("/api/digest", methods=["POST"])
 def api_digest():
-    data = request.get_json(silent=True) or {}
-    provider = (data.get("provider") or "gemini-3.8-flash").strip()
-    client_ip, byok_key = _get_client_context()
-    api_key = byok_key or data.get("api_key")
+    provider = settings.DEFAULT_MODEL
+    client_ip, _ = _get_client_context()
+
+    # Quota check before database reads or LLM invocation (digest fan-out = 6)
+    quota_err = _enforce_quotas(fan_out=6)
+    if quota_err:
+        return quota_err
+
     try:
-        return jsonify(run_digest(provider=provider, api_key=api_key, client_ip=client_ip))
+        return jsonify(run_digest(provider=provider, client_ip=client_ip))
+    except (UpstreamRateLimitError, GlobalQuotaExhaustedError) as e:
+        return RateLimiter.make_429_response(e.retry_after, message=str(e))
+    except UpstreamProviderError as e:
+        return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        res_id = getattr(g, "quota_reservation_id", None)
+        if res_id:
+            rate_limiter.release_reservation(res_id)
 
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
-    provider = (data.get("provider") or "gemini-3.8-flash").strip()
+    provider = settings.DEFAULT_MODEL
     agent_type = (data.get("agent") or "branding").strip()
     thread_id = data.get("thread_id") or None
-    client_ip, byok_key = _get_client_context()
-    api_key = byok_key or data.get("api_key")
+    client_ip, _ = _get_client_context()
 
     if not message:
         return jsonify({"error": "message is required"}), 400
@@ -233,6 +407,11 @@ def api_chat():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+    # Quota check before database writes or LLM invocation
+    quota_err = _enforce_quotas(fan_out=1)
+    if quota_err:
+        return quota_err
+
     try:
         return jsonify(
             run_chat(
@@ -240,14 +419,21 @@ def api_chat():
                 message=message,
                 thread_id=thread_id,
                 provider=provider,
-                api_key=api_key,
                 client_ip=client_ip,
             )
         )
+    except (UpstreamRateLimitError, GlobalQuotaExhaustedError) as e:
+        return RateLimiter.make_429_response(e.retry_after, message=str(e))
+    except UpstreamProviderError as e:
+        return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
     except ValueError as e:  # unknown agent / unknown thread / empty message
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        res_id = getattr(g, "quota_reservation_id", None)
+        if res_id:
+            rate_limiter.release_reservation(res_id)
 
 
 def _namespace_from_args():
@@ -306,10 +492,9 @@ def api_triage():
     data = request.get_json(silent=True) or {}
     message = (data.get("message") or "").strip()
     agents = data.get("agents") or []
-    provider = (data.get("provider") or "gemini-3.8-flash").strip()
+    provider = settings.DEFAULT_MODEL
     thread_id = data.get("thread_id") or None
-    client_ip, byok_key = _get_client_context()
-    api_key = byok_key or data.get("api_key")
+    client_ip, _ = _get_client_context()
 
     if not message:
         return jsonify({"error": "message is required"}), 400
@@ -323,6 +508,11 @@ def api_triage():
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
+    # Quota check before database writes or LLM invocation (triage fan-out = 3)
+    quota_err = _enforce_quotas(fan_out=3)
+    if quota_err:
+        return quota_err
+
     try:
         return jsonify(
             run_triage(
@@ -330,14 +520,21 @@ def api_triage():
                 message=message,
                 thread_id=thread_id,
                 provider=provider,
-                api_key=api_key,
                 client_ip=client_ip,
             )
         )
+    except (UpstreamRateLimitError, GlobalQuotaExhaustedError) as e:
+        return RateLimiter.make_429_response(e.retry_after, message=str(e))
+    except UpstreamProviderError as e:
+        return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
     except ValueError as e:  # bad pair / unknown agent / empty message / wrong thread
         return jsonify({"error": str(e)}), 400
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    finally:
+        res_id = getattr(g, "quota_reservation_id", None)
+        if res_id:
+            rate_limiter.release_reservation(res_id)
 
 
 @app.route("/", defaults={"path": ""})
