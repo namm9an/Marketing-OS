@@ -85,6 +85,7 @@ def _add_edge(conn, src: str, rel: str, dst: str, namespace: str, provenance: st
     )
 
 
+@retry_on_locked()
 def rebuild_corpus_graph() -> int:
     """Re-derive corpus:global edges from the grounded facts. Idempotent — safe on every boot.
 
@@ -100,43 +101,42 @@ def rebuild_corpus_graph() -> int:
     facts = search_knowledge_units(limit=10_000, sourced_only=True)
     conn = get_connection()
     try:
-        conn.execute("DELETE FROM edges WHERE namespace = ?", (CORPUS_NS,))
-        for fact in facts:
-            org = (fact.get("organization") or "").strip()
-            if not org:
-                continue
-            k_class = fact.get("knowledge_class")
-            rel = _REL_FOR_CLASS.get(k_class, _DEFAULT_REL)
-            content = fact.get("content", "")
-            fact_id = fact.get("id", "")
-            for sku in extract_entities(content):
-                if sku in _SKUS:
-                    provenance = f"knowledge_unit:{fact_id}"
-                    if k_class == "pricing":
-                        rate_part = content.split(":", 1)[1] if ":" in content else content
-                        rates = re.findall(r"([$₹€£]?\s*\d+(?:\.\d+)?\s*(?:/[a-zA-Z]+)?)", rate_part)
-                        clean_rates = [r.strip() for r in rates if r.strip() and any(c.isdigit() for c in r)]
-                        currency = "$" if "$" in content else ("₹" if ("₹" in content or "inr" in content.lower()) else "USD")
-                        rate_meta = {
-                            "knowledge_unit_id": fact_id,
-                            "source_fact_id": fact_id,
-                            "amount": clean_rates[0] if clean_rates else None,
-                            "rates": clean_rates[:4],
-                            "currency": currency,
-                            "unit": "/hr" if "/hr" in content.lower() else "on-demand",
-                        }
-                        provenance = json.dumps(rate_meta)
-                    _add_edge(conn, org, rel, sku, CORPUS_NS, provenance=provenance)
+        with conn:
+            conn.execute("DELETE FROM edges WHERE namespace = ?", (CORPUS_NS,))
+            for fact in facts:
+                org = (fact.get("organization") or "").strip()
+                if not org:
+                    continue
+                k_class = fact.get("knowledge_class")
+                rel = _REL_FOR_CLASS.get(k_class, _DEFAULT_REL)
+                content = fact.get("content", "")
+                fact_id = fact.get("id", "")
+                for sku in extract_entities(content):
+                    if sku in _SKUS:
+                        provenance = f"knowledge_unit:{fact_id}"
+                        if k_class == "pricing":
+                            rate_part = content.split(":", 1)[1] if ":" in content else content
+                            rates = re.findall(r"([$₹€£]?\s*\d+(?:\.\d+)?\s*(?:/[a-zA-Z]+)?)", rate_part)
+                            clean_rates = [r.strip() for r in rates if r.strip() and any(c.isdigit() for c in r)]
+                            currency = "$" if "$" in content else ("₹" if ("₹" in content or "inr" in content.lower()) else "USD")
+                            rate_meta = {
+                                "knowledge_unit_id": fact_id,
+                                "source_fact_id": fact_id,
+                                "amount": clean_rates[0] if clean_rates else None,
+                                "rates": clean_rates[:4],
+                                "currency": currency,
+                                "unit": "/hr" if "/hr" in content.lower() else "on-demand",
+                            }
+                            provenance = json.dumps(rate_meta)
+                        _add_edge(conn, org, rel, sku, CORPUS_NS, provenance=provenance)
 
-        conn.commit()
-
-        total = conn.execute(
-            "SELECT COUNT(*) AS n FROM edges WHERE namespace = ?", (CORPUS_NS,)
-        ).fetchone()["n"]
+            total = conn.execute(
+                "SELECT COUNT(*) AS n FROM edges WHERE namespace = ?", (CORPUS_NS,)
+            ).fetchone()["n"]
+        log.info(f"[Graph] corpus graph holds {total} edges over {len(facts)} sourced facts")
+        return total
     finally:
         conn.close()
-    log.info(f"[Graph] corpus graph holds {total} edges over {len(facts)} sourced facts")
-    return total
 
 
 @retry_on_locked()
@@ -153,10 +153,10 @@ def anchor_memory(memory_id: str, namespace: str, content: str) -> List[str]:
     init_db()
     conn = get_connection()
     try:
-        for entity in entities:
-            _add_edge(conn, f"{MEMORY_PREFIX}{memory_id}", ANCHOR_REL, entity, namespace,
-                      provenance=f"memory:{memory_id}")
-        conn.commit()
+        with conn:
+            for entity in entities:
+                _add_edge(conn, f"{MEMORY_PREFIX}{memory_id}", ANCHOR_REL, entity, namespace,
+                          provenance=f"memory:{memory_id}")
     finally:
         conn.close()
     return entities

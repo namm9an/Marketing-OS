@@ -29,7 +29,7 @@ only if real transcripts show it dropping signal the user then has to repeat.
 import re
 from typing import Any, Dict, List, Optional
 
-from app.db.database import _keywords as keywords
+from app.db.database import _keywords as keywords, retry_on_locked
 from app.memory import graph, store
 
 # Rule 2. Checked in this order — the first match wins, most specific first.
@@ -124,6 +124,19 @@ def check_hit_count_promotion(memory_id: str, threshold: int = _PROMOTE_AFTER) -
     return False
 
 
+@retry_on_locked()
+def _touch_memory_exact(memory_id: str) -> None:
+    conn = store.get_connection()
+    try:
+        with conn:
+            conn.execute(
+                "UPDATE memories SET hit_count = hit_count + 1, last_used_at = datetime('now') WHERE id = ?",
+                (memory_id,),
+            )
+    finally:
+        conn.close()
+
+
 def admit(namespace: str, role: str, content: str, turn_id: str = "") -> Dict[str, Any]:
     """Run one turn past the gate. Writes at most one memory, only to `namespace`.
 
@@ -147,15 +160,7 @@ def admit(namespace: str, role: str, content: str, turn_id: str = "") -> Dict[st
     if exact:
         # Restating something verbatim IS the repetition signal — increment hit_count
         # and promote in place rather than accumulating identical rows.
-        conn = store.get_connection()
-        try:
-            conn.execute(
-                "UPDATE memories SET hit_count = hit_count + 1, last_used_at = datetime('now') WHERE id = ?",
-                (exact["id"],),
-            )
-            conn.commit()
-        finally:
-            conn.close()
+        _touch_memory_exact(exact["id"])
 
         if exact["tier"] != "semantic":
             store.promote_memory(exact["id"])
