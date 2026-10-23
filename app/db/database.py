@@ -112,6 +112,63 @@ CREATE TABLE IF NOT EXISTS decisions (
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_created ON decisions(created_at DESC);
 
+CREATE TABLE IF NOT EXISTS sessions (
+    token TEXT PRIMARY KEY,
+    username TEXT NOT NULL,
+    created_at REAL NOT NULL,
+    expires_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS quota_visitor_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    identity TEXT NOT NULL,
+    quota_day REAL NOT NULL,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quota_visitor_identity ON quota_visitor_actions(identity, quota_day);
+CREATE INDEX IF NOT EXISTS idx_quota_visitor_day ON quota_visitor_actions(quota_day);
+
+CREATE TABLE IF NOT EXISTS quota_ip_actions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    quota_day REAL NOT NULL,
+    created_at REAL NOT NULL,
+    request_id TEXT
+);
+CREATE INDEX IF NOT EXISTS idx_quota_ip_day ON quota_ip_actions(ip, quota_day);
+CREATE INDEX IF NOT EXISTS idx_quota_ip_created ON quota_ip_actions(ip, created_at);
+
+CREATE TABLE IF NOT EXISTS quota_global_gemini_calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    quota_day REAL NOT NULL,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quota_global_day ON quota_global_gemini_calls(quota_day);
+
+CREATE TABLE IF NOT EXISTS quota_reservations (
+    reservation_id TEXT PRIMARY KEY,
+    quota_day REAL NOT NULL,
+    units_reserved INTEGER NOT NULL,
+    units_consumed INTEGER NOT NULL DEFAULT 0,
+    created_at REAL NOT NULL,
+    expires_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quota_res_day ON quota_reservations(quota_day, expires_at);
+
+CREATE TABLE IF NOT EXISTS quota_host_requests (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_quota_host_created ON quota_host_requests(created_at);
+
+CREATE TABLE IF NOT EXISTS login_failures (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ip TEXT NOT NULL,
+    attempted_at REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_login_failures_ip ON login_failures(ip, attempted_at);
+
 CREATE TABLE IF NOT EXISTS knowledge_units (
     id TEXT PRIMARY KEY,
     organization TEXT NOT NULL DEFAULT 'Vanguard Cloud',
@@ -202,8 +259,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_edges_unique ON edges(src, rel, dst, names
 CREATE INDEX IF NOT EXISTS idx_edges_ns ON edges(namespace);
 """
 
-def get_connection(timeout: float = 10.0):
-    conn = sqlite3.connect(str(settings.DB_PATH), timeout=timeout)
+def get_connection(timeout: float = 10.0, isolation_level: Optional[str] = ""):
+    conn = sqlite3.connect(str(settings.DB_PATH), timeout=timeout, isolation_level=isolation_level)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA busy_timeout = 5000;")
@@ -253,21 +310,22 @@ def retry_on_locked(max_retries: int = 5, base_delay: float = 0.05, backoff_fact
     return decorator
 
 
+@retry_on_locked()
 def init_db(force: bool = False):
     global _INITIALIZED
     if _INITIALIZED and not force:
         return
     conn = get_connection()
     try:
-        conn.executescript(SCHEMA)
-        conn.execute(
-            """
-            INSERT OR IGNORE INTO knowledge_units_fts(id, organization, knowledge_class, content)
-            SELECT id, organization, knowledge_class, content FROM knowledge_units
-            WHERE id NOT IN (SELECT id FROM knowledge_units_fts)
-            """
-        )
-        conn.commit()
+        with conn:
+            conn.executescript(SCHEMA)
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO knowledge_units_fts(id, organization, knowledge_class, content)
+                SELECT id, organization, knowledge_class, content FROM knowledge_units
+                WHERE id NOT IN (SELECT id FROM knowledge_units_fts)
+                """
+            )
         _INITIALIZED = True
         log.info(f"[SQLite DB] Initialized at {settings.DB_PATH}")
     finally:
@@ -290,24 +348,24 @@ def save_decision(
     init_db()
     conn = get_connection()
     try:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO decisions 
-            (id, goal_statement, selected_option, confidence, escalated, reasoning_source, rationale, risks)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                decision_id,
-                redact_credentials(goal_statement),
-                redact_credentials(selected_option),
-                confidence,
-                1 if escalated else 0,
-                reasoning_source,
-                redact_credentials(rationale),
-                redact_credentials(risks),
+        with conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO decisions
+                (id, goal_statement, selected_option, confidence, escalated, reasoning_source, rationale, risks)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    decision_id,
+                    redact_credentials(goal_statement),
+                    redact_credentials(selected_option),
+                    confidence,
+                    1 if escalated else 0,
+                    reasoning_source,
+                    redact_credentials(rationale),
+                    redact_credentials(risks),
+                )
             )
-        )
-        conn.commit()
     finally:
         conn.close()
 
@@ -344,23 +402,23 @@ def save_knowledge_unit(
     init_db()
     conn = get_connection()
     try:
-        conn.execute(
-            """
-            INSERT OR REPLACE INTO knowledge_units 
-            (id, organization, knowledge_class, confidence, content, source_url, enriched_by) 
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                id_str,
-                organization,
-                k_class,
-                confidence,
-                redact_credentials(content),
-                source_url,
-                enriched_by,
+        with conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO knowledge_units
+                (id, organization, knowledge_class, confidence, content, source_url, enriched_by)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    id_str,
+                    organization,
+                    k_class,
+                    confidence,
+                    redact_credentials(content),
+                    source_url,
+                    enriched_by,
+                )
             )
-        )
-        conn.commit()
     finally:
         conn.close()
 
