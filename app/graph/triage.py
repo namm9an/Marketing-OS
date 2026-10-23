@@ -144,6 +144,8 @@ def _make_view_worker(index: int):
             else:
                 view = result["text"].strip()
         except Exception as err:
+            if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+                raise
             log.warning(f"[Triage/{agent_type}] view worker error, using fallback view: {err}")
             view = (
                 f"[{agent_type}] working from {len(recall['facts'])} sourced fact(s) and "
@@ -227,6 +229,8 @@ def _merge(state: TriageState) -> Dict[str, Any]:
             res["notice"] = notice
         return res
     except Exception as err:
+        if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+            raise
         log.info(f"[Triage] falling back to unmerged attributed views: {err}")
         fallback_res = {"merged": _fallback_merge(views)}
         if notice:

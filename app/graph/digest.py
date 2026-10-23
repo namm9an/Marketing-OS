@@ -105,6 +105,8 @@ def _make_digest_worker(agent_type: str):
                 brief_data["notice"] = parsed["notice"]
             return {"briefs": [brief_data]}
         except Exception as err:
+            if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+                raise
             log.warning(f"[Digest/{agent_type}] worker error, generating fallback brief: {err}")
             return {
                 "briefs": [{
@@ -199,6 +201,8 @@ def _synthesize(state: DigestState) -> Dict[str, Any]:
             data["notice"] = notice
         return data
     except Exception as err:
+        if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+            raise
         log.info(f"[Digest] falling back to grounded synthesis: {err}")
         return _fallback_digest(state, notice=notice)
 

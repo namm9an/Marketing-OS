@@ -101,6 +101,10 @@ def _make_worker(agent_type: str):
                 "notice": parsed.get("notice"),
             }
         except Exception as err:
+            # If server API key is configured or explicit key provided, visibly report provider failures
+            from app.core.config import settings
+            if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+                raise
             log.warning(f"[{agent_type}] worker error, generating fallback response: {err}")
             return {
                 "selected_option": f"{agent_type.replace('_', ' ').title()} Strategy (Fallback)",
