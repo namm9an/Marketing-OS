@@ -15,7 +15,7 @@ def test_default_enterprise_identity():
     assert settings.VERSION == "2.0.0"
     assert isinstance(settings.DB_PATH, Path)
     assert settings.ADMIN_USER == "admin"
-    assert settings.DEFAULT_MODEL == "gemini-3.6-flash"
+    assert settings.DEFAULT_MODEL == "gemini-3.8-flash"
 
 
 def test_settings_env_override(monkeypatch):
