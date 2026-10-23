@@ -107,16 +107,23 @@ def _facts_block(facts: List[Dict[str, Any]]) -> str:
     )
 
 
-def _condense_older_turns(turns: List[Dict[str, Any]]) -> str:
-    """Condense historical turns (1 to N-12) into a concise background context summary."""
+def _condense_older_turns(turns: List[Dict[str, Any]], max_chars: int = 2000) -> str:
+    """Condense historical turns into a bounded concise background context summary."""
     condensed_items = []
     for idx, t in enumerate(turns, start=1):
+        turn_num = t.get("turn_number", idx)
         role_label = "CMO" if t.get("role") == "user" else "YOU"
         content = (t.get("content") or "").strip().replace("\n", " ")
         if len(content) > 150:
             content = content[:147] + "..."
-        condensed_items.append(f"Turn {idx} [{role_label}]: {content}")
-    return "\n".join(condensed_items)
+        condensed_items.append(f"Turn {turn_num} [{role_label}]: {content}")
+    joined = "\n".join(condensed_items)
+    if len(joined) > max_chars and len(condensed_items) > 15:
+        head = "\n".join(condensed_items[:5])
+        tail = "\n".join(condensed_items[-10:])
+        omitted = len(condensed_items) - 15
+        joined = f"{head}\n... [{omitted} older turns omitted for brevity] ...\n{tail}"
+    return joined
 
 
 def _history_block(history: List[Dict[str, Any]]) -> str:
@@ -132,10 +139,13 @@ def _history_block(history: List[Dict[str, Any]]) -> str:
     older_turns = history[:-_HISTORY_TURNS]
     active_turns = history[-_HISTORY_TURNS:]
 
+    first_turn_num = older_turns[0].get("turn_number", 1)
+    last_turn_num = older_turns[-1].get("turn_number", len(older_turns))
+
     condensed_summary = _condense_older_turns(older_turns)
     bg_block = (
         f"<background_context>\n"
-        f"Summary of prior conversation (Turns 1 to {len(older_turns)}):\n"
+        f"Summary of prior conversation (Turns {first_turn_num} to {last_turn_num}):\n"
         f"{condensed_summary}\n"
         f"</background_context>"
     )
@@ -241,6 +251,8 @@ def _respond(state: ChatState) -> Dict[str, Any]:
             resp["notice"] = notice
         return resp
     except Exception as err:
+        if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+            raise
         log.warning(f"[Chat/{agent_type}] worker error, generating fallback reply: {err}")
         return {"reply": _fallback_reply(state), "confidence": "Low"}
 
