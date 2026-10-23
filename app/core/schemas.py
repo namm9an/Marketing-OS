@@ -186,7 +186,7 @@ class ChatRequestSchema(SchemaBase):
     agent: str = Field(default="branding", description="Target specialist agent")
     message: str = Field(..., description="User message prompt")
     thread_id: Optional[str] = Field(default=None, description="Existing conversation thread ID")
-    provider: str = Field(default="gemini-3.6-flash", description="LLM provider model")
+    provider: str = Field(default="gemini-3.8-flash", description="LLM provider model")
 
 
 class TriageRequestSchema(SchemaBase):
@@ -195,4 +195,4 @@ class TriageRequestSchema(SchemaBase):
     agents: List[str] = Field(..., description="Pair of specialist agents")
     message: str = Field(..., description="CMO question to triage")
     thread_id: Optional[str] = Field(default=None, description="Existing triage thread ID")
-    provider: str = Field(default="gemini-3.6-flash", description="LLM provider model")
+    provider: str = Field(default="gemini-3.8-flash", description="LLM provider model")

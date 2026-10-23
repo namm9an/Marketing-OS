@@ -149,7 +149,7 @@ def test_chat_and_triage_request_schemas():
 
     chat_req = ChatRequestSchema(message="Position against Nebius")
     assert chat_req.agent == "branding"
-    assert chat_req.provider == "gemini-3.6-flash"
+    assert chat_req.provider == "gemini-3.8-flash"
 
     triage_req = TriageRequestSchema(agents=["branding", "pr"], message="Joint positioning")
     assert triage_req.agents == ["branding", "pr"]
