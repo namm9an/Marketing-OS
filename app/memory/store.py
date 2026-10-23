@@ -129,23 +129,23 @@ def add_memory(
     mem_id = new_id()
     conn = get_connection()
     try:
-        conn.execute(
-            """
-            INSERT INTO memories
-                (id, namespace, tier, content, provenance, confidence, source_turn_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                mem_id,
-                namespace,
-                tier,
-                redact_credentials(content.strip()),
-                provenance,
-                confidence,
-                source_turn_id,
-            ),
-        )
-        conn.commit()
+        with conn:
+            conn.execute(
+                """
+                INSERT INTO memories
+                    (id, namespace, tier, content, provenance, confidence, source_turn_id)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    mem_id,
+                    namespace,
+                    tier,
+                    redact_credentials(content.strip()),
+                    provenance,
+                    confidence,
+                    source_turn_id,
+                ),
+            )
     finally:
         conn.close()
     return mem_id
@@ -194,17 +194,17 @@ def search_memories(namespaces: List[str], query: str = "", limit: int = 5) -> L
         if rows:  # recall is itself the usage signal the decay/promotion logic reads
             row_ids = [r["id"] for r in rows]
             id_placeholders = ",".join("?" * len(row_ids))
-            conn.executemany(
-                "UPDATE memories SET hit_count = hit_count + 1, last_used_at = datetime('now') WHERE id = ?",
-                [(rid,) for rid in row_ids],
-            )
-            # Automatic promotion heuristic: episodic -> semantic when hit_count >= 3
-            # Strictly scoped to recalled rows in authorized namespaces
-            conn.execute(
-                f"UPDATE memories SET tier = 'semantic' WHERE tier = 'episodic' AND hit_count >= 3 AND id IN ({id_placeholders})",
-                row_ids,
-            )
-            conn.commit()
+            with conn:
+                conn.executemany(
+                    "UPDATE memories SET hit_count = hit_count + 1, last_used_at = datetime('now') WHERE id = ?",
+                    [(rid,) for rid in row_ids],
+                )
+                # Automatic promotion heuristic: episodic -> semantic when hit_count >= 3
+                # Strictly scoped to recalled rows in authorized namespaces
+                conn.execute(
+                    f"UPDATE memories SET tier = 'semantic' WHERE tier = 'episodic' AND hit_count >= 3 AND id IN ({id_placeholders})",
+                    row_ids,
+                )
             for r in rows:
                 r["hit_count"] = r.get("hit_count", 0) + 1
                 if r.get("tier") == "episodic" and r["hit_count"] >= 3:
@@ -276,8 +276,8 @@ def promote_memory(memory_id: str, tier: str = "semantic") -> None:
     init_db()
     conn = get_connection()
     try:
-        conn.execute("UPDATE memories SET tier = ? WHERE id = ?", (tier, memory_id))
-        conn.commit()
+        with conn:
+            conn.execute("UPDATE memories SET tier = ? WHERE id = ?", (tier, memory_id))
     finally:
         conn.close()
 
@@ -308,11 +308,11 @@ def create_thread(namespace: str, title: str = "") -> str:
     thread_id = new_id()
     conn = get_connection()
     try:
-        conn.execute(
-            "INSERT INTO threads (id, namespace, title) VALUES (?, ?, ?)",
-            (thread_id, namespace, title[:120]),
-        )
-        conn.commit()
+        with conn:
+            conn.execute(
+                "INSERT INTO threads (id, namespace, title) VALUES (?, ?, ?)",
+                (thread_id, namespace, title[:120]),
+            )
     finally:
         conn.close()
     return thread_id
@@ -355,30 +355,43 @@ def add_turn(
     turn_id = new_id()
     conn = get_connection()
     try:
-        conn.execute(
-            "INSERT INTO turns (id, thread_id, role, content, recalled_ids) VALUES (?, ?, ?, ?, ?)",
-            (turn_id, thread_id, role, redact_credentials(content), json.dumps(recalled_ids or [])),
-        )
-        conn.commit()
+        with conn:
+            conn.execute(
+                "INSERT INTO turns (id, thread_id, role, content, recalled_ids) VALUES (?, ?, ?, ?, ?)",
+                (turn_id, thread_id, role, redact_credentials(content), json.dumps(recalled_ids or [])),
+            )
     finally:
         conn.close()
     return turn_id
 
 
-def get_turns(thread_id: str, limit: int = 40) -> List[Dict[str, Any]]:
+def get_turns(thread_id: str, limit: Optional[int] = None) -> List[Dict[str, Any]]:
     """Chronological — this is the conversation history fed back to the LLM."""
     init_db()
     conn = get_connection()
     try:
-        rows = conn.execute(
-            "SELECT * FROM turns WHERE thread_id = ? ORDER BY created_at DESC, rowid DESC LIMIT ?",
-            (thread_id, limit),
-        ).fetchall()
+        if limit is not None:
+            total_turns = conn.execute(
+                "SELECT COUNT(*) AS c FROM turns WHERE thread_id = ?", (thread_id,)
+            ).fetchone()["c"]
+            offset = max(0, total_turns - limit)
+            rows = conn.execute(
+                "SELECT * FROM turns WHERE thread_id = ? ORDER BY created_at ASC, rowid ASC LIMIT ? OFFSET ?",
+                (thread_id, limit, offset),
+            ).fetchall()
+            start_num = offset + 1
+        else:
+            rows = conn.execute(
+                "SELECT * FROM turns WHERE thread_id = ? ORDER BY created_at ASC, rowid ASC",
+                (thread_id,),
+            ).fetchall()
+            start_num = 1
     finally:
         conn.close()
     out = []
-    for r in reversed(rows):
+    for idx, r in enumerate(rows):
         turn = dict(r)
+        turn["turn_number"] = start_num + idx
         turn["recalled_ids"] = json.loads(turn["recalled_ids"] or "[]")
         out.append(turn)
     return out
