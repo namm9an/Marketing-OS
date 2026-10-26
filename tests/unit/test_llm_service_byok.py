@@ -13,7 +13,7 @@ from app.main import app
 
 
 def test_redact_credentials():
-    test_key = "AIzaSyTEST_ONLY_REDACTION"
+    test_key = "server-test-key"
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-3.8-flash:generateContent?key={test_key}"
     err_message = f"HTTP Error 400: Bad Request to {url} with secret {test_key}"
 
@@ -37,7 +37,7 @@ def test_server_model_enforcement_and_no_key_in_url():
         }).encode("utf-8")
         return mock_resp
 
-    test_key = "AIzaSyTestKey12345678901234567890123"
+    test_key = "server-test-key"
     with patch("urllib.request.urlopen", side_effect=mock_urlopen):
         # 1. Default model gemini-3.8-flash, key authenticated in headers, NOT in URL
         res = LLMService.generate(
@@ -79,7 +79,7 @@ def test_captured_headers_contain_key_without_logging_it():
         }).encode("utf-8")
         return mock_resp
 
-    test_key = "AIzaSySecretAuthKey9999999999999"
+    test_key = "server-test-key"
     with patch("urllib.request.urlopen", side_effect=mock_urlopen):
         LLMService.generate(
             system_prompt="system",
@@ -142,7 +142,7 @@ def test_zero_credential_logging_in_sqlite():
     from app.memory.store import add_memory, add_turn, list_memories, get_turns
     from app.core.primitives import new_id
 
-    secret_key = "AIzaSyTEST_ONLY_REDACTIONte123"
+    secret_key = "AIzaSyTEST_ONLY_REDACTION"
     d_id = f"test-sec-{new_id()[:8]}"
     save_decision(
         decision_id=d_id,
