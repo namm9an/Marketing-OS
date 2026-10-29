@@ -282,8 +282,10 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
             y: splitTabsY,
             scale: splitTabsScale,
             visibility: splitTabsVisibility,
+            width: 'clamp(900px, 70vw, 1100px)',
+            maxWidth: '100%',
           }}
-          className="col-start-1 row-start-1 z-30 max-w-4xl w-full flex items-center justify-center gap-2 sm:gap-3 pointer-events-auto"
+          className="col-start-1 row-start-1 z-30 flex items-center justify-center gap-2 sm:gap-3 pointer-events-auto"
         >
           {dossiers.map((d, i) => (
             <button
@@ -301,9 +303,12 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
         </motion.div>
 
         {/* =================================================================== */}
-        {/* PHASE 2: Stacking Dossier Deck (0.13 -> 1.00)                       */}
+        {/* PHASE 3: Stacking Dossier Deck (Two-Panel Layout)                   */}
         {/* =================================================================== */}
-        <div className="col-start-1 row-start-1 w-full max-w-4xl grid place-items-center">
+        <div
+          style={{ width: 'clamp(900px, 70vw, 1100px)', maxWidth: '100%' }}
+          className="col-start-1 row-start-1 grid place-items-center"
+        >
           {dossiers.map((dossier, idx) => {
             const transform = cardTransforms[idx];
             const isActive = idx === activeCardIndex;
@@ -317,17 +322,19 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                   scale: transform.scale,
                   zIndex: transform.z,
                   visibility: transform.visibility,
+                  width: 'clamp(900px, 70vw, 1100px)',
+                  maxWidth: '100%',
                   ...(isCard1 ? { maxHeight: c0MaxHeight } : {}),
                 }}
-                className="col-start-1 row-start-1 w-full max-w-4xl"
+                className="col-start-1 row-start-1"
               >
                 {/* 
                   The Physical Card: 
                   - Solid 100% OPAQUE #FFFFFF paper (no card shows through another)
                   - 1px hairline border #111315
-                  - Fits in viewport height without clipping
+                  - Fits inside 100vh - 56px navbar at 1366x768
                 */}
-                <div className="relative bg-[#FFFFFF] border border-[#111315] shadow-md flex flex-col max-h-[calc(100vh-8.5rem)] overflow-hidden">
+                <div className="relative bg-[#FFFFFF] border border-[#111315] shadow-md flex flex-col max-h-[calc(100vh-4rem)] overflow-hidden">
                   
                   {/* Ink Overlay for Dimming Previous Cards */}
                   {transform.tint !== 0 && (
@@ -371,58 +378,88 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
 
                   {/* Card Content Body: Expands from tab height via clip-path on Card 1 (0.13 -> 0.15) */}
                   <motion.div
-                    style={isCard1 ? { clipPath: c0BodyClip } : {}}
-                    className="p-5 sm:p-6 lg:p-7 space-y-4 overflow-y-auto"
+                    style={{
+                      ...(isCard1 ? { clipPath: c0BodyClip } : {}),
+                      padding: 'clamp(0.85rem, 1.4vw, 1.25rem)',
+                    }}
+                    className="overflow-hidden"
                   >
-                    
-                    {/* Market Signal Intake */}
-                    <div className="p-3 bg-[#F6F5F1] border-l-2 border-[#111315] space-y-1">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#6E7685]">
-                        Detected Market Signal
-                      </span>
-                      <p className="font-sans text-xs sm:text-[13px] text-[#111315] font-medium leading-relaxed">
-                        {dossier.signal}
-                      </p>
-                    </div>
+                    {/* Two-Panel Layout: 55% Left (Content) / 45% Right (Scene Stage) */}
+                    <div className="grid grid-cols-1 md:grid-cols-[11fr_9fr] gap-4 lg:gap-5 items-stretch w-full">
+                      
+                      {/* Left Panel (~55%): Strategy Formulation & Attribution */}
+                      <div className="flex flex-col justify-between space-y-3 min-w-0">
+                        <div className="space-y-2.5">
+                          {/* Market Signal Intake */}
+                          <div className="p-2.5 sm:p-3 bg-[#F6F5F1] border-l-2 border-[#111315] space-y-1">
+                            <span className="font-mono text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#6E7685] font-semibold block">
+                              Detected Market Signal
+                            </span>
+                            <p className="font-sans text-[11.5px] sm:text-[12.5px] text-[#111315] font-medium leading-relaxed">
+                              {dossier.signal}
+                            </p>
+                          </div>
 
-                    {/* Core Selling Statement (Value Proposition) */}
-                    <div className="space-y-1.5">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#2563EB] font-semibold">
-                        Formulated Value Proposition (Why Customers Choose Us)
-                      </span>
-                      <blockquote className="p-4 bg-[#F6F5F1] border border-[#D4D1C7] text-xs sm:text-sm font-serif italic text-[#111315] leading-relaxed">
-                        "{dossier.valueProp}"
-                      </blockquote>
-                    </div>
+                          {/* Core Selling Statement (Value Proposition) */}
+                          <div className="space-y-1">
+                            <span className="font-mono text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#2563EB] font-semibold block">
+                              Formulated Value Proposition (Why Customers Choose Us)
+                            </span>
+                            <blockquote className="p-2.5 sm:p-3 bg-[#F6F5F1] border border-[#D4D1C7] text-[11.5px] sm:text-[12.5px] font-serif italic text-[#111315] leading-relaxed">
+                              "{dossier.valueProp}"
+                            </blockquote>
+                          </div>
 
-                    {/* Grounded Evidence & Strategic Rationale */}
-                    <div className="space-y-1">
-                      <span className="font-mono text-[10px] uppercase tracking-wider text-[#111315] font-semibold">
-                        Grounded Competitor Evidence & Rationale
-                      </span>
-                      <p className="font-sans text-xs text-[#4A505C] leading-relaxed">
-                        {dossier.evidence}
-                      </p>
-                    </div>
+                          {/* Grounded Evidence & Strategic Rationale */}
+                          <div className="space-y-0.5">
+                            <span className="font-mono text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#111315] font-semibold block">
+                              Grounded Competitor Evidence & Rationale
+                            </span>
+                            <p className="font-sans text-[11px] sm:text-[11.5px] text-[#4A505C] leading-relaxed">
+                              {dossier.evidence}
+                            </p>
+                          </div>
+                        </div>
 
-                    {/* Footer Action Strip */}
-                    <div className="pt-3 border-t border-[#D4D1C7] flex items-center justify-between">
-                      <div className="flex items-center gap-1.5 text-xs font-mono text-[#15803D]">
-                        <ShieldCheck size={13} />
-                        <span>Verified Primary Citation Grounding</span>
+                        {/* Footer Action Strip */}
+                        <div className="pt-2 border-t border-[#D4D1C7] flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-[#15803D]">
+                            <ShieldCheck size={13} className="shrink-0" />
+                            <span>Verified Primary Citation Grounding</span>
+                          </div>
+
+                          {/* Launch Console Button: ONLY on Card 5 (idx === 4) */}
+                          {idx === 4 && (
+                            <button
+                              type="button"
+                              onClick={onLaunchConsole}
+                              className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-[#FFFFFF] bg-[#111315] hover:bg-[#2563EB] px-3.5 py-1.5 transition-colors cursor-pointer active:scale-[0.98] shrink-0"
+                            >
+                              <Lock size={11} strokeWidth={2} />
+                              <span>Launch Console</span>
+                              <ArrowRight size={11} />
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      <button
-                        type="button"
-                        onClick={onLaunchConsole}
-                        className="inline-flex items-center gap-1.5 font-mono text-xs font-semibold text-[#FFFFFF] bg-[#111315] hover:bg-[#2563EB] px-3.5 py-1.5 transition-colors cursor-pointer active:scale-[0.98]"
+                      {/* Right Panel (~45%): Empty Scene Stage */}
+                      <div
+                        style={{ minHeight: 'clamp(270px, 35vh, 320px)' }}
+                        className="relative border border-[#D4D1C7] bg-[#FBF9F5] p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden"
                       >
-                        <Lock size={11} strokeWidth={2} />
-                        <span>Launch Console</span>
-                        <ArrowRight size={11} />
-                      </button>
-                    </div>
+                        {/* Mono label in top-left corner */}
+                        <div className="font-mono text-[10px] sm:text-[10.5px] uppercase tracking-wider text-[#6E7685] font-semibold">
+                          WHAT THIS AGENT DOES
+                        </div>
 
+                        {/* Empty scene stage (reserved for future visualizer / animations) */}
+                        <div className="flex-1 flex items-center justify-center">
+                          {/* Empty scene stage */}
+                        </div>
+                      </div>
+
+                    </div>
                   </motion.div>
                 </div>
               </motion.div>
@@ -431,7 +468,10 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
         </div>
 
         {/* Bottom Scroll Progress Tick (Monochrome) */}
-        <div className="col-start-1 row-start-1 w-full max-w-4xl flex justify-end items-end h-full pb-4 pr-2 font-mono text-[10.5px] text-[#6E7685] pointer-events-none">
+        <div
+          style={{ width: 'clamp(900px, 70vw, 1100px)', maxWidth: '100%' }}
+          className="col-start-1 row-start-1 flex justify-end items-end h-full pb-4 pr-2 font-mono text-[10.5px] text-[#6E7685] pointer-events-none"
+        >
           <span>Cascading 5 Specialist Dossiers · Scroll to advance</span>
         </div>
       </div>
