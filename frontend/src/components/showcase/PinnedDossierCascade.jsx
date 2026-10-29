@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { motion, useScroll, useTransform, useSpring, useReducedMotion, useMotionValueEvent } from 'framer-motion';
 import { ArrowRight, Lock, Database, ShieldCheck } from 'lucide-react';
-import { useLenis } from '../../context/LenisContext';
+import { useLenis, useNavScroll } from '../../context/LenisContext';
 import {
   CONTAINER_HEIGHT,
   MORPH_KNOWLEDGE_START,
@@ -24,6 +24,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
   const containerRef = useRef(null);
   const shouldReduceMotion = useReducedMotion();
   const lenis = useLenis();
+  const { isNavCrossing } = useNavScroll();
   const [activeCardIndex, setActiveCardIndex] = useState(0);
 
   // Track scroll progress through the container
@@ -233,7 +234,10 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
       className="relative w-full bg-[#F6F5F1] overflow-x-clip"
     >
       {/* Sticky Viewport Stage: Pinned below navbar */}
-      <div className="sticky top-14 h-[calc(100vh-3.5rem)] w-full grid place-items-center px-4 sm:px-6 lg:px-8 overflow-x-clip select-none">
+      <div
+        style={{ visibility: isNavCrossing ? 'hidden' : 'visible' }}
+        className="sticky top-14 h-[calc(100vh-3.5rem)] w-full grid place-items-center px-4 sm:px-6 lg:px-8 overflow-x-clip select-none"
+      >
         
         {/* =================================================================== */}
         {/* PHASE 2b: Morphing Central Node (0.00 -> 0.06 ONLY)                 */}

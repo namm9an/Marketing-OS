@@ -1,13 +1,13 @@
 import React from 'react';
 import { ArrowDown, Lock, ShieldCheck, Database, GitMerge, CheckCircle2 } from 'lucide-react';
+import { useNavScroll } from '../../context/LenisContext';
 
 export default function HeroSection({ onOpenConsole }) {
+  const { scrollToSection } = useNavScroll();
+
   const scrollToCascade = (e) => {
     e.preventDefault();
-    const target = document.getElementById('section-dossier-cascade');
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth' });
-    }
+    scrollToSection('#section-dossier-cascade');
   };
 
   return (
