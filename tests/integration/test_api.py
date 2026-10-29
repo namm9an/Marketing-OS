@@ -40,7 +40,7 @@ class TestAPIRoutes(unittest.TestCase):
     def test_run_agent_pipeline(self):
         payload = {
             "goal": f"Position {settings.TARGET_ORGANIZATION} B200 GPU infrastructure for AI enterprises",
-            "provider": "gemini-3.6-flash",
+            "provider": "gemini-3.8-flash",
             "agent_type": "branding"
         }
         res = self.client.post('/api/run', data=json.dumps(payload), content_type='application/json')
@@ -76,7 +76,7 @@ class TestAPIRoutes(unittest.TestCase):
 
     def test_digest_endpoint(self):
         res = self.client.post(
-            '/api/digest', data=json.dumps({"provider": "gemini-3.6-flash"}),
+            '/api/digest', data=json.dumps({"provider": "gemini-3.8-flash"}),
             content_type='application/json',
         )
         self.assertEqual(res.status_code, 200)

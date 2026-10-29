@@ -269,7 +269,7 @@ class ModelGrader:
         cls,
         prompt: str,
         system_prompt: str,
-        provider: str = "gemini-3.6-flash",
+        provider: str = "gemini-3.8-flash",
     ) -> Optional[Dict[str, Any]]:
         """Attempt live calibrated LLM-as-judge evaluation.
 
@@ -301,7 +301,7 @@ class ModelGrader:
         context_facts: List[Dict[str, Any]],
         strict_guardrail: bool = True,
         use_llm: bool = False,
-        provider: str = "gemini-3.6-flash",
+        provider: str = "gemini-3.8-flash",
     ) -> Dict[str, Any]:
         """Score semantic Groundedness on a 1-5 scale.
 
@@ -422,7 +422,7 @@ class ModelGrader:
         response: str,
         target_persona: str = "branding",
         use_llm: bool = False,
-        provider: str = "gemini-3.6-flash",
+        provider: str = "gemini-3.8-flash",
     ) -> Dict[str, Any]:
         """Score Strategic Tone adherence on a 1-5 scale.
 

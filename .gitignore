@@ -17,6 +17,7 @@ htmlcov/
 
 # Python cache & compiled files
 __pycache__/
+*.pyc
 *.py[cod]
 *$py.class
 *.so
@@ -28,8 +29,12 @@ __pycache__/
 
 # Local SQLite databases & runtime data
 app/data/*.db
+app/data/*.db-wal
+app/data/*.db-shm
 *.sqlite3
 *.db
+*.db-wal
+*.db-shm
 
 # OS & IDE artifacts
 .DS_Store
