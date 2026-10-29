@@ -4,6 +4,12 @@ import { ArrowRight, Lock, Database, ShieldCheck } from 'lucide-react';
 import { useLenis } from '../../context/LenisContext';
 import {
   CONTAINER_HEIGHT,
+  MORPH_KNOWLEDGE_START,
+  MORPH_KNOWLEDGE_END,
+  MORPH_TABS_START,
+  MORPH_TABS_END,
+  CARD_1_EXPAND_START,
+  CARD_1_EXPAND_END,
   MORPH_END,
   CARD_ARRIVAL_POINTS,
   TRANSITION_LENGTH,
@@ -136,43 +142,61 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
   ];
 
   // ===========================================================================
-  // PHASE 1: Morphing Central Node & 5-Tab Fan-out
+  // PHASE 2b: Strict Non-Overlapping Opening Morph (0.00 -> 0.15)
+  //
+  // p 0.00 to 0.06: ONLY knowledge-base card visible. Text fades, box shrinks to tab height.
+  // p 0.06 to 0.13: ONLY five tabs visible, spreading and moving to stack position.
+  // p 0.13 to 0.15: Card 1 body expands from tab height (clip-path, NOT opacity).
+  //
+  // Every element outside its range is strictly visibility: hidden, pointer-events: none.
   // ===========================================================================
-  const centralNodeOpacity = useTransform(smoothProgress, [0.0, MORPH_END * 0.55, MORPH_END * 0.95], [1, 1, 0]);
-  const centralNodeScale = useTransform(smoothProgress, [0.0, MORPH_END * 0.55, MORPH_END * 0.95], [1, 1.05, 0.9]);
-  const centralNodeY = useTransform(smoothProgress, [0.0, MORPH_END * 0.55, MORPH_END * 0.95], ['0px', '-10px', '-30px']);
-  const centralNodeVisibility = useTransform(smoothProgress, (v) => (v < MORPH_END ? 'visible' : 'hidden'));
 
-  const splitTabsOpacity = useTransform(
+  // 1. Knowledge-base Card (0.00 -> 0.06)
+  const centralNodeTextOpacity = useTransform(smoothProgress, [0.00, 0.035, MORPH_KNOWLEDGE_END], [1, 0.3, 0]);
+  const centralNodeMaxHeight = useTransform(smoothProgress, [0.00, MORPH_KNOWLEDGE_END], ['240px', '44px']);
+  const centralNodeScale = useTransform(smoothProgress, [0.00, MORPH_KNOWLEDGE_END], [1, 0.94]);
+  const centralNodeY = useTransform(smoothProgress, [0.00, MORPH_KNOWLEDGE_END], ['0px', '-8px']);
+  const centralNodeVisibility = useTransform(smoothProgress, (v) => (v < MORPH_KNOWLEDGE_END ? 'visible' : 'hidden'));
+
+  // 2. 5 Tabs Row (0.06 -> 0.13)
+  const splitTabsVisibility = useTransform(
     smoothProgress,
-    [MORPH_END * 0.45, MORPH_END * 0.75, MORPH_END, MORPH_END + 0.04],
-    [0, 1, 1, 0]
+    (v) => (v >= MORPH_TABS_START && v < MORPH_TABS_END ? 'visible' : 'hidden')
   );
   const splitTabsY = useTransform(
     smoothProgress,
-    [MORPH_END * 0.45, MORPH_END * 0.9, MORPH_END + 0.04],
-    ['20px', '0px', '-20px']
+    [MORPH_TABS_START, 0.085, 0.11, MORPH_TABS_END],
+    ['0px', '0px', '-14px', '-28px']
   );
   const splitTabsScale = useTransform(
     smoothProgress,
-    [MORPH_END * 0.45, MORPH_END * 0.9, MORPH_END + 0.04],
-    [0.95, 1, 0.98]
-  );
-  const splitTabsVisibility = useTransform(
-    smoothProgress,
-    (v) => (v >= MORPH_END * 0.4 && v < MORPH_END + 0.05 ? 'visible' : 'hidden')
+    [MORPH_TABS_START, 0.085, 0.11, MORPH_TABS_END],
+    [0.94, 1.0, 0.99, 0.97]
   );
 
-  // ===========================================================================
-  // PHASE 2: Stacking Deck Cascade from deckTimeline
-  // ===========================================================================
+  // 3. Stacking Deck Cascade from deckTimeline
   const cardConfigs = dossiers.map((_, i) => getCardTimelineConfig(i));
+
+  // Card 1 Body Expansion (0.13 -> 0.15) via clip-path and maxHeight (NO opacity animation)
+  const c0Vis = useTransform(
+    smoothProgress,
+    (v) => (v >= CARD_1_EXPAND_START && v < CARD_ARRIVAL_POINTS[4] ? 'visible' : 'hidden')
+  );
+  const c0MaxHeight = useTransform(
+    smoothProgress,
+    [CARD_1_EXPAND_START, CARD_1_EXPAND_END],
+    ['44px', '650px']
+  );
+  const c0BodyClip = useTransform(
+    smoothProgress,
+    [CARD_1_EXPAND_START, CARD_1_EXPAND_END],
+    ['inset(0% 0% 100% 0%)', 'inset(0% 0% 0% 0%)']
+  );
 
   // Transform hooks per card
   const c0Y = useTransform(smoothProgress, cardConfigs[0].inputProgressY, cardConfigs[0].outputY);
   const c0Scale = useTransform(smoothProgress, cardConfigs[0].inputProgressScale, cardConfigs[0].outputScale);
   const c0Tint = useTransform(smoothProgress, cardConfigs[0].inputProgressTint, cardConfigs[0].outputTint);
-  const c0Vis = useTransform(smoothProgress, (v) => (v >= MORPH_END - 0.02 && v < CARD_ARRIVAL_POINTS[4] - 0.01 ? 'visible' : 'hidden'));
 
   const c1Y = useTransform(smoothProgress, cardConfigs[1].inputProgressY, cardConfigs[1].outputY);
   const c1Scale = useTransform(smoothProgress, cardConfigs[1].inputProgressScale, cardConfigs[1].outputScale);
@@ -212,38 +236,45 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
       <div className="sticky top-14 h-[calc(100vh-3.5rem)] w-full grid place-items-center px-4 sm:px-6 lg:px-8 overflow-x-clip select-none">
         
         {/* =================================================================== */}
-        {/* PHASE 1: Morphing Central Node & 5-Tab Fan-out                     */}
+        {/* PHASE 2b: Morphing Central Node (0.00 -> 0.06 ONLY)                 */}
         {/* =================================================================== */}
         <motion.div
           style={{
-            opacity: centralNodeOpacity,
-            scale: centralNodeScale,
             y: centralNodeY,
+            scale: centralNodeScale,
             visibility: centralNodeVisibility,
           }}
           className="col-start-1 row-start-1 z-20 max-w-xl w-full text-center pointer-events-none"
         >
-          <div className="bg-[#FFFFFF] border border-[#111315] p-8 shadow-xs">
-            <div className="inline-flex items-center gap-2 text-xs font-mono text-[#2563EB] uppercase tracking-wider mb-2">
-              <Database size={13} />
-              <span>Grounded Knowledge Base</span>
-            </div>
-            <h3 className="font-display font-bold text-2xl text-[#111315] tracking-tight">
-              12 Cloud Competitors Ingested
-            </h3>
-            <p className="font-sans text-xs text-[#4A505C] mt-2 leading-relaxed">
-              Curated primary sources on B200, H200, and H100 GPU cluster pricing, network latency, and SLAs.
-            </p>
-            <div className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-[#6E7685]">
-              <span>↓ Scroll to cascade specialist dossiers</span>
-            </div>
-          </div>
+          <motion.div
+            style={{
+              maxHeight: centralNodeMaxHeight,
+            }}
+            className="bg-[#FFFFFF] border border-[#111315] p-8 shadow-xs overflow-hidden flex flex-col justify-center items-center"
+          >
+            <motion.div style={{ opacity: centralNodeTextOpacity }} className="w-full">
+              <div className="inline-flex items-center gap-2 text-xs font-mono text-[#2563EB] uppercase tracking-wider mb-2">
+                <Database size={13} />
+                <span>Grounded Knowledge Base</span>
+              </div>
+              <h3 className="font-display font-bold text-2xl text-[#111315] tracking-tight">
+                12 Cloud Competitors Ingested
+              </h3>
+              <p className="font-sans text-xs text-[#4A505C] mt-2 leading-relaxed">
+                Curated primary sources on B200, H200, and H100 GPU cluster pricing, network latency, and SLAs.
+              </p>
+              <div className="mt-4 inline-flex items-center gap-1.5 font-mono text-[11px] text-[#6E7685]">
+                <span>↓ Scroll to cascade specialist dossiers</span>
+              </div>
+            </motion.div>
+          </motion.div>
         </motion.div>
 
-        {/* 5 Small Tabs splitting horizontally during 0.08 -> 0.18 */}
+        {/* =================================================================== */}
+        {/* PHASE 2b: 5 Small Tabs (0.06 -> 0.13 ONLY)                         */}
+        {/* =================================================================== */}
         <motion.div
           style={{
-            opacity: splitTabsOpacity,
             y: splitTabsY,
             scale: splitTabsScale,
             visibility: splitTabsVisibility,
@@ -266,12 +297,13 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
         </motion.div>
 
         {/* =================================================================== */}
-        {/* PHASE 2: Stacking Dossier Deck (Opaque Paper Sheets)                */}
+        {/* PHASE 2: Stacking Dossier Deck (0.13 -> 1.00)                       */}
         {/* =================================================================== */}
         <div className="col-start-1 row-start-1 w-full max-w-4xl grid place-items-center">
           {dossiers.map((dossier, idx) => {
             const transform = cardTransforms[idx];
             const isActive = idx === activeCardIndex;
+            const isCard1 = idx === 0;
 
             return (
               <motion.div
@@ -281,6 +313,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                   scale: transform.scale,
                   zIndex: transform.z,
                   visibility: transform.visibility,
+                  ...(isCard1 ? { maxHeight: c0MaxHeight } : {}),
                 }}
                 className="col-start-1 row-start-1 w-full max-w-4xl"
               >
@@ -332,8 +365,11 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                     </div>
                   </div>
 
-                  {/* Card Content Body: Compact & High Density to Fit Viewport */}
-                  <div className="p-5 sm:p-6 lg:p-7 space-y-4 overflow-y-auto">
+                  {/* Card Content Body: Expands from tab height via clip-path on Card 1 (0.13 -> 0.15) */}
+                  <motion.div
+                    style={isCard1 ? { clipPath: c0BodyClip } : {}}
+                    className="p-5 sm:p-6 lg:p-7 space-y-4 overflow-y-auto"
+                  >
                     
                     {/* Market Signal Intake */}
                     <div className="p-3 bg-[#F6F5F1] border-l-2 border-[#111315] space-y-1">
@@ -383,7 +419,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                       </button>
                     </div>
 
-                  </div>
+                  </motion.div>
                 </div>
               </motion.div>
             );

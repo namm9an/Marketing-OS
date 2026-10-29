@@ -5,13 +5,22 @@
 
 export const CONTAINER_HEIGHT_VH = 600;
 export const CONTAINER_HEIGHT = '600vh';
+
+// Phase 2b: Opening Morph Breakdown (0.00 -> 0.15) with zero overlap
+export const MORPH_KNOWLEDGE_START = 0.00;
+export const MORPH_KNOWLEDGE_END = 0.06;
+export const MORPH_TABS_START = 0.06;
+export const MORPH_TABS_END = 0.13;
+export const CARD_1_EXPAND_START = 0.13;
+export const CARD_1_EXPAND_END = 0.15;
 export const MORPH_END = 0.15;
+
 export const CARD_ARRIVAL_POINTS = [0.15, 0.32, 0.49, 0.66, 0.83];
 export const TRANSITION_LENGTH = 0.06;
 
-// Per caveat: Visible strip must be the same height for every level, at least 36px,
-// ensuring the full tab label (tag badge + domain title) is unclipped.
-export const PER_LEVEL_OFFSET_PX = 40; // 40px >= 36px for unclipped tab labels
+// Visible strip is at least 36px (set to 40px)
+// ensuring the full tab label (tag badge + domain title) is unclipped at all levels.
+export const PER_LEVEL_OFFSET_PX = 40;
 export const PER_LEVEL_OFFSET = '40px';
 
 export const PER_LEVEL_SCALE_STEP = 0.03;
@@ -26,10 +35,6 @@ export const SCROLL_TRANSITION_DURATION = 1.2;
 export function getCardTimelineConfig(cardIndex) {
   const arrival = CARD_ARRIVAL_POINTS[cardIndex];
   const enterStart = Math.max(0, arrival - TRANSITION_LENGTH);
-
-  // Milestone points across the entire cascade
-  // [0: 0.15, 1: 0.32, 2: 0.49, 3: 0.66, 4: 0.83, 5: 1.00]
-  const scrollMilestones = [...CARD_ARRIVAL_POINTS, 1.00];
 
   const yKeyframes = [];
   const scaleKeyframes = [];
