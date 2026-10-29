@@ -1,9 +1,10 @@
 import React, { useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
-import { ArrowRight, Lock, Database, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { motion, useScroll, useTransform, useSpring, useReducedMotion } from 'framer-motion';
+import { ArrowRight, Lock, Database, ShieldCheck } from 'lucide-react';
 
 export default function PinnedDossierCascade({ onLaunchConsole }) {
   const containerRef = useRef(null);
+  const shouldReduceMotion = useReducedMotion();
 
   // Track scroll progress through the 500vh container
   const { scrollYProgress } = useScroll({
@@ -11,12 +12,14 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
     offset: ['start start', 'end end'],
   });
 
-  // Smooth scroll spring physics
-  const smoothProgress = useSpring(scrollYProgress, {
+  // Smooth scroll spring physics (bypass spring if reduced motion requested)
+  const springProgress = useSpring(scrollYProgress, {
     stiffness: 180,
     damping: 26,
     restDelta: 0.001,
   });
+
+  const smoothProgress = shouldReduceMotion ? scrollYProgress : springProgress;
 
   // 5 Specialist Dossier Case Files
   const dossiers = [
@@ -88,72 +91,93 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
   const centralNodeOpacity = useTransform(smoothProgress, [0.0, 0.08, 0.14], [1, 1, 0]);
   const centralNodeScale = useTransform(smoothProgress, [0.0, 0.08, 0.14], [1, 1.05, 0.9]);
   const centralNodeY = useTransform(smoothProgress, [0.0, 0.08, 0.14], ['0px', '-10px', '-30px']);
+  const centralNodeVisibility = useTransform(smoothProgress, (v) => (v < 0.16 ? 'visible' : 'hidden'));
 
   const splitTabsOpacity = useTransform(smoothProgress, [0.07, 0.11, 0.17, 0.21], [0, 1, 1, 0]);
   const splitTabsY = useTransform(smoothProgress, [0.07, 0.14, 0.21], ['20px', '0px', '-20px']);
   const splitTabsScale = useTransform(smoothProgress, [0.07, 0.14, 0.21], [0.95, 1, 0.98]);
-
-  // Deck container visibility (fades in as morph completes)
-  const deckOpacity = useTransform(smoothProgress, [0.15, 0.20], [0, 1]);
+  const splitTabsVisibility = useTransform(smoothProgress, (v) => (v >= 0.06 && v < 0.22 ? 'visible' : 'hidden'));
 
   // ===========================================================================
   // PHASE 2: Stacking Deck Cascade (0.20 -> 0.85) + 15% Hold (0.85 -> 1.00)
-  // Step 1: 0.18 -> 0.33 (Card 1 Active)
-  // Step 2: 0.33 -> 0.48 (Card 2 Glides in)
-  // Step 3: 0.48 -> 0.63 (Card 3 Glides in)
-  // Step 4: 0.63 -> 0.78 (Card 4 Glides in)
-  // Step 5: 0.78 -> 0.85 (Card 5 Glides in)
-  // Hold 5: 0.85 -> 1.00 (Card 5 Stays locked & active for 15% scroll before unpinning)
+  // Stacked cards are offset on the Y axis ONLY (upward), never on X.
+  // Cards are 100% opaque. NEVER animate a card's opacity.
+  // Dim the cards behind with an ink-colored overlay (#111315).
   // ===========================================================================
 
-  // Card 1: Enters at 0.18, active until 0.33. Exits at 0.80 -> 0.85 when Card 5 arrives!
-  const c1Y = useTransform(smoothProgress, [0.18, 0.33, 0.48, 0.63, 0.80, 0.85], ['0px', '-28px', '-56px', '-84px', '-84px', '-160px']);
-  const c1Scale = useTransform(smoothProgress, [0.18, 0.33, 0.48, 0.63, 0.80, 0.85], [1, 0.98, 0.96, 0.94, 0.94, 0.90]);
-  const c1TintOpacity = useTransform(smoothProgress, [0.18, 0.33, 0.48, 0.63, 0.80, 0.85], [0, 0.25, 0.45, 0.60, 0.60, 1]);
-  const c1Opacity = useTransform(smoothProgress, [0.18, 0.22, 0.80, 0.85], [0, 1, 1, 0]);
+  // Card 1: Enters at 0.16, active until 0.33, steps upward on Y as subsequent cards stack
+  const c1Y = useTransform(
+    smoothProgress,
+    [0.16, 0.33, 0.48, 0.63, 0.80],
+    ['0px', '-28px', '-56px', '-84px', '-112px']
+  );
+  const c1Scale = useTransform(smoothProgress, [0.16, 0.33, 0.48, 0.63, 0.80], [1, 0.98, 0.96, 0.94, 0.92]);
+  const c1Tint = useTransform(smoothProgress, [0.16, 0.33, 0.48, 0.63, 0.80], [0, 0.25, 0.45, 0.60, 0.70]);
+  const c1Visibility = useTransform(smoothProgress, (v) => (v < 0.14 ? 'hidden' : 'visible'));
 
-  // Card 2: Glides up at 0.33 -> 0.38, active until 0.48, steps back, stays until 1.0
-  const c2Y = useTransform(smoothProgress, [0.28, 0.38, 0.48, 0.63, 0.83], ['120px', '0px', '-28px', '-56px', '-84px']);
-  const c2Scale = useTransform(smoothProgress, [0.28, 0.38, 0.48, 0.63, 0.83], [0.96, 1, 0.98, 0.96, 0.94]);
-  const c2TintOpacity = useTransform(smoothProgress, [0.35, 0.40, 0.48, 0.63, 0.83], [0, 0, 0.25, 0.45, 0.60]);
-  const c2Opacity = useTransform(smoothProgress, [0.28, 0.35], [0, 1]);
+  // Card 2: Glides up from below on Y at 0.28 -> 0.35, active until 0.48, steps upward
+  const c2Y = useTransform(
+    smoothProgress,
+    [0.27, 0.35, 0.48, 0.63, 0.80],
+    ['600px', '0px', '-28px', '-56px', '-84px']
+  );
+  const c2Scale = useTransform(smoothProgress, [0.27, 0.35, 0.48, 0.63, 0.80], [0.96, 1, 0.98, 0.96, 0.94]);
+  const c2Tint = useTransform(smoothProgress, [0.32, 0.36, 0.48, 0.63, 0.80], [0, 0, 0.25, 0.45, 0.60]);
+  const c2Visibility = useTransform(smoothProgress, (v) => (v < 0.27 ? 'hidden' : 'visible'));
 
-  // Card 3: Glides up at 0.48 -> 0.53, active until 0.63, steps back, stays until 1.0
-  const c3Y = useTransform(smoothProgress, [0.43, 0.53, 0.63, 0.78, 0.83], ['120px', '0px', '-28px', '-56px', '-56px']);
-  const c3Scale = useTransform(smoothProgress, [0.43, 0.53, 0.63, 0.78, 0.83], [0.96, 1, 0.98, 0.96, 0.96]);
-  const c3TintOpacity = useTransform(smoothProgress, [0.50, 0.55, 0.63, 0.78], [0, 0, 0.25, 0.45]);
-  const c3Opacity = useTransform(smoothProgress, [0.43, 0.50], [0, 1]);
+  // Card 3: Glides up from below on Y at 0.43 -> 0.50, active until 0.63, steps upward
+  const c3Y = useTransform(
+    smoothProgress,
+    [0.42, 0.50, 0.63, 0.80],
+    ['600px', '0px', '-28px', '-56px']
+  );
+  const c3Scale = useTransform(smoothProgress, [0.42, 0.50, 0.63, 0.80], [0.96, 1, 0.98, 0.96]);
+  const c3Tint = useTransform(smoothProgress, [0.47, 0.52, 0.63, 0.80], [0, 0, 0.25, 0.45]);
+  const c3Visibility = useTransform(smoothProgress, (v) => (v < 0.42 ? 'hidden' : 'visible'));
 
-  // Card 4: Glides up at 0.63 -> 0.68, active until 0.78, steps back to -28px, stays until 1.0
-  const c4Y = useTransform(smoothProgress, [0.58, 0.68, 0.78, 0.83], ['120px', '0px', '-28px', '-28px']);
-  const c4Scale = useTransform(smoothProgress, [0.58, 0.68, 0.78, 0.83], [0.96, 1, 0.98, 0.98]);
-  const c4TintOpacity = useTransform(smoothProgress, [0.65, 0.70, 0.78], [0, 0, 0.25]);
-  const c4Opacity = useTransform(smoothProgress, [0.58, 0.65], [0, 1]);
+  // Card 4: Glides up from below on Y at 0.58 -> 0.65, active until 0.78, steps upward
+  const c4Y = useTransform(
+    smoothProgress,
+    [0.57, 0.65, 0.78],
+    ['600px', '0px', '-28px']
+  );
+  const c4Scale = useTransform(smoothProgress, [0.57, 0.65, 0.78], [0.96, 1, 0.98]);
+  const c4Tint = useTransform(smoothProgress, [0.62, 0.67, 0.78], [0, 0, 0.25]);
+  const c4Visibility = useTransform(smoothProgress, (v) => (v < 0.57 ? 'hidden' : 'visible'));
 
-  // Card 5: Glides up at 0.78 -> 0.83, active throughout 0.83 -> 1.00 (15% Hold!)
-  const c5Y = useTransform(smoothProgress, [0.73, 0.83, 1.00], ['120px', '0px', '0px']);
-  const c5Scale = useTransform(smoothProgress, [0.73, 0.83, 1.00], [0.96, 1, 1]);
-  const c5Opacity = useTransform(smoothProgress, [0.73, 0.80], [0, 1]);
+  // Card 5: Glides up from below on Y at 0.72 -> 0.80, stays active through 1.00 (Hold)
+  const c5Y = useTransform(
+    smoothProgress,
+    [0.72, 0.80, 1.00],
+    ['600px', '0px', '0px']
+  );
+  const c5Scale = useTransform(smoothProgress, [0.72, 0.80, 1.00], [0.96, 1, 1]);
+  const c5Visibility = useTransform(smoothProgress, (v) => (v < 0.72 ? 'hidden' : 'visible'));
 
   const cardTransforms = [
-    { y: c1Y, scale: c1Scale, tint: c1TintOpacity, opacity: c1Opacity, z: 10 },
-    { y: c2Y, scale: c2Scale, tint: c2TintOpacity, opacity: c2Opacity, z: 20 },
-    { y: c3Y, scale: c3Y, tint: c3TintOpacity, opacity: c3Opacity, z: 30 },
-    { y: c4Y, scale: c4Y, tint: c4TintOpacity, opacity: c4Opacity, z: 40 },
-    { y: c5Y, scale: c5Y, tint: 0, opacity: c5Opacity, z: 50 },
+    { y: c1Y, scale: c1Scale, tint: c1Tint, visibility: c1Visibility, z: 10 },
+    { y: c2Y, scale: c2Scale, tint: c2Tint, visibility: c2Visibility, z: 20 },
+    { y: c3Y, scale: c3Scale, tint: c3Tint, visibility: c3Visibility, z: 30 },
+    { y: c4Y, scale: c4Y, tint: c4Tint, visibility: c4Visibility, z: 40 },
+    { y: c5Y, scale: c5Scale, tint: 0, visibility: c5Visibility, z: 50 },
   ];
 
   return (
-    <section ref={containerRef} className="relative h-[500vh] w-full bg-[#F6F5F1]">
-      {/* Sticky Viewport Stage: Pinned below navbar */}
-      <div className="sticky top-14 h-[calc(100vh-3.5rem)] w-full flex flex-col justify-center items-center px-4 sm:px-6 lg:px-8 overflow-hidden select-none">
+    <section ref={containerRef} className="relative h-[500vh] w-full bg-[#F6F5F1] overflow-x-clip">
+      {/* Sticky Viewport Stage: Pinned below navbar. Grid place-items: center ensures exact horizontal and vertical centering */}
+      <div className="sticky top-14 h-[calc(100vh-3.5rem)] w-full grid place-items-center px-4 sm:px-6 lg:px-8 overflow-x-clip select-none">
         
         {/* =================================================================== */}
         {/* PHASE 1 (0.0 -> 0.20): Morphing Central Node & 5-Tab Fan-out       */}
         {/* =================================================================== */}
         <motion.div
-          style={{ opacity: centralNodeOpacity, scale: centralNodeScale, y: centralNodeY }}
-          className="absolute z-30 max-w-xl w-full text-center"
+          style={{
+            opacity: centralNodeOpacity,
+            scale: centralNodeScale,
+            y: centralNodeY,
+            visibility: centralNodeVisibility,
+          }}
+          className="col-start-1 row-start-1 z-30 max-w-xl w-full text-center"
         >
           <div className="bg-[#FFFFFF] border border-[#111315] p-8 shadow-xs">
             <div className="inline-flex items-center gap-2 text-xs font-mono text-[#2563EB] uppercase tracking-wider mb-2">
@@ -174,8 +198,13 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
 
         {/* 5 Small Tabs splitting horizontally during 0.08 -> 0.18 */}
         <motion.div
-          style={{ opacity: splitTabsOpacity, y: splitTabsY, scale: splitTabsScale }}
-          className="absolute z-20 max-w-4xl w-full flex items-center justify-center gap-2 sm:gap-3 pointer-events-none"
+          style={{
+            opacity: splitTabsOpacity,
+            y: splitTabsY,
+            scale: splitTabsScale,
+            visibility: splitTabsVisibility,
+          }}
+          className="col-start-1 row-start-1 z-20 max-w-4xl w-full flex items-center justify-center gap-2 sm:gap-3 pointer-events-none"
         >
           {dossiers.map((d) => (
             <div
@@ -191,10 +220,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
         {/* =================================================================== */}
         {/* PHASE 2 (0.20 -> 1.00): Stacking Dossier Deck (Opaque Paper Sheets) */}
         {/* =================================================================== */}
-        <motion.div
-          style={{ opacity: deckOpacity }}
-          className="relative w-full max-w-4xl flex items-center justify-center"
-        >
+        <div className="col-start-1 row-start-1 w-full max-w-4xl grid place-items-center">
           {dossiers.map((dossier, idx) => {
             const transform = cardTransforms[idx];
 
@@ -204,10 +230,10 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                 style={{
                   y: transform.y,
                   scale: transform.scale,
-                  opacity: transform.opacity,
                   zIndex: transform.z,
+                  visibility: transform.visibility,
                 }}
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-4xl"
+                className="col-start-1 row-start-1 w-full max-w-4xl"
               >
                 {/* 
                   The Physical Card: 
@@ -217,16 +243,16 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                 */}
                 <div className="relative bg-[#FFFFFF] border border-[#111315] shadow-md flex flex-col max-h-[calc(100vh-8.5rem)] overflow-hidden">
                   
-                  {/* Dark Ink Overlay for Dimming Previous Cards (Change 4: Opaque tint, not CSS opacity!) */}
+                  {/* Ink Overlay for Dimming Previous Cards (dim with #111315, not CSS opacity) */}
                   {transform.tint !== 0 && (
                     <motion.div
                       style={{ opacity: transform.tint }}
-                      className="absolute inset-0 bg-[#ECEAE3] pointer-events-none z-40 transition-opacity"
+                      className="absolute inset-0 bg-[#111315] pointer-events-none z-40 transition-opacity"
                     />
                   )}
 
                   {/* Top Header Strip with Protruding Tab & Real Monochromatic Telemetry */}
-                  <div className="flex items-center justify-between border-b border-[#111315] bg-[#ECEAE3]/70 px-4 sm:px-6 py-2.5">
+                  <div className="flex items-center justify-between border-b border-[#111315] bg-[#ECEAE3] px-4 sm:px-6 py-2.5">
                     
                     {/* Tab Protruding on Left */}
                     <div className="flex items-center gap-2">
@@ -300,10 +326,10 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
               </motion.div>
             );
           })}
-        </motion.div>
+        </div>
 
         {/* Bottom Scroll Progress Tick (Monochrome) */}
-        <div className="absolute bottom-4 right-6 font-mono text-[10.5px] text-[#6E7685]">
+        <div className="col-start-1 row-start-1 w-full max-w-4xl flex justify-end items-end h-full pb-4 pr-2 font-mono text-[10.5px] text-[#6E7685] pointer-events-none">
           <span>Cascading 5 Specialist Dossiers · Scroll to advance</span>
         </div>
       </div>
