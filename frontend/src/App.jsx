@@ -1,5 +1,5 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import Lenis from 'lenis';
+import { LenisProvider } from './context/LenisContext';
 import StickySystemHeader from './components/showcase/StickySystemHeader';
 import PublicCaseStudyPage from './components/showcase/PublicCaseStudyPage';
 
@@ -10,31 +10,6 @@ export default function App() {
   const [currentRoute, setCurrentRoute] = useState(() => {
     return window.location.pathname.startsWith('/console') ? 'console' : 'case-study';
   });
-
-  // Smooth inertial scrolling with Lenis for the public product showcase
-  useEffect(() => {
-    if (currentRoute !== 'case-study') return;
-
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      orientation: 'vertical',
-      smoothWheel: true,
-      touchMultiplier: 2,
-    });
-
-    let rafId;
-    function raf(time) {
-      lenis.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
-
-    return () => {
-      cancelAnimationFrame(rafId);
-      lenis.destroy();
-    };
-  }, [currentRoute]);
 
   // Handle browser back/forward buttons
   useEffect(() => {
@@ -78,11 +53,13 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F6F5F1] text-[#111315]">
-      <StickySystemHeader onOpenConsole={navigateToConsole} isConsoleActive={false} />
-      <main>
-        <PublicCaseStudyPage onOpenConsole={navigateToConsole} />
-      </main>
-    </div>
+    <LenisProvider enabled={currentRoute === 'case-study'}>
+      <div className="min-h-screen bg-[#F6F5F1] text-[#111315]">
+        <StickySystemHeader onOpenConsole={navigateToConsole} isConsoleActive={false} />
+        <main>
+          <PublicCaseStudyPage onOpenConsole={navigateToConsole} />
+        </main>
+      </div>
+    </LenisProvider>
   );
 }

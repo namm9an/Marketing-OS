@@ -1,12 +1,26 @@
-import React, { useRef } from 'react';
-import { motion, useScroll, useTransform, useSpring, useReducedMotion } from 'framer-motion';
+import React, { useRef, useState } from 'react';
+import { motion, useScroll, useTransform, useSpring, useReducedMotion, useMotionValueEvent } from 'framer-motion';
 import { ArrowRight, Lock, Database, ShieldCheck } from 'lucide-react';
+import { useLenis } from '../../context/LenisContext';
+import {
+  CONTAINER_HEIGHT,
+  MORPH_END,
+  CARD_ARRIVAL_POINTS,
+  TRANSITION_LENGTH,
+  PER_LEVEL_OFFSET_PX,
+  PER_LEVEL_SCALE_STEP,
+  MAX_VISIBLE_BEHIND,
+  SCROLL_TRANSITION_DURATION,
+  getCardTimelineConfig,
+} from '../../lib/deckTimeline';
 
 export default function PinnedDossierCascade({ onLaunchConsole }) {
   const containerRef = useRef(null);
   const shouldReduceMotion = useReducedMotion();
+  const lenis = useLenis();
+  const [activeCardIndex, setActiveCardIndex] = useState(0);
 
-  // Track scroll progress through the 500vh container
+  // Track scroll progress through the container
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ['start start', 'end end'],
@@ -20,6 +34,42 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
   });
 
   const smoothProgress = shouldReduceMotion ? scrollYProgress : springProgress;
+
+  // Track active card index based on CARD_ARRIVAL_POINTS
+  useMotionValueEvent(smoothProgress, 'change', (v) => {
+    let active = 0;
+    for (let j = CARD_ARRIVAL_POINTS.length - 1; j >= 0; j--) {
+      if (v >= CARD_ARRIVAL_POINTS[j] - 0.02) {
+        active = j;
+        break;
+      }
+    }
+    setActiveCardIndex(active);
+  });
+
+  // Tab click smooth scroll navigation using Lenis
+  const handleTabClick = (cardIndex) => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const containerTop = rect.top + window.scrollY;
+    const containerHeight = containerRef.current.offsetHeight;
+    const viewportHeight = window.innerHeight;
+    const targetArrival = CARD_ARRIVAL_POINTS[cardIndex];
+
+    const targetScrollY = containerTop + targetArrival * (containerHeight - viewportHeight);
+
+    if (lenis) {
+      lenis.scrollTo(targetScrollY, {
+        duration: shouldReduceMotion ? 0 : SCROLL_TRANSITION_DURATION,
+        immediate: shouldReduceMotion,
+      });
+    } else {
+      window.scrollTo({
+        top: targetScrollY,
+        behavior: shouldReduceMotion ? 'auto' : 'smooth',
+      });
+    }
+  };
 
   // 5 Specialist Dossier Case Files
   const dossiers = [
@@ -86,89 +136,83 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
   ];
 
   // ===========================================================================
-  // PHASE 1: 0.0 -> 0.20 (The Central Node -> 5 Tabs Morph)
+  // PHASE 1: Morphing Central Node & 5-Tab Fan-out
   // ===========================================================================
-  const centralNodeOpacity = useTransform(smoothProgress, [0.0, 0.08, 0.14], [1, 1, 0]);
-  const centralNodeScale = useTransform(smoothProgress, [0.0, 0.08, 0.14], [1, 1.05, 0.9]);
-  const centralNodeY = useTransform(smoothProgress, [0.0, 0.08, 0.14], ['0px', '-10px', '-30px']);
-  const centralNodeVisibility = useTransform(smoothProgress, (v) => (v < 0.16 ? 'visible' : 'hidden'));
+  const centralNodeOpacity = useTransform(smoothProgress, [0.0, MORPH_END * 0.55, MORPH_END * 0.95], [1, 1, 0]);
+  const centralNodeScale = useTransform(smoothProgress, [0.0, MORPH_END * 0.55, MORPH_END * 0.95], [1, 1.05, 0.9]);
+  const centralNodeY = useTransform(smoothProgress, [0.0, MORPH_END * 0.55, MORPH_END * 0.95], ['0px', '-10px', '-30px']);
+  const centralNodeVisibility = useTransform(smoothProgress, (v) => (v < MORPH_END ? 'visible' : 'hidden'));
 
-  const splitTabsOpacity = useTransform(smoothProgress, [0.07, 0.11, 0.17, 0.21], [0, 1, 1, 0]);
-  const splitTabsY = useTransform(smoothProgress, [0.07, 0.14, 0.21], ['20px', '0px', '-20px']);
-  const splitTabsScale = useTransform(smoothProgress, [0.07, 0.14, 0.21], [0.95, 1, 0.98]);
-  const splitTabsVisibility = useTransform(smoothProgress, (v) => (v >= 0.06 && v < 0.22 ? 'visible' : 'hidden'));
+  const splitTabsOpacity = useTransform(
+    smoothProgress,
+    [MORPH_END * 0.45, MORPH_END * 0.75, MORPH_END, MORPH_END + 0.04],
+    [0, 1, 1, 0]
+  );
+  const splitTabsY = useTransform(
+    smoothProgress,
+    [MORPH_END * 0.45, MORPH_END * 0.9, MORPH_END + 0.04],
+    ['20px', '0px', '-20px']
+  );
+  const splitTabsScale = useTransform(
+    smoothProgress,
+    [MORPH_END * 0.45, MORPH_END * 0.9, MORPH_END + 0.04],
+    [0.95, 1, 0.98]
+  );
+  const splitTabsVisibility = useTransform(
+    smoothProgress,
+    (v) => (v >= MORPH_END * 0.4 && v < MORPH_END + 0.05 ? 'visible' : 'hidden')
+  );
 
   // ===========================================================================
-  // PHASE 2: Stacking Deck Cascade (0.20 -> 0.85) + 15% Hold (0.85 -> 1.00)
-  // Stacked cards are offset on the Y axis ONLY (upward), never on X.
-  // Cards are 100% opaque. NEVER animate a card's opacity.
-  // Dim the cards behind with an ink-colored overlay (#111315).
+  // PHASE 2: Stacking Deck Cascade from deckTimeline
   // ===========================================================================
+  const cardConfigs = dossiers.map((_, i) => getCardTimelineConfig(i));
 
-  // Card 1: Enters at 0.16, active until 0.33, steps upward on Y as subsequent cards stack
-  const c1Y = useTransform(
-    smoothProgress,
-    [0.16, 0.33, 0.48, 0.63, 0.80],
-    ['0px', '-28px', '-56px', '-84px', '-112px']
-  );
-  const c1Scale = useTransform(smoothProgress, [0.16, 0.33, 0.48, 0.63, 0.80], [1, 0.98, 0.96, 0.94, 0.92]);
-  const c1Tint = useTransform(smoothProgress, [0.16, 0.33, 0.48, 0.63, 0.80], [0, 0.25, 0.45, 0.60, 0.70]);
-  const c1Visibility = useTransform(smoothProgress, (v) => (v < 0.14 ? 'hidden' : 'visible'));
+  // Transform hooks per card
+  const c0Y = useTransform(smoothProgress, cardConfigs[0].inputProgressY, cardConfigs[0].outputY);
+  const c0Scale = useTransform(smoothProgress, cardConfigs[0].inputProgressScale, cardConfigs[0].outputScale);
+  const c0Tint = useTransform(smoothProgress, cardConfigs[0].inputProgressTint, cardConfigs[0].outputTint);
+  const c0Vis = useTransform(smoothProgress, (v) => (v >= MORPH_END - 0.02 && v < CARD_ARRIVAL_POINTS[4] - 0.01 ? 'visible' : 'hidden'));
 
-  // Card 2: Glides up from below on Y at 0.28 -> 0.35, active until 0.48, steps upward
-  const c2Y = useTransform(
-    smoothProgress,
-    [0.27, 0.35, 0.48, 0.63, 0.80],
-    ['600px', '0px', '-28px', '-56px', '-84px']
-  );
-  const c2Scale = useTransform(smoothProgress, [0.27, 0.35, 0.48, 0.63, 0.80], [0.96, 1, 0.98, 0.96, 0.94]);
-  const c2Tint = useTransform(smoothProgress, [0.32, 0.36, 0.48, 0.63, 0.80], [0, 0, 0.25, 0.45, 0.60]);
-  const c2Visibility = useTransform(smoothProgress, (v) => (v < 0.27 ? 'hidden' : 'visible'));
+  const c1Y = useTransform(smoothProgress, cardConfigs[1].inputProgressY, cardConfigs[1].outputY);
+  const c1Scale = useTransform(smoothProgress, cardConfigs[1].inputProgressScale, cardConfigs[1].outputScale);
+  const c1Tint = useTransform(smoothProgress, cardConfigs[1].inputProgressTint, cardConfigs[1].outputTint);
+  const c1Vis = useTransform(smoothProgress, (v) => (v >= cardConfigs[1].enterStart ? 'visible' : 'hidden'));
 
-  // Card 3: Glides up from below on Y at 0.43 -> 0.50, active until 0.63, steps upward
-  const c3Y = useTransform(
-    smoothProgress,
-    [0.42, 0.50, 0.63, 0.80],
-    ['600px', '0px', '-28px', '-56px']
-  );
-  const c3Scale = useTransform(smoothProgress, [0.42, 0.50, 0.63, 0.80], [0.96, 1, 0.98, 0.96]);
-  const c3Tint = useTransform(smoothProgress, [0.47, 0.52, 0.63, 0.80], [0, 0, 0.25, 0.45]);
-  const c3Visibility = useTransform(smoothProgress, (v) => (v < 0.42 ? 'hidden' : 'visible'));
+  const c2Y = useTransform(smoothProgress, cardConfigs[2].inputProgressY, cardConfigs[2].outputY);
+  const c2Scale = useTransform(smoothProgress, cardConfigs[2].inputProgressScale, cardConfigs[2].outputScale);
+  const c2Tint = useTransform(smoothProgress, cardConfigs[2].inputProgressTint, cardConfigs[2].outputTint);
+  const c2Vis = useTransform(smoothProgress, (v) => (v >= cardConfigs[2].enterStart ? 'visible' : 'hidden'));
 
-  // Card 4: Glides up from below on Y at 0.58 -> 0.65, active until 0.78, steps upward
-  const c4Y = useTransform(
-    smoothProgress,
-    [0.57, 0.65, 0.78],
-    ['600px', '0px', '-28px']
-  );
-  const c4Scale = useTransform(smoothProgress, [0.57, 0.65, 0.78], [0.96, 1, 0.98]);
-  const c4Tint = useTransform(smoothProgress, [0.62, 0.67, 0.78], [0, 0, 0.25]);
-  const c4Visibility = useTransform(smoothProgress, (v) => (v < 0.57 ? 'hidden' : 'visible'));
+  const c3Y = useTransform(smoothProgress, cardConfigs[3].inputProgressY, cardConfigs[3].outputY);
+  const c3Scale = useTransform(smoothProgress, cardConfigs[3].inputProgressScale, cardConfigs[3].outputScale);
+  const c3Tint = useTransform(smoothProgress, cardConfigs[3].inputProgressTint, cardConfigs[3].outputTint);
+  const c3Vis = useTransform(smoothProgress, (v) => (v >= cardConfigs[3].enterStart ? 'visible' : 'hidden'));
 
-  // Card 5: Glides up from below on Y at 0.72 -> 0.80, stays active through 1.00 (Hold)
-  const c5Y = useTransform(
-    smoothProgress,
-    [0.72, 0.80, 1.00],
-    ['600px', '0px', '0px']
-  );
-  const c5Scale = useTransform(smoothProgress, [0.72, 0.80, 1.00], [0.96, 1, 1]);
-  const c5Visibility = useTransform(smoothProgress, (v) => (v < 0.72 ? 'hidden' : 'visible'));
+  const c4Y = useTransform(smoothProgress, cardConfigs[4].inputProgressY, cardConfigs[4].outputY);
+  const c4Scale = useTransform(smoothProgress, cardConfigs[4].inputProgressScale, cardConfigs[4].outputScale);
+  const c4Tint = useTransform(smoothProgress, cardConfigs[4].inputProgressTint, cardConfigs[4].outputTint);
+  const c4Vis = useTransform(smoothProgress, (v) => (v >= cardConfigs[4].enterStart ? 'visible' : 'hidden'));
 
   const cardTransforms = [
-    { y: c1Y, scale: c1Scale, tint: c1Tint, visibility: c1Visibility, z: 10 },
-    { y: c2Y, scale: c2Scale, tint: c2Tint, visibility: c2Visibility, z: 20 },
-    { y: c3Y, scale: c3Scale, tint: c3Tint, visibility: c3Visibility, z: 30 },
-    { y: c4Y, scale: c4Y, tint: c4Tint, visibility: c4Visibility, z: 40 },
-    { y: c5Y, scale: c5Scale, tint: 0, visibility: c5Visibility, z: 50 },
+    { y: c0Y, scale: c0Scale, tint: c0Tint, visibility: c0Vis, z: 10 },
+    { y: c1Y, scale: c1Scale, tint: c1Tint, visibility: c1Vis, z: 20 },
+    { y: c2Y, scale: c2Scale, tint: c2Tint, visibility: c2Vis, z: 30 },
+    { y: c3Y, scale: c3Scale, tint: c3Tint, visibility: c3Vis, z: 40 },
+    { y: c4Y, scale: c4Scale, tint: c4Tint, visibility: c4Vis, z: 50 },
   ];
 
   return (
-    <section ref={containerRef} className="relative h-[500vh] w-full bg-[#F6F5F1] overflow-x-clip">
-      {/* Sticky Viewport Stage: Pinned below navbar. Grid place-items: center ensures exact horizontal and vertical centering */}
+    <section
+      ref={containerRef}
+      style={{ height: CONTAINER_HEIGHT }}
+      className="relative w-full bg-[#F6F5F1] overflow-x-clip"
+    >
+      {/* Sticky Viewport Stage: Pinned below navbar */}
       <div className="sticky top-14 h-[calc(100vh-3.5rem)] w-full grid place-items-center px-4 sm:px-6 lg:px-8 overflow-x-clip select-none">
         
         {/* =================================================================== */}
-        {/* PHASE 1 (0.0 -> 0.20): Morphing Central Node & 5-Tab Fan-out       */}
+        {/* PHASE 1: Morphing Central Node & 5-Tab Fan-out                     */}
         {/* =================================================================== */}
         <motion.div
           style={{
@@ -177,7 +221,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
             y: centralNodeY,
             visibility: centralNodeVisibility,
           }}
-          className="col-start-1 row-start-1 z-30 max-w-xl w-full text-center"
+          className="col-start-1 row-start-1 z-20 max-w-xl w-full text-center pointer-events-none"
         >
           <div className="bg-[#FFFFFF] border border-[#111315] p-8 shadow-xs">
             <div className="inline-flex items-center gap-2 text-xs font-mono text-[#2563EB] uppercase tracking-wider mb-2">
@@ -204,25 +248,30 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
             scale: splitTabsScale,
             visibility: splitTabsVisibility,
           }}
-          className="col-start-1 row-start-1 z-20 max-w-4xl w-full flex items-center justify-center gap-2 sm:gap-3 pointer-events-none"
+          className="col-start-1 row-start-1 z-30 max-w-4xl w-full flex items-center justify-center gap-2 sm:gap-3 pointer-events-auto"
         >
-          {dossiers.map((d) => (
-            <div
+          {dossiers.map((d, i) => (
+            <button
               key={d.num}
-              className="px-3 sm:px-4 py-2 bg-[#FFFFFF] border border-[#111315] shadow-xs flex items-center gap-1.5 font-mono text-[11px] sm:text-xs font-semibold text-[#111315]"
+              type="button"
+              onClick={() => handleTabClick(i)}
+              className="group px-3 sm:px-4 py-2 bg-[#FFFFFF] border border-[#111315] shadow-xs flex items-center gap-1.5 font-mono text-[11px] sm:text-xs font-semibold text-[#111315] cursor-pointer hover:border-[#2563EB] transition-colors"
             >
               <span className="text-[#2563EB]">{d.num}</span>
-              <span className="hidden sm:inline">/ {d.name.split(' ')[0]}</span>
-            </div>
+              <span className="hidden sm:inline group-hover:underline decoration-[#111315] decoration-2 underline-offset-4">
+                / {d.name.split(' ')[0]}
+              </span>
+            </button>
           ))}
         </motion.div>
 
         {/* =================================================================== */}
-        {/* PHASE 2 (0.20 -> 1.00): Stacking Dossier Deck (Opaque Paper Sheets) */}
+        {/* PHASE 2: Stacking Dossier Deck (Opaque Paper Sheets)                */}
         {/* =================================================================== */}
         <div className="col-start-1 row-start-1 w-full max-w-4xl grid place-items-center">
           {dossiers.map((dossier, idx) => {
             const transform = cardTransforms[idx];
+            const isActive = idx === activeCardIndex;
 
             return (
               <motion.div
@@ -243,7 +292,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                 */}
                 <div className="relative bg-[#FFFFFF] border border-[#111315] shadow-md flex flex-col max-h-[calc(100vh-8.5rem)] overflow-hidden">
                   
-                  {/* Ink Overlay for Dimming Previous Cards (dim with #111315, not CSS opacity) */}
+                  {/* Ink Overlay for Dimming Previous Cards */}
                   {transform.tint !== 0 && (
                     <motion.div
                       style={{ opacity: transform.tint }}
@@ -252,17 +301,30 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                   )}
 
                   {/* Top Header Strip with Protruding Tab & Real Monochromatic Telemetry */}
-                  <div className="flex items-center justify-between border-b border-[#111315] bg-[#ECEAE3] px-4 sm:px-6 py-2.5">
+                  <div className="relative z-50 flex items-center justify-between border-b border-[#111315] bg-[#ECEAE3] px-4 sm:px-6 py-2.5">
                     
-                    {/* Tab Protruding on Left */}
-                    <div className="flex items-center gap-2">
-                      <div className="bg-[#111315] text-[#FFFFFF] font-mono text-xs font-semibold px-3 py-1 tracking-wider uppercase">
-                        {dossier.tag}
+                    {/* Tab Protruding on Left - Clickable with Hover Ink Underline & Blue Active State */}
+                    <button
+                      type="button"
+                      onClick={() => handleTabClick(idx)}
+                      className="group flex items-center gap-2 text-left cursor-pointer focus:outline-none"
+                      aria-label={`Scroll to ${dossier.name}`}
+                    >
+                      <div
+                        className={`font-mono text-xs font-semibold px-3 py-1 tracking-wider uppercase transition-colors ${
+                          isActive
+                            ? 'bg-[#2563EB] text-[#FFFFFF]'
+                            : 'bg-[#111315] text-[#FFFFFF] group-hover:bg-[#2563EB]'
+                        }`}
+                      >
+                        <span className="group-hover:underline decoration-[#FFFFFF] underline-offset-2">
+                          {dossier.tag}
+                        </span>
                       </div>
-                      <span className="font-sans text-xs font-semibold text-[#111315] hidden sm:inline">
+                      <span className="font-sans text-xs font-semibold text-[#111315] hidden sm:inline group-hover:underline decoration-[#111315] decoration-2 underline-offset-4">
                         {dossier.domain}
                       </span>
-                    </div>
+                    </button>
 
                     {/* Monochromatic Telemetry (Real Recorded Data from Test Corpus) */}
                     <div className="font-mono text-[10.5px] text-[#4A505C] tracking-tight">
