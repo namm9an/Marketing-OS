@@ -7,10 +7,30 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Inter', 'sans-serif'],
-        mono: ['JetBrains Mono', 'monospace'],
+        display: ['var(--font-display)', 'Satoshi', 'sans-serif'],
+        sans: ['var(--font-sans)', 'Plus Jakarta Sans', 'sans-serif'],
+        mono: ['var(--font-mono)', 'JetBrains Mono', 'monospace'],
       },
       colors: {
+        canvas: 'var(--bg-canvas)',
+        panel: 'var(--bg-panel)',
+        elevated: 'var(--bg-elevated)',
+        ink: {
+          primary: 'var(--ink-primary)',
+          secondary: 'var(--ink-secondary)',
+          muted: 'var(--ink-muted)',
+        },
+        border: {
+          structural: 'var(--border-structural)',
+          strong: 'var(--border-strong)',
+        },
+        signal: 'var(--accent-signal)',
+        status: {
+          verified: 'var(--status-verified)',
+          escalated: 'var(--status-escalated)',
+          blocked: 'var(--status-blocked)',
+        },
+        // Backwards compatibility for existing interactive console
         claude: {
           bg: '#FBF9F5',
           card: '#FFFFFF',
