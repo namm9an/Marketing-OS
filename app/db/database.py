@@ -108,6 +108,15 @@ CREATE TABLE IF NOT EXISTS decisions (
     reasoning_source TEXT NOT NULL,
     rationale TEXT NOT NULL,
     risks TEXT NOT NULL,
+    latency_ms REAL DEFAULT 0.0,
+    retrieval_ms REAL DEFAULT 0.0,
+    prompt_tokens INTEGER DEFAULT 0,
+    completion_tokens INTEGER DEFAULT 0,
+    facts_retrieved INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'mock',
+    model TEXT DEFAULT 'mock-fallback',
+    evidence_ids TEXT DEFAULT '[]',
+    invalid_evidence_ids_count INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_created ON decisions(created_at DESC);
@@ -319,6 +328,25 @@ def init_db(force: bool = False):
     try:
         with conn:
             conn.executescript(SCHEMA)
+            try:
+                cursor = conn.execute("PRAGMA table_info(decisions)")
+                existing_cols = {row["name"] for row in cursor.fetchall()}
+                telemetry_cols = {
+                    "latency_ms": "REAL DEFAULT 0.0",
+                    "retrieval_ms": "REAL DEFAULT 0.0",
+                    "prompt_tokens": "INTEGER DEFAULT 0",
+                    "completion_tokens": "INTEGER DEFAULT 0",
+                    "facts_retrieved": "INTEGER DEFAULT 0",
+                    "source": "TEXT DEFAULT 'mock'",
+                    "model": "TEXT DEFAULT 'mock-fallback'",
+                    "evidence_ids": "TEXT DEFAULT '[]'",
+                    "invalid_evidence_ids_count": "INTEGER DEFAULT 0",
+                }
+                for col, col_type in telemetry_cols.items():
+                    if col not in existing_cols:
+                        conn.execute(f"ALTER TABLE decisions ADD COLUMN {col} {col_type}")
+            except Exception as mig_err:
+                log.warning(f"[DB Migration Warning] Telemetry column check: {mig_err}")
             conn.execute(
                 """
                 INSERT OR IGNORE INTO knowledge_units_fts(id, organization, knowledge_class, content)
@@ -341,19 +369,30 @@ def save_decision(
     escalated: bool,
     reasoning_source: str,
     rationale: str,
-    risks: str
+    risks: str,
+    latency_ms: float = 0.0,
+    retrieval_ms: float = 0.0,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    facts_retrieved: int = 0,
+    source: str = "mock",
+    model: str = "mock-fallback",
+    evidence_ids: Optional[List[str]] = None,
+    invalid_evidence_ids_count: int = 0,
 ):
     from app.services.llm_service import redact_credentials
 
     init_db()
     conn = get_connection()
+    evidence_ids_str = json.dumps(evidence_ids or [])
     try:
         with conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO decisions
-                (id, goal_statement, selected_option, confidence, escalated, reasoning_source, rationale, risks)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (id, goal_statement, selected_option, confidence, escalated, reasoning_source, rationale, risks,
+                 latency_ms, retrieval_ms, prompt_tokens, completion_tokens, facts_retrieved, source, model, evidence_ids, invalid_evidence_ids_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     decision_id,
@@ -364,6 +403,15 @@ def save_decision(
                     reasoning_source,
                     redact_credentials(rationale),
                     redact_credentials(risks),
+                    float(latency_ms or 0.0),
+                    float(retrieval_ms or 0.0),
+                    int(prompt_tokens or 0),
+                    int(completion_tokens or 0),
+                    int(facts_retrieved or 0),
+                    str(source or "mock"),
+                    str(model or "mock-fallback"),
+                    evidence_ids_str,
+                    int(invalid_evidence_ids_count or 0),
                 )
             )
     finally:
@@ -381,7 +429,16 @@ def get_all_decisions(limit: Optional[int] = None, offset: int = 0) -> List[Dict
         else:
             cursor = conn.execute("SELECT * FROM decisions ORDER BY created_at DESC")
         rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        result = []
+        for row in rows:
+            d = dict(row)
+            if isinstance(d.get("evidence_ids"), str):
+                try:
+                    d["evidence_ids"] = json.loads(d["evidence_ids"])
+                except Exception:
+                    d["evidence_ids"] = []
+            result.append(d)
+        return result
     finally:
         conn.close()
 

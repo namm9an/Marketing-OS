@@ -5,6 +5,7 @@ Unified LLM Provider Service Factory (Gemini Header Auth & Server Model Enforcem
 import json
 import logging
 import re
+import time
 import urllib.request
 import urllib.error
 from typing import Dict, Any, Optional
@@ -60,7 +61,10 @@ class LLMService:
         4. Atomic capacity consumption (from reservation or immediate debit) immediately before real HTTP call.
         5. Typed provider error handling (UpstreamRateLimitError -> 429, UpstreamProviderError -> 502/503).
         6. Zero credential logging (all keys redacted from logs/traces).
+        7. Measured latency_ms and token usage extracted from upstream usageMetadata.
         """
+        t0 = time.perf_counter()
+
         # 1. Enforce server-owned configured model (unapproved client input cannot affect model)
         approved_model = settings.DEFAULT_MODEL or "gemini-3.8-flash"
         model_name = approved_model
@@ -74,10 +78,17 @@ class LLMService:
         # 3. Fall back to deterministic mock if no server API key is configured (local dev)
         # Note: Local mocks are NEVER charged against the global Gemini call budget
         if not effective_key:
+            mock_text = LLMService._fallback_mock_response(user_prompt)
+            latency_ms = round((time.perf_counter() - t0) * 1000, 2)
             return {
-                "text": LLMService._fallback_mock_response(user_prompt),
+                "text": mock_text,
                 "model_used": "mock-fallback",
+                "model": "mock-fallback",
+                "source": "mock",
                 "tokens": 150,
+                "prompt_tokens": 100,
+                "completion_tokens": 50,
+                "latency_ms": latency_ms,
             }
 
         # 4. For real outbound requests: consume from workflow reservation or debit 1 global unit
@@ -106,7 +117,6 @@ class LLMService:
                 )
 
         # 5. Outgoing REST call: Key in x-goog-api-key header, NEVER in URL
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
         payload = {
             "contents": [
                 {
@@ -117,49 +127,92 @@ class LLMService:
             "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
         }
 
-        try:
-            req = urllib.request.Request(
-                url,
-                data=json.dumps(payload).encode("utf-8"),
-                headers={
-                    "Content-Type": "application/json",
-                    "x-goog-api-key": effective_key,
-                },
-            )
-            with urllib.request.urlopen(req, timeout=30) as resp:
-                data = json.loads(resp.read().decode("utf-8"))
-                text = data["candidates"][0]["content"]["parts"][0]["text"]
-                return {"text": text, "model_used": model_name, "tokens": 250}
-        except urllib.error.HTTPError as e:
-            safe_err = redact_credentials(str(e), effective_key)
-            log.error(f"[Gemini HTTPError {e.code}] {safe_err}")
-            if e.code == 429:
-                retry_after = 60
+        models_to_try = [model_name]
+        if model_name != "gemini-3.5-flash":
+            models_to_try.append("gemini-3.5-flash")
+
+        last_err = None
+        for current_model in models_to_try:
+            url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent"
+            for attempt in range(2):
                 try:
-                    retry_header = e.headers.get("Retry-After")
-                    if retry_header:
-                        retry_after = int(retry_header)
-                except Exception:
-                    pass
-                raise UpstreamRateLimitError(
-                    f"Upstream Gemini API rate limit exceeded (429). Retry after {retry_after}s.",
-                    retry_after=retry_after,
-                ) from None
-            raise UpstreamProviderError(
-                f"Upstream Gemini API error ({e.code})",
-                status_code=502 if e.code >= 500 else 500,
-            ) from None
-        except urllib.error.URLError as e:
-            safe_err = redact_credentials(str(e), effective_key)
-            log.error(f"[Gemini URLError] {safe_err}")
-            raise UpstreamProviderError(
-                "Upstream Gemini API connection failure",
-                status_code=503,
-            ) from None
-        except Exception as e:
-            safe_err = redact_credentials(str(e), effective_key)
-            log.error(f"[Gemini Provider Error] {safe_err}")
-            raise UpstreamProviderError(f"Gemini API error: {safe_err}", status_code=502) from None
+                    req = urllib.request.Request(
+                        url,
+                        data=json.dumps(payload).encode("utf-8"),
+                        headers={
+                            "Content-Type": "application/json",
+                            "x-goog-api-key": effective_key,
+                        },
+                    )
+                    with urllib.request.urlopen(req, timeout=30) as resp:
+                        data = json.loads(resp.read().decode("utf-8"))
+                        text = data["candidates"][0]["content"]["parts"][0]["text"]
+                        latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+
+                        usage = data.get("usageMetadata", {})
+                        prompt_tokens = int(usage.get("promptTokenCount", 0))
+                        completion_tokens = int(usage.get("candidatesTokenCount", 0))
+                        total_tokens = int(usage.get("totalTokenCount", prompt_tokens + completion_tokens))
+
+                        # Model reported by API response (fallback to current_model if omitted)
+                        model_reported = data.get("modelVersion") or data.get("model") or current_model
+
+                        return {
+                            "text": text,
+                            "model_used": model_reported,
+                            "model": model_reported,
+                            "tokens": total_tokens,
+                            "prompt_tokens": prompt_tokens,
+                            "completion_tokens": completion_tokens,
+                            "latency_ms": latency_ms,
+                            "source": "live",
+                        }
+                except urllib.error.HTTPError as e:
+                    safe_err = redact_credentials(str(e), effective_key)
+                    log.error(f"[Gemini HTTPError {e.code}] {safe_err}")
+                    if e.code == 503:
+                        if attempt == 0:
+                            time.sleep(1.0)
+                            continue
+                        if current_model != models_to_try[-1]:
+                            log.warning(f"Model {current_model} returned 503 high demand; falling back to {models_to_try[-1]}")
+                            break
+                    if e.code == 429:
+                        retry_after = 60
+                        try:
+                            retry_header = e.headers.get("Retry-After")
+                            if retry_header:
+                                retry_after = int(retry_header)
+                        except Exception:
+                            pass
+                        raise UpstreamRateLimitError(
+                            f"Upstream Gemini API rate limit exceeded (429). Retry after {retry_after}s.",
+                            retry_after=retry_after,
+                        ) from None
+                    last_err = e
+                    if current_model == models_to_try[-1]:
+                        raise UpstreamProviderError(
+                            f"Upstream Gemini API error ({e.code})",
+                            status_code=502 if e.code >= 500 else 500,
+                        ) from None
+                except urllib.error.URLError as e:
+                    safe_err = redact_credentials(str(e), effective_key)
+                    log.error(f"[Gemini URLError] {safe_err}")
+                    last_err = e
+                    if current_model == models_to_try[-1]:
+                        raise UpstreamProviderError(
+                            "Upstream Gemini API connection failure",
+                            status_code=503,
+                        ) from None
+                except Exception as e:
+                    safe_err = redact_credentials(str(e), effective_key)
+                    log.error(f"[Gemini Provider Error] {safe_err}")
+                    last_err = e
+                    if current_model == models_to_try[-1]:
+                        raise UpstreamProviderError(f"Gemini API error: {safe_err}", status_code=502) from None
+
+        if last_err:
+            raise UpstreamProviderError(f"Gemini API error: {last_err}", status_code=502) from None
 
     @staticmethod
     def _fallback_mock_response(prompt: str, notice: Optional[str] = None) -> str:
@@ -176,6 +229,7 @@ class LLMService:
             "rationale": f"Positioning around certified compliance, B200 availability, and high-performance SLA for {settings.TARGET_ORGANIZATION}.",
             "risks": "Hyperscaler pricing pressure on standard compute instances.",
             "confidence": "High",
+            "evidence_ids": [],
         }
         if notice:
             data["notice"] = notice

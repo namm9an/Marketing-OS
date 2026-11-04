@@ -41,6 +41,15 @@ class DecisionRecordSchema(SchemaBase):
     reasoning_source: str = Field(..., description="Originating agent or governance engine")
     rationale: str = Field(..., description="Strategic reasoning grounded in evidence")
     risks: str = Field(..., description="Identified competitive risks or counter-measures")
+    latency_ms: float = Field(default=0.0, description="LLM call latency in milliseconds")
+    retrieval_ms: float = Field(default=0.0, description="FTS5 retrieval latency in milliseconds")
+    prompt_tokens: int = Field(default=0, description="Prompt tokens used")
+    completion_tokens: int = Field(default=0, description="Completion tokens generated")
+    facts_retrieved: int = Field(default=0, description="Number of grounded facts retrieved from DB")
+    source: str = Field(default="mock", description="Execution path: live or mock")
+    model: str = Field(default="mock-fallback", description="Model reported by provider")
+    evidence_ids: List[str] = Field(default_factory=list, description="IDs of retrieved facts cited")
+    invalid_evidence_ids_count: int = Field(default=0, description="Count of invalid cited evidence IDs dropped")
     created_at: Optional[str] = Field(default=None, description="ISO-8601 creation timestamp")
 
 
@@ -70,6 +79,10 @@ class AgentResponseSchema(SchemaBase):
     rationale: str = Field(..., description="Strategic reasoning backed by facts")
     risks: str = Field(..., description="Identified risks or counter-actions")
     confidence: str = Field(default="High", description="Confidence rating: High, Medium, Low")
+    evidence_ids: List[str] = Field(
+        default_factory=list,
+        description="IDs of retrieved facts cited in this strategy",
+    )
 
 
 class ChatTurnSchema(SchemaBase):

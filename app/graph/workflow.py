@@ -99,6 +99,15 @@ def _make_worker(agent_type: str):
                 "risks": parsed.get("risks"),
                 "confidence": parsed.get("confidence", "High"),
                 "notice": parsed.get("notice"),
+                "latency_ms": parsed.get("latency_ms", 0.0),
+                "retrieval_ms": parsed.get("retrieval_ms", 0.0),
+                "prompt_tokens": parsed.get("prompt_tokens", 0),
+                "completion_tokens": parsed.get("completion_tokens", 0),
+                "facts_retrieved": parsed.get("facts_retrieved", 0),
+                "source": parsed.get("source", "mock"),
+                "model": parsed.get("model", "mock-fallback"),
+                "evidence_ids": parsed.get("evidence_ids", []),
+                "invalid_evidence_ids_count": parsed.get("invalid_evidence_ids_count", 0),
             }
         except Exception as err:
             # If server API key is configured or explicit key provided, visibly report provider failures
@@ -143,6 +152,15 @@ def _governance(state: SwarmState) -> Dict[str, Any]:
             reasoning_source=source,
             rationale=rationale,
             risks=reason or risks or "None identified",
+            latency_ms=state.get("latency_ms", 0.0),
+            retrieval_ms=state.get("retrieval_ms", 0.0),
+            prompt_tokens=state.get("prompt_tokens", 0),
+            completion_tokens=state.get("completion_tokens", 0),
+            facts_retrieved=state.get("facts_retrieved", 0),
+            source=state.get("source", "mock"),
+            model=state.get("model", "mock-fallback"),
+            evidence_ids=state.get("evidence_ids", []),
+            invalid_evidence_ids_count=state.get("invalid_evidence_ids_count", 0),
         )
     except Exception as db_err:  # pragma: no cover - persistence is best-effort
         log.warning(f"[DB Warning] Could not persist decision: {db_err}")
@@ -204,6 +222,25 @@ class SwarmWorkflowEngine:
         selected_option = final.get("selected_option") or "Strategy Brief"
         confidence = final.get("confidence") or "High"
         active = final.get("active_agent", agent_type)
+        decision_payload = {
+            "id": final.get("decision_id"),
+            "selected_option": selected_option,
+            "confidence": confidence,
+            "escalated": final.get("escalated", False),
+            "escalation_reason": final.get("escalation_reason"),
+            "reasoning_source": f"langgraph:{active}:{provider}",
+            "rationale": final.get("rationale") or "",
+            "risks": final.get("risks") or "",
+            "latency_ms": final.get("latency_ms", 0.0),
+            "retrieval_ms": final.get("retrieval_ms", 0.0),
+            "prompt_tokens": final.get("prompt_tokens", 0),
+            "completion_tokens": final.get("completion_tokens", 0),
+            "facts_retrieved": final.get("facts_retrieved", 0),
+            "source": final.get("source", "mock"),
+            "model": final.get("model", "mock-fallback"),
+            "evidence_ids": final.get("evidence_ids", []),
+            "invalid_evidence_ids_count": final.get("invalid_evidence_ids_count", 0),
+        }
         res = {
             "success": True,
             "positioning": {
@@ -211,15 +248,18 @@ class SwarmWorkflowEngine:
                 "differentiation_basis": "Sovereign Neo-Cloud Platform",
                 "state": "ACTIVE",
             },
-            "decision": {
-                "id": final.get("decision_id"),
-                "selected_option": selected_option,
-                "confidence": confidence,
-                "escalated": final.get("escalated", False),
-                "escalation_reason": final.get("escalation_reason"),
-                "reasoning_source": f"langgraph:{active}:{provider}",
-                "rationale": final.get("rationale") or "",
-                "risks": final.get("risks") or "",
+            "decision": decision_payload,
+            "metrics": {
+                "latency_ms": decision_payload["latency_ms"],
+                "retrieval_ms": decision_payload["retrieval_ms"],
+                "prompt_tokens": decision_payload["prompt_tokens"],
+                "completion_tokens": decision_payload["completion_tokens"],
+                "total_tokens": decision_payload["prompt_tokens"] + decision_payload["completion_tokens"],
+                "facts_retrieved": decision_payload["facts_retrieved"],
+                "source": decision_payload["source"],
+                "model": decision_payload["model"],
+                "evidence_ids": decision_payload["evidence_ids"],
+                "invalid_evidence_ids_count": decision_payload["invalid_evidence_ids_count"],
             },
             "knowledge_units": [
                 {
