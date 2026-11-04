@@ -63,10 +63,11 @@ class LLMService:
         6. Zero credential logging (all keys redacted from logs/traces).
         7. Measured latency_ms and token usage extracted from upstream usageMetadata.
         """
-        t0 = time.perf_counter()
+        t_wall_start = time.perf_counter()
 
         # 1. Enforce server-owned configured model (unapproved client input cannot affect model)
         approved_model = settings.DEFAULT_MODEL or "gemini-3.8-flash"
+        requested_model = approved_model
         model_name = approved_model
 
         # 2. Key resolution: explicit api_key parameter (for unit testing) or server-owned settings.GEMINI_API_KEY
@@ -79,16 +80,21 @@ class LLMService:
         # Note: Local mocks are NEVER charged against the global Gemini call budget
         if not effective_key:
             mock_text = LLMService._fallback_mock_response(user_prompt)
-            latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+            latency_ms = round((time.perf_counter() - t_wall_start) * 1000, 2)
             return {
                 "text": mock_text,
                 "model_used": "mock-fallback",
                 "model": "mock-fallback",
+                "requested_model": requested_model,
+                "fallback_used": False,
                 "source": "mock",
                 "tokens": 150,
                 "prompt_tokens": 100,
                 "completion_tokens": 50,
+                "thoughts_tokens": 0,
                 "latency_ms": latency_ms,
+                "total_wall_ms": latency_ms,
+                "attempts": 1,
             }
 
         # 4. For real outbound requests: consume from workflow reservation or debit 1 global unit
@@ -117,6 +123,7 @@ class LLMService:
                 )
 
         # 5. Outgoing REST call: Key in x-goog-api-key header, NEVER in URL
+        max_output = max(max_tokens, 2500)
         payload = {
             "contents": [
                 {
@@ -124,17 +131,24 @@ class LLMService:
                     "parts": [{"text": f"System: {system_prompt}\n\nUser Goal: {user_prompt}"}],
                 }
             ],
-            "generationConfig": {"temperature": temperature, "maxOutputTokens": max_tokens},
+            "generationConfig": {
+                "temperature": temperature,
+                "maxOutputTokens": max_output,
+                "thinkingConfig": {"thinkingBudget": 0},
+            },
         }
 
         models_to_try = [model_name]
         if model_name != "gemini-3.5-flash":
             models_to_try.append("gemini-3.5-flash")
 
+        attempts = 0
         last_err = None
         for current_model in models_to_try:
             url = f"https://generativelanguage.googleapis.com/v1beta/models/{current_model}:generateContent"
             for attempt in range(2):
+                attempts += 1
+                t_req_start = time.perf_counter()
                 try:
                     req = urllib.request.Request(
                         url,
@@ -147,24 +161,33 @@ class LLMService:
                     with urllib.request.urlopen(req, timeout=30) as resp:
                         data = json.loads(resp.read().decode("utf-8"))
                         text = data["candidates"][0]["content"]["parts"][0]["text"]
-                        latency_ms = round((time.perf_counter() - t0) * 1000, 2)
+                        # latency_ms = duration of final successful HTTP request only
+                        latency_ms = round((time.perf_counter() - t_req_start) * 1000, 2)
+                        total_wall_ms = round((time.perf_counter() - t_wall_start) * 1000, 2)
 
                         usage = data.get("usageMetadata", {})
                         prompt_tokens = int(usage.get("promptTokenCount", 0))
                         completion_tokens = int(usage.get("candidatesTokenCount", 0))
-                        total_tokens = int(usage.get("totalTokenCount", prompt_tokens + completion_tokens))
+                        thoughts_tokens = int(usage.get("thoughtsTokenCount", 0))
+                        total_tokens = int(usage.get("totalTokenCount", prompt_tokens + completion_tokens + thoughts_tokens))
 
                         # Model reported by API response (fallback to current_model if omitted)
                         model_reported = data.get("modelVersion") or data.get("model") or current_model
+                        fallback_used = bool(model_reported != requested_model)
 
                         return {
                             "text": text,
                             "model_used": model_reported,
                             "model": model_reported,
+                            "requested_model": requested_model,
+                            "fallback_used": fallback_used,
                             "tokens": total_tokens,
                             "prompt_tokens": prompt_tokens,
                             "completion_tokens": completion_tokens,
+                            "thoughts_tokens": thoughts_tokens,
                             "latency_ms": latency_ms,
+                            "total_wall_ms": total_wall_ms,
+                            "attempts": attempts,
                             "source": "live",
                         }
                 except urllib.error.HTTPError as e:
@@ -178,6 +201,9 @@ class LLMService:
                             log.warning(f"Model {current_model} returned 503 high demand; falling back to {models_to_try[-1]}")
                             break
                     if e.code == 429:
+                        if current_model != models_to_try[-1]:
+                            log.warning(f"Model {current_model} returned 429 quota exhausted; falling back to {models_to_try[-1]}")
+                            break
                         retry_after = 60
                         try:
                             retry_header = e.headers.get("Retry-After")
@@ -198,6 +224,12 @@ class LLMService:
                 except urllib.error.URLError as e:
                     safe_err = redact_credentials(str(e), effective_key)
                     log.error(f"[Gemini URLError] {safe_err}")
+                    if attempt == 0:
+                        time.sleep(1.0)
+                        continue
+                    if current_model != models_to_try[-1]:
+                        log.warning(f"Model {current_model} network error; falling back to {models_to_try[-1]}")
+                        break
                     last_err = e
                     if current_model == models_to_try[-1]:
                         raise UpstreamProviderError(
@@ -207,9 +239,15 @@ class LLMService:
                 except Exception as e:
                     safe_err = redact_credentials(str(e), effective_key)
                     log.error(f"[Gemini Provider Error] {safe_err}")
+                    if current_model != models_to_try[-1]:
+                        log.warning(f"Model {current_model} error {safe_err}; falling back to {models_to_try[-1]}")
+                        break
                     last_err = e
                     if current_model == models_to_try[-1]:
                         raise UpstreamProviderError(f"Gemini API error: {safe_err}", status_code=502) from None
+
+        if last_err:
+            raise UpstreamProviderError(f"Gemini API error: {last_err}", status_code=502) from None
 
         if last_err:
             raise UpstreamProviderError(f"Gemini API error: {last_err}", status_code=502) from None

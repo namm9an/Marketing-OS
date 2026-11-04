@@ -217,13 +217,21 @@ def run_agent(
 
     # 4. Attach real measured telemetry
     parsed["latency_ms"] = result.get("latency_ms", 0.0)
+    parsed["total_wall_ms"] = result.get("total_wall_ms", parsed["latency_ms"])
     parsed["retrieval_ms"] = retrieval_ms
+    parsed["attempts"] = result.get("attempts", 1)
     parsed["prompt_tokens"] = result.get("prompt_tokens", 0)
     parsed["completion_tokens"] = result.get("completion_tokens", 0)
-    parsed["tokens"] = result.get("tokens", parsed["prompt_tokens"] + parsed["completion_tokens"])
+    parsed["thoughts_tokens"] = result.get("thoughts_tokens", 0)
+    parsed["tokens"] = result.get(
+        "tokens",
+        parsed["prompt_tokens"] + parsed["completion_tokens"] + parsed["thoughts_tokens"],
+    )
     parsed["facts_retrieved"] = facts_retrieved
     parsed["source"] = result.get("source", "mock")
     parsed["model"] = result.get("model") or result.get("model_used") or provider
+    parsed["requested_model"] = result.get("requested_model", settings.DEFAULT_MODEL or "gemini-3.8-flash")
+    parsed["fallback_used"] = result.get("fallback_used", False)
 
     if result.get("notice"):
         parsed["notice"] = result["notice"]

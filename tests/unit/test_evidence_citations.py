@@ -72,12 +72,45 @@ def test_mock_run_agent_telemetry():
     out = run_agent("branding", "Position B200 against Nebius on price")
     assert out["source"] == "mock"
     assert out["model"] == "mock-fallback"
+    assert out["requested_model"] == "gemini-3.8-flash"
+    assert out["fallback_used"] is False
+    assert out["attempts"] == 1
     assert isinstance(out["latency_ms"], (int, float))
+    assert isinstance(out["total_wall_ms"], (int, float))
     assert isinstance(out["retrieval_ms"], (int, float))
     assert isinstance(out["facts_retrieved"], int)
     assert out["facts_retrieved"] >= 0
     assert out["tokens"] == 150
     assert out["prompt_tokens"] == 100
     assert out["completion_tokens"] == 50
+    assert out["thoughts_tokens"] == 0
     assert isinstance(out["evidence_ids"], list)
     assert out["invalid_evidence_ids_count"] == 0
+
+
+def test_decision_record_schema_telemetry_fields():
+    """DecisionRecordSchema validates honest telemetry fields."""
+    from app.core.schemas import DecisionRecordSchema
+
+    rec = DecisionRecordSchema(
+        id="test-id",
+        goal_statement="Goal",
+        selected_option="Option",
+        reasoning_source="test",
+        rationale="Rationale",
+        risks="Risks",
+        latency_ms=120.5,
+        total_wall_ms=1300.0,
+        attempts=2,
+        thoughts_tokens=500,
+        requested_model="gemini-3.8-flash",
+        model="gemini-3.6-flash",
+        fallback_used=True,
+    )
+    assert rec.latency_ms == 120.5
+    assert rec.total_wall_ms == 1300.0
+    assert rec.attempts == 2
+    assert rec.thoughts_tokens == 500
+    assert rec.requested_model == "gemini-3.8-flash"
+    assert rec.model == "gemini-3.6-flash"
+    assert rec.fallback_used is True

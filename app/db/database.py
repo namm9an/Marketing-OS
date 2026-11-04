@@ -109,12 +109,17 @@ CREATE TABLE IF NOT EXISTS decisions (
     rationale TEXT NOT NULL,
     risks TEXT NOT NULL,
     latency_ms REAL DEFAULT 0.0,
+    total_wall_ms REAL DEFAULT 0.0,
     retrieval_ms REAL DEFAULT 0.0,
+    attempts INTEGER DEFAULT 1,
     prompt_tokens INTEGER DEFAULT 0,
     completion_tokens INTEGER DEFAULT 0,
+    thoughts_tokens INTEGER DEFAULT 0,
     facts_retrieved INTEGER DEFAULT 0,
     source TEXT DEFAULT 'mock',
     model TEXT DEFAULT 'mock-fallback',
+    requested_model TEXT DEFAULT 'gemini-3.8-flash',
+    fallback_used INTEGER DEFAULT 0,
     evidence_ids TEXT DEFAULT '[]',
     invalid_evidence_ids_count INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
@@ -333,12 +338,17 @@ def init_db(force: bool = False):
                 existing_cols = {row["name"] for row in cursor.fetchall()}
                 telemetry_cols = {
                     "latency_ms": "REAL DEFAULT 0.0",
+                    "total_wall_ms": "REAL DEFAULT 0.0",
                     "retrieval_ms": "REAL DEFAULT 0.0",
+                    "attempts": "INTEGER DEFAULT 1",
                     "prompt_tokens": "INTEGER DEFAULT 0",
                     "completion_tokens": "INTEGER DEFAULT 0",
+                    "thoughts_tokens": "INTEGER DEFAULT 0",
                     "facts_retrieved": "INTEGER DEFAULT 0",
                     "source": "TEXT DEFAULT 'mock'",
                     "model": "TEXT DEFAULT 'mock-fallback'",
+                    "requested_model": "TEXT DEFAULT 'gemini-3.8-flash'",
+                    "fallback_used": "INTEGER DEFAULT 0",
                     "evidence_ids": "TEXT DEFAULT '[]'",
                     "invalid_evidence_ids_count": "INTEGER DEFAULT 0",
                 }
@@ -371,12 +381,17 @@ def save_decision(
     rationale: str,
     risks: str,
     latency_ms: float = 0.0,
+    total_wall_ms: float = 0.0,
     retrieval_ms: float = 0.0,
+    attempts: int = 1,
     prompt_tokens: int = 0,
     completion_tokens: int = 0,
+    thoughts_tokens: int = 0,
     facts_retrieved: int = 0,
     source: str = "mock",
     model: str = "mock-fallback",
+    requested_model: str = "gemini-3.8-flash",
+    fallback_used: bool = False,
     evidence_ids: Optional[List[str]] = None,
     invalid_evidence_ids_count: int = 0,
 ):
@@ -391,8 +406,9 @@ def save_decision(
                 """
                 INSERT OR REPLACE INTO decisions
                 (id, goal_statement, selected_option, confidence, escalated, reasoning_source, rationale, risks,
-                 latency_ms, retrieval_ms, prompt_tokens, completion_tokens, facts_retrieved, source, model, evidence_ids, invalid_evidence_ids_count)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 latency_ms, total_wall_ms, retrieval_ms, attempts, prompt_tokens, completion_tokens, thoughts_tokens,
+                 facts_retrieved, source, model, requested_model, fallback_used, evidence_ids, invalid_evidence_ids_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     decision_id,
@@ -404,12 +420,17 @@ def save_decision(
                     redact_credentials(rationale),
                     redact_credentials(risks),
                     float(latency_ms or 0.0),
+                    float(total_wall_ms or 0.0),
                     float(retrieval_ms or 0.0),
+                    int(attempts or 1),
                     int(prompt_tokens or 0),
                     int(completion_tokens or 0),
+                    int(thoughts_tokens or 0),
                     int(facts_retrieved or 0),
                     str(source or "mock"),
                     str(model or "mock-fallback"),
+                    str(requested_model or "gemini-3.8-flash"),
+                    1 if fallback_used else 0,
                     evidence_ids_str,
                     int(invalid_evidence_ids_count or 0),
                 )
@@ -432,6 +453,8 @@ def get_all_decisions(limit: Optional[int] = None, offset: int = 0) -> List[Dict
         result = []
         for row in rows:
             d = dict(row)
+            if "fallback_used" in d:
+                d["fallback_used"] = bool(d["fallback_used"])
             if isinstance(d.get("evidence_ids"), str):
                 try:
                     d["evidence_ids"] = json.loads(d["evidence_ids"])
