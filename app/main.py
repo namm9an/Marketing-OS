@@ -36,6 +36,22 @@ from app.db.database import get_all_decisions, init_db, get_connection
 from app.memory.graph import rebuild_corpus_graph
 
 init_db()
+
+# Auto-seed grounded facts on startup if the database is unseeded (0 rows)
+conn = get_connection()
+try:
+    ku_count = conn.execute("SELECT COUNT(*) FROM knowledge_units").fetchone()[0]
+finally:
+    conn.close()
+
+if ku_count == 0:
+    import logging
+    log = logging.getLogger("marketing_os")
+    log.info("knowledge_units table is empty (0 rows); running grounded_seed on startup...")
+    from app.db.grounded_seed import seed_grounded_knowledge
+    seed_grounded_knowledge()
+    log.info("grounded_seed completed on startup.")
+
 # Deterministic and idempotent, so re-deriving on every boot keeps the graph in step with
 # the corpus without a migration step. Cheap: one pass over ~94 sourced rows.
 rebuild_corpus_graph()
@@ -548,5 +564,5 @@ def serve(path):
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)

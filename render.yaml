@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: marketing-os
+    env: docker
+    plan: free
+    branch: showcase-redesign
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: ADMIN_USER
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: SESSION_SECRET_KEY
+        sync: false
+      - key: TRUSTED_PROXIES
+        sync: false
+      - key: TRUST_FORWARDED_FOR
+        value: "true"
+      - key: PORT
+        value: "10000"
+      # GEMINI_API_KEY intentionally unset so the app runs in mock mode

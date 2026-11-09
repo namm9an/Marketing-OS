@@ -65,7 +65,7 @@ class Settings(BaseSettings):
         default=False,
         description="Trust X-Forwarded-For header only when explicitly enabled",
     )
-    TRUSTED_PROXIES: List[str] = Field(
+    TRUSTED_PROXIES: Union[str, List[str]] = Field(
         default_factory=list,
         description="List of trusted proxy IP addresses",
     )
@@ -106,7 +106,10 @@ class Settings(BaseSettings):
     def validate_production_settings(self) -> "Settings":
         env = (self.ENVIRONMENT or "development").strip().lower()
         if self.TRUST_FORWARDED_FOR:
-            proxies = [str(proxy).strip() for proxy in self.TRUSTED_PROXIES if str(proxy).strip()]
+            raw_proxies = self.TRUSTED_PROXIES
+            if isinstance(raw_proxies, str):
+                raw_proxies = [p.strip() for p in raw_proxies.split(",") if p.strip()]
+            proxies = [str(proxy).strip() for proxy in raw_proxies if str(proxy).strip()]
             if not proxies:
                 raise ValueError(
                     "TRUSTED_PROXIES must name at least one proxy IP or CIDR when "
