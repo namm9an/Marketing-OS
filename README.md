@@ -94,6 +94,71 @@ Evaluated against a golden set of domain queries comparing standard full-text se
 | `GET` | `/api/digest/network` | Returns competitor entity network projection |
 | `POST` | `/api/export/markdown` | Exports structured positioning brief with citations |
 | `GET` | `/api/history` | Paginated decision history (`?limit=50&offset=0`) |
+| `GET` | `/api/decisions/<id>` | Complete saved result, current review status, and review history |
+| `POST` | `/api/decisions/<id>/review` | Record an authenticated operator's approval or rejection |
+
+### Result, review, and provider contracts
+
+New one-shot, chat, and triage results are stored in full. History rows and decision
+detail include `workflow_type`, `result_available`, and `result`. Clients should reopen
+the saved `result`, which contains the original statement, recall/knowledge payload,
+governance, and metrics. Older rows keep `workflow_type: "legacy"`,
+`result_available: false`, and `result: null`; their missing output cannot be recovered
+from a strategy title. A result-storage failure returns HTTP 503 rather than a success
+with an unusable audit ID. Digests remain on-demand results without decision history.
+
+Review example (requires the session cookie from login):
+
+```json
+{"status": "approved", "reason": "Reviewed the evidence and risks"}
+```
+
+Use `approved` or `rejected`. The server records the authenticated username, UTC time,
+and reason in a new review entry, and updates that decision's current review status.
+New escalated decisions start `pending`; other decisions start `unreviewed`. Reviews
+do not transfer to another decision, alter the original output, erase its risk flag,
+or admit a memory. This records a human review; it does not execute or authorize an
+external marketing action. The application appends reviews, but the SQLite database
+is not tamper-proof storage. The existing frontend approval button still needs to be
+wired to this endpoint; its local state is not a server review.
+
+All four generation workflows expose `metrics`. `source` identifies `live`, `mock`,
+or an explicitly unknown/mixed execution. `requested_model` is the server-configured
+model; `model` is the provider-reported version, or `unknown` if omitted.
+`served_model_verified` means the provider supplied the identifier, not an independent
+attestation. A versioned model name does not mean a fallback occurred.
+
+Missing token measurements remain `null`. `total_tokens` comes from upstream
+`totalTokenCount`, rather than a possibly incomplete sum. Mock calls have zero outbound
+attempts, no provider latency, and no fabricated usage. For each live call,
+`latency_ms` measures the final successful HTTP request and `total_wall_ms` includes
+its retries/waits. Multi-call workflows expose individual `calls` and aggregate known
+counts; parallel-call latency/wall time is not added into a misleading workflow total.
+Usage describes successful provider responses; a failed attempt's unreported token
+usage remains unknown even though every outbound attempt counts against call quota.
+
+There is no automatic model downgrade or live-to-mock fallback. HTTP 503 and connection
+failures get at most three attempts against the same configured model, with 2s/4s waits.
+Each outbound attempt consumes a quota unit; parallel workers share the workflow's
+reservation. HTTP 429 stops immediately and propagates a retry delay. Incomplete,
+blocked, empty, and invalid structured outputs fail visibly. Live responses must report
+`finishReason: "STOP"`; thought parts are excluded from public text. A configured model's
+availability and its generation options still require verification with actual provider
+credentials; controlled offline responses do not establish that availability.
+
+Product retrieval enables deterministic taxonomy expansion by default through
+`RETRIEVAL_EXPAND_TAXONOMY`; raw search retains an unexpanded baseline. Sourced retrieval,
+competitor digests, corpus graph derivation, and the citation grader accept only
+`grounded_crawler` rows with a well-formed HTTP(S) source URL. This eligibility check
+does not prove that a source supports every generated claim, is fresh, or is still
+reachable. Reusing a chat thread under another agent's namespace is rejected before
+transcript writes or model calls. These are specialist boundaries within the shared
+operator workspace, not separate tenants for users.
+
+Malformed JSON shapes and wrong field types return HTTP 400. Existing authentication,
+prompt-size, injection, and quota checks still apply. Build the frontend and serve it
+through Flask/Gunicorn for same-origin API access; direct `/console` navigation is
+supported. Standalone Vite development still needs an API proxy/base configuration.
 
 ---
 
@@ -138,11 +203,18 @@ curl http://localhost:5000/api/health
 
 ## Instructions to Run Test Suites
 
-Run the automated test suite (190 unit and integration tests, runs 100% offline):
+Run the automated test suite offline against a temporary database:
 
 ```bash
-pytest
+test_db_dir="$(mktemp -d)"
+DB_PATH="$test_db_dir/tests.db" python -m pytest -q
 ```
+
+The backend repair regressions are in `tests/integration/test_backend_repairs.py`.
+They cover the eight repair groups and a ninth combined workflow. Provider responses
+are controlled fixtures; the suite makes no paid provider calls. Frontend browser
+integration is a separate check: history reconstruction and the local approval button
+are known client gaps, so a green backend suite does not establish a working full UI.
 
 Run the retrieval benchmark suite:
 
