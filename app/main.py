@@ -9,9 +9,14 @@ import re
 from typing import Iterable, Optional
 from flask import Flask, request, jsonify, send_from_directory, Response, g
 from flask_cors import CORS
+from pydantic import ValidationError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from app.core.config import settings
 from app.core.primitives import new_id
+from app.core.schemas import (
+    RunRequestSchema, ChatRequestSchema, TriageRequestSchema,
+    LoginRequestSchema, DigestRequestSchema, DecisionReviewRequestSchema, ExportRequestSchema,
+)
 from app.core.exceptions import (
     GlobalQuotaExhaustedError,
     UpstreamRateLimitError,
@@ -112,6 +117,28 @@ SESSION_COOKIE = "auth_session"
 _OPEN_API_PATHS = {"/api/health", "/api/login", "/api/logout", "/api/me"}
 
 
+class RequestValidationError(ValueError):
+    pass
+
+
+def _request_data(schema):
+    data = request.get_json(silent=True)
+    if data is None and not request.get_data():
+        data = {}
+    if not isinstance(data, dict):
+        raise RequestValidationError("Expected a JSON object")
+    try:
+        return schema.model_validate(data).model_dump()
+    except ValidationError:
+        # Do not echo submitted passwords, provider keys or arbitrary payload values.
+        raise RequestValidationError("Request fields do not satisfy the API contract") from None
+
+
+@app.errorhandler(RequestValidationError)
+def invalid_request(error):
+    return jsonify({"error": "invalid_request", "message": str(error)}), 400
+
+
 def _safe_digest_compare(a: Optional[str], b: Optional[str]) -> bool:
     """Timing-safe string comparison that encodes to UTF-8 to prevent non-ASCII string TypeError crashes."""
     if not isinstance(a, str) or not isinstance(b, str):
@@ -181,6 +208,8 @@ def request_entity_too_large(error):
     }), 413
 
 
+
+
 @app.errorhandler(UpstreamRateLimitError)
 def handle_upstream_rate_limit(error: UpstreamRateLimitError):
     return RateLimiter.make_429_response(
@@ -231,7 +260,7 @@ def api_login():
         )
         return resp, code
 
-    data = request.get_json(silent=True) or {}
+    data = _request_data(LoginRequestSchema)
     user = (data.get("username") or "").strip()
     pwd = (data.get("password") or "").strip()
 
@@ -295,7 +324,7 @@ def health():
 
 @app.route("/api/run", methods=["POST"])
 def api_run():
-    data = request.get_json() or {}
+    data = _request_data(RunRequestSchema)
     goal = (data.get("goal") or "").strip()
     agent_type = (data.get("agent_type") or "branding").strip()
     provider = settings.DEFAULT_MODEL
@@ -347,9 +376,13 @@ def api_history():
     return jsonify({"success": True, "history": get_all_decisions(limit=limit, offset=offset)})
 
 
+
+
+
+
 @app.route("/api/export/markdown", methods=["POST"])
 def api_export_markdown():
-    d = request.get_json(silent=True) or {}
+    d = _request_data(ExportRequestSchema)
     decision = d.get("decision") if isinstance(d.get("decision"), dict) else {}
     positioning = d.get("positioning") if isinstance(d.get("positioning"), dict) else {}
     md = (
@@ -380,6 +413,7 @@ def api_digest_network():
 
 @app.route("/api/digest", methods=["POST"])
 def api_digest():
+    _request_data(DigestRequestSchema)
     provider = settings.DEFAULT_MODEL
     client_ip, _ = _get_client_context()
 
@@ -404,7 +438,7 @@ def api_digest():
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
-    data = request.get_json(silent=True) or {}
+    data = _request_data(ChatRequestSchema)
     message = (data.get("message") or "").strip()
     provider = settings.DEFAULT_MODEL
     agent_type = (data.get("agent") or "branding").strip()
@@ -505,7 +539,7 @@ def api_memory():
 
 @app.route("/api/triage", methods=["POST"])
 def api_triage():
-    data = request.get_json(silent=True) or {}
+    data = _request_data(TriageRequestSchema)
     message = (data.get("message") or "").strip()
     agents = data.get("agents") or []
     provider = settings.DEFAULT_MODEL
@@ -551,6 +585,13 @@ def api_triage():
         res_id = getattr(g, "quota_reservation_id", None)
         if res_id:
             rate_limiter.release_reservation(res_id)
+
+
+@app.route("/console", strict_slashes=False)
+@app.route("/console/<path:route>")
+def serve_console(route=""):
+    # Explicit routes take precedence over Flask's root static-file route.
+    return serve("")
 
 
 @app.route("/", defaults={"path": ""})

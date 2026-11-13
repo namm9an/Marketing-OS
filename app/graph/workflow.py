@@ -32,6 +32,7 @@ from langgraph.graph import StateGraph, START, END
 from app.agents.base import run_agent, AGENT_REGISTRY, DEFAULT_PROVIDER
 from app.graph.state import SwarmState
 from app.db.database import save_decision
+from app.core.exceptions import AppException
 from app.core.primitives import new_id
 
 log = logging.getLogger(__name__)
@@ -117,7 +118,7 @@ def _make_worker(agent_type: str):
         except Exception as err:
             # If server API key is configured or explicit key provided, visibly report provider failures
             from app.core.config import settings
-            if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+            if isinstance(err, AppException) or settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
                 raise
             log.warning(f"[{agent_type}] worker error, generating fallback response: {err}")
             return {

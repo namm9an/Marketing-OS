@@ -352,8 +352,14 @@ def run_chat(
         raise ValueError("message is required")
 
     namespace = namespace or store.agent_ns(agent_type)
-    if thread_id and store.get_thread(thread_id) is None:
-        raise ValueError(f"unknown thread: {thread_id!r}")
+    if namespace not in store.readable_namespaces(agent_type):
+        raise ValueError("namespace is not readable by the selected agent")
+    if thread_id:
+        thread = store.get_thread(thread_id)
+        if thread is None:
+            raise ValueError(f"unknown thread: {thread_id!r}")
+        if thread["namespace"] != namespace:
+            raise ValueError("thread does not belong to the selected agent namespace")
     if not thread_id:
         thread_id = store.create_thread(namespace, title=message.strip()[:80])
 

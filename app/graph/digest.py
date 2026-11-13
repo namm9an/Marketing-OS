@@ -26,6 +26,7 @@ from langgraph.graph import StateGraph, START, END
 
 from app.core.config import settings
 from app.agents.base import ACTIVE_AGENTS, DEFAULT_PROVIDER, run_agent, _strip_code_fence
+from app.core.exceptions import AppException
 from app.core.primitives import now_iso, new_id
 from app.core.schemas import DigestSchema
 from app.db.database import get_competitor_facts
@@ -105,7 +106,7 @@ def _make_digest_worker(agent_type: str):
                 brief_data["notice"] = parsed["notice"]
             return {"briefs": [brief_data]}
         except Exception as err:
-            if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+            if isinstance(err, AppException) or settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
                 raise
             log.warning(f"[Digest/{agent_type}] worker error, generating fallback brief: {err}")
             return {
@@ -201,7 +202,7 @@ def _synthesize(state: DigestState) -> Dict[str, Any]:
             data["notice"] = notice
         return data
     except Exception as err:
-        if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+        if isinstance(err, AppException) or settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
             raise
         log.info(f"[Digest] falling back to grounded synthesis: {err}")
         return _fallback_digest(state, notice=notice)

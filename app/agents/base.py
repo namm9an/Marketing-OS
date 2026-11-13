@@ -15,6 +15,7 @@ from app.core.config import settings
 from app.services.llm_service import LLMService
 from app.db.database import search_knowledge_units
 from app.core.schemas import AgentResponseSchema
+from app.core.exceptions import UpstreamProviderError
 
 DEFAULT_PROVIDER = "gemini-3.8-flash"
 
@@ -193,20 +194,14 @@ def run_agent(
         client_ip=client_ip,
         request_id=request_id,
     )
-    text = _strip_code_fence(result["text"])
-
     # 3. Validate against the Pydantic contract (every agent, consistently).
     try:
+        text = _strip_code_fence(result["text"])
         parsed = AgentResponseSchema(**json.loads(text)).model_dump()
-    except Exception:
-        parsed = {
-            "selected_option": f"{agent_type.replace('_', ' ').title()} Strategy",
-            "statement": text or f"{settings.TARGET_ORGANIZATION} delivers enterprise {settings.TARGET_INDUSTRY.lower()} infrastructure.",
-            "rationale": f"Grounded in enterprise compliance, certified SLA, and proven reliability for {settings.TARGET_ORGANIZATION}.",
-            "risks": "Hyperscaler pricing pressure on standard compute instances.",
-            "confidence": "High",
-            "evidence_ids": [],
-        }
+    except (ValueError, TypeError, KeyError, IndexError):
+        raise UpstreamProviderError(
+            "Model output did not satisfy the strategy schema", status_code=502,
+        ) from None
 
     # Deterministic citation check
     valid_evidence_ids, invalid_evidence_count = verify_citations(

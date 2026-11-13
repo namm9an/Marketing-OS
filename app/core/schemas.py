@@ -6,8 +6,8 @@ tiered memories (L0-L2), multi-turn chat turns, specialist agent outputs,
 triage bridge synthesis, and executive digests.
 """
 
-from typing import Any, Dict, List, Optional
-from pydantic import BaseModel, ConfigDict, Field
+from typing import Any, Dict, List, Optional, Literal
+from pydantic import BaseModel, ConfigDict, Field, StrictStr, field_validator
 
 
 class SchemaBase(BaseModel):
@@ -79,11 +79,13 @@ class MemoryRecordSchema(SchemaBase):
 class AgentResponseSchema(SchemaBase):
     """Structured response contract for specialist agents."""
 
-    selected_option: str = Field(..., description="Short title of strategy option")
-    statement: str = Field(..., description="Core positioning or strategic statement")
-    rationale: str = Field(..., description="Strategic reasoning backed by facts")
-    risks: str = Field(..., description="Identified risks or counter-actions")
-    confidence: str = Field(default="High", description="Confidence rating: High, Medium, Low")
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+    selected_option: str = Field(..., min_length=1, description="Short title of strategy option")
+    statement: str = Field(..., min_length=1, description="Core positioning or strategic statement")
+    rationale: str = Field(..., min_length=1, description="Strategic reasoning backed by facts")
+    risks: str = Field(..., min_length=1, description="Identified risks or counter-actions")
+    confidence: Literal["High", "Medium", "Low"] = "High"
     evidence_ids: List[str] = Field(
         default_factory=list,
         description="IDs of retrieved facts cited in this strategy",
@@ -169,12 +171,19 @@ class DigestSchema(SchemaBase):
     )
 
 
-class RunRequestSchema(SchemaBase):
+AgentType = Literal["branding", "pr", "social", "product_marketing", "events"]
+
+
+class RequestSchema(SchemaBase):
+    model_config = ConfigDict(extra="ignore", str_strip_whitespace=True)
+
+
+class RunRequestSchema(RequestSchema):
     """Input payload validation for /api/run endpoint."""
 
-    agent_type: str = Field(default="branding", description="Target specialist agent")
-    goal: str = Field(..., description="Goal statement for strategy generation")
-    provider: Optional[str] = Field(default=None, description="LLM provider model identifier")
+    agent_type: AgentType = "branding"
+    goal: StrictStr = Field(..., min_length=1)
+    provider: Optional[StrictStr] = None
 
 
 class ThreadSchema(SchemaBase):
@@ -198,19 +207,47 @@ class GraphEdgeSchema(SchemaBase):
     created_at: Optional[str] = Field(default=None, description="ISO-8601 creation timestamp")
 
 
-class ChatRequestSchema(SchemaBase):
+class ChatRequestSchema(RequestSchema):
     """Input payload contract for POST /api/chat."""
 
-    agent: str = Field(default="branding", description="Target specialist agent")
-    message: str = Field(..., description="User message prompt")
-    thread_id: Optional[str] = Field(default=None, description="Existing conversation thread ID")
-    provider: str = Field(default="gemini-3.8-flash", description="LLM provider model")
+    agent: AgentType = "branding"
+    message: StrictStr = Field(..., min_length=1)
+    thread_id: Optional[StrictStr] = Field(default=None, min_length=1, max_length=128)
+    provider: StrictStr = "gemini-3.8-flash"
 
 
-class TriageRequestSchema(SchemaBase):
+class TriageRequestSchema(RequestSchema):
     """Input payload contract for POST /api/triage."""
 
-    agents: List[str] = Field(..., description="Pair of specialist agents")
-    message: str = Field(..., description="CMO question to triage")
-    thread_id: Optional[str] = Field(default=None, description="Existing triage thread ID")
-    provider: str = Field(default="gemini-3.8-flash", description="LLM provider model")
+    agents: List[AgentType] = Field(..., min_length=2, max_length=2)
+    message: StrictStr = Field(..., min_length=1)
+    thread_id: Optional[StrictStr] = Field(default=None, min_length=1, max_length=128)
+    provider: StrictStr = "gemini-3.8-flash"
+
+    @field_validator("agents")
+    @classmethod
+    def distinct_agents(cls, value):
+        if value[0] == value[1]:
+            raise ValueError("two distinct agents are required")
+        return value
+
+
+class LoginRequestSchema(SchemaBase):
+    username: StrictStr = Field(..., min_length=1, max_length=256)
+    password: StrictStr = Field(..., min_length=1, max_length=1024)
+
+
+class DigestRequestSchema(RequestSchema):
+    provider: Optional[StrictStr] = None
+
+
+class DecisionReviewRequestSchema(RequestSchema):
+    status: Literal["approved", "rejected"]
+    reason: StrictStr = Field(default="", max_length=4000)
+
+
+class ExportRequestSchema(RequestSchema):
+    decision: Optional[Dict[str, Any]] = None
+    positioning: Optional[Dict[str, Any]] = None
+    goalStatement: StrictStr = ""
+    id: Optional[StrictStr] = None
