@@ -175,7 +175,10 @@ def run_agent(
         for m in re.finditer(r"\[id:\s*([a-zA-Z0-9_-]+)\]", extra_context):
             retrieved_facts_ids.add(m.group(1))
     else:
-        db_facts = search_knowledge_units(query=goal_statement, limit=5, sourced_only=True)
+        db_facts = search_knowledge_units(
+            query=goal_statement, limit=5, sourced_only=True,
+            expand_taxonomy=settings.RETRIEVAL_EXPAND_TAXONOMY,
+        )
         facts_retrieved = len(db_facts)
         retrieved_facts_ids = {str(f["id"]) for f in db_facts if "id" in f}
         facts_context = ""

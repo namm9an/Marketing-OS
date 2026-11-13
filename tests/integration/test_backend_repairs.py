@@ -4,43 +4,20 @@ All state is isolated. Live-provider behavior is exercised with controlled HTTP
 responses, never a paid API call. Frontend source is deliberately untouched.
 """
 
-
 import json
-
-
 import io
-
-
 import urllib.error
-
-
 from unittest.mock import patch
-
 
 import pytest
 
-
 from app.core.config import settings
-
-
 from app.db import database
-
-
 from app.db.grounded_seed import seed_grounded_knowledge
-
-
 from app.main import app
-
-
 from app.memory import store
-
-
 from app.services.llm_service import LLMService
-
-
 from app.core.rate_limiter import rate_limiter
-
-
 from app.core.exceptions import UpstreamProviderError, UpstreamRateLimitError
 
 
@@ -227,6 +204,27 @@ def test_fix_4_legacy_migration_does_not_invent_lost_output(repair_client, tmp_p
     assert row["result_available"] is False
 
 
+def test_fix_5_real_workflows_use_expansion(repair_client):
+    run = repair_client.post("/api/run", json={"goal": "Hopper"}).get_json()
+    assert run["metrics"]["facts_retrieved"] > 0
+    chat = repair_client.post("/api/chat", json={"message": "Hopper"}).get_json()
+    assert chat["recall"]["facts"]
+    triage = repair_client.post("/api/triage", json={
+        "agents": ["branding", "pr"], "message": "Hopper",
+    }).get_json()
+    assert all(v["recall"]["facts"] for v in triage["views"])
+
+
+def test_fix_5_full_workflow(repair_client):
+    exercise_workflows(repair_client)
+
+
+def test_fix_5_baseline_can_still_be_selected(repair_client, monkeypatch):
+    monkeypatch.setattr(settings, "RETRIEVAL_EXPAND_TAXONOMY", False)
+    chat = repair_client.post("/api/chat", json={"message": "Hopper"}).get_json()
+    assert chat["recall"]["facts"] == []
+
+
 @pytest.mark.parametrize("path,payload", [
     ("/api/run", {"goal": ["wrong type"]}),
     ("/api/run", ["not an object"]),
@@ -399,6 +397,50 @@ def test_fix_7_live_contract_and_exact_capacity(repair_client, monkeypatch, path
         assert saved["total_tokens"] == data["metrics"]["total_tokens"]
         assert saved["model"] == data["metrics"]["model"]
         assert saved["result"]["metrics"] == data["metrics"]
+
+
+@pytest.mark.parametrize("creator,url", [
+    ("grounded_crawler", None), ("grounded_crawler", ""),
+    ("grounded_crawler", "   "), ("grounded_crawler", "not-a-url"),
+    ("grounded_crawler", "javascript:alert(1)"), ("grounded_crawler", "https://"),
+    ("grounded_crawler", "https://bad host.invalid/path"),
+    ("branding_agent", "https://example.com"), ("system", "https://example.com"),
+])
+def test_fix_8_only_valid_crawler_sources_can_ground_answers(repair_client, creator, url):
+    database.save_knowledge_unit(
+        id_str="untrusted-source-sentinel", k_class="pricing", confidence="high",
+        content="B200 Nebius untrusted-source-sentinel", organization="Sentinel Rival",
+        source_url=url, enriched_by=creator,
+    )
+    assert any(f["id"] == "untrusted-source-sentinel" for f in database.search_knowledge_units("sentinel"))
+    for query in ("", "sentinel"):
+        assert not any(f["id"] == "untrusted-source-sentinel" for f in database.search_knowledge_units(query, sourced_only=True))
+    assert not any(f["id"] == "untrusted-source-sentinel" for f in database.get_competitor_facts())
+    if url and url.startswith("https://"):
+        from app.eval.graders import CodeGrader
+        assert CodeGrader.check_valid_citations({"citations": [url]})[0] is False
+    run = repair_client.post("/api/run", json={"goal": "sentinel"}).get_json()
+    assert run["metrics"]["facts_retrieved"] == 0
+    chat = repair_client.post("/api/chat", json={"message": "sentinel"}).get_json()
+    assert chat["recall"]["facts"] == []
+    triage = repair_client.post("/api/triage", json={"message": "sentinel", "agents": ["branding", "pr"]}).get_json()
+    assert all(v["recall"]["facts"] == [] for v in triage["views"])
+    digest = repair_client.post("/api/digest", json={}).get_json()
+    assert not any(c["organization"] == "Sentinel Rival" for c in digest["citations"])
+
+
+def test_fix_8_valid_source_remains_retrievable(repair_client):
+    database.save_knowledge_unit(
+        id_str="valid-source-sentinel", k_class="pricing", confidence="high",
+        content="trusted sentinel content", organization="Sentinel Rival",
+        source_url="https://example.com/research", enriched_by="grounded_crawler",
+    )
+    assert [f["id"] for f in database.search_knowledge_units("sentinel", sourced_only=True)] == ["valid-source-sentinel"]
+    assert any(f["id"] == "valid-source-sentinel" for f in database.get_competitor_facts())
+
+
+def test_fix_8_full_workflow(repair_client):
+    exercise_workflows(repair_client)
 
 
 def test_fix_9_combined_workflow_and_review_reload(repair_client):

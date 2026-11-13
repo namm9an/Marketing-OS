@@ -7,6 +7,7 @@ import sqlite3
 import json
 import logging
 from typing import List, Dict, Any, Optional
+from app.core.grounding import is_grounded_source
 from app.core.config import settings
 
 log = logging.getLogger(__name__)
@@ -286,6 +287,7 @@ CREATE INDEX IF NOT EXISTS idx_edges_ns ON edges(namespace);
 def get_connection(timeout: float = 10.0, isolation_level: Optional[str] = ""):
     conn = sqlite3.connect(str(settings.DB_PATH), timeout=timeout, isolation_level=isolation_level)
     conn.row_factory = sqlite3.Row
+    conn.create_function("is_grounded_source", 2, is_grounded_source, deterministic=True)
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA busy_timeout = 5000;")
     conn.execute("PRAGMA synchronous = NORMAL;")
@@ -614,7 +616,7 @@ def search_knowledge_units(
     `expand_taxonomy` applies deterministic domain expansion before FTS5 search.
     """
     init_db()
-    agent_filter = " AND enriched_by NOT LIKE '%agent%'" if sourced_only else ""
+    agent_filter = " AND is_grounded_source(enriched_by, source_url)" if sourced_only else ""
     conn = get_connection()
     try:
         match_query = _expand_query_terms(query, expand_taxonomy=expand_taxonomy) if query else ""
@@ -625,7 +627,7 @@ def search_knowledge_units(
             )
             return [dict(row) for row in cursor.fetchall()]
 
-        agent_filter_k = " AND k.enriched_by NOT LIKE '%agent%'" if sourced_only else ""
+        agent_filter_k = " AND is_grounded_source(k.enriched_by, k.source_url)" if sourced_only else ""
         sql = f"""
         SELECT k.id, k.organization, k.knowledge_class, k.confidence, k.content, k.source_url, k.enriched_by, k.created_at,
                bm25(knowledge_units_fts) AS rank
@@ -687,8 +689,7 @@ def get_competitor_facts(limit: int = 200, target_org: Optional[str] = None) -> 
               AND organization NOT LIKE ?
               AND organization NOT LIKE '%E2E%'
               AND organization NOT LIKE '%(Us)%'
-              AND enriched_by NOT LIKE '%agent%'
-              AND source_url IS NOT NULL AND source_url != ''
+              AND is_grounded_source(enriched_by, source_url)
             ORDER BY organization, knowledge_class
             LIMIT ?
             """,

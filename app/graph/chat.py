@@ -181,7 +181,10 @@ def recall_for(agent_type: str, message: str) -> Dict[str, Any]:
     memories += store.get_memories(extra, scope)
     paths = [p for p in hop["paths"] if p["memory_id"] in set(extra)]
 
-    facts = search_knowledge_units(query=message, limit=_FACT_RECALL, sourced_only=True)
+    facts = search_knowledge_units(
+        query=message, limit=_FACT_RECALL, sourced_only=True,
+        expand_taxonomy=settings.RETRIEVAL_EXPAND_TAXONOMY,
+    )
     log.info(f"[Recall/{agent_type}] {len(memories)} memories ({len(extra)} via graph), "
              f"{len(facts)} facts")
     return {"memories": memories, "facts": facts, "graph_paths": paths}

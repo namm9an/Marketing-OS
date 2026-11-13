@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 
 from app.core.config import settings
+from app.core.grounding import is_grounded_source
 from app.db.database import get_connection
 from app.services.llm_service import LLMService
 
@@ -220,19 +221,13 @@ class CodeGrader:
         try:
             try:
                 for url in urls:
-                    row = conn.execute(
-                        "SELECT id FROM knowledge_units WHERE source_url = ? AND enriched_by NOT LIKE '%agent%'",
-                        (url,),
-                    ).fetchone()
-                    if not row:
-                        # Also check if URL matches normalized trailing slash
-                        alt_url = url.rstrip("/") if url.endswith("/") else url + "/"
-                        row_alt = conn.execute(
-                            "SELECT id FROM knowledge_units WHERE source_url = ? AND enriched_by NOT LIKE '%agent%'",
-                            (alt_url,),
-                        ).fetchone()
-                        if not row_alt:
-                            invalid.append(url)
+                    alt_url = url.rstrip("/") if url.endswith("/") else url + "/"
+                    rows = conn.execute(
+                        "SELECT enriched_by, source_url FROM knowledge_units WHERE source_url IN (?, ?)",
+                        (url, alt_url),
+                    ).fetchall()
+                    if not any(is_grounded_source(row[0], row[1]) for row in rows):
+                        invalid.append(url)
             except Exception as e:
                 return False, f"Database query failed during citation check: {str(e)}", urls
             if invalid:

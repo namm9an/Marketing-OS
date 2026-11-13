@@ -238,20 +238,14 @@ class TestDatabaseLayer(unittest.TestCase):
     def test_sourced_only_isolation(self):
         """Verify agent-enriched rows are strictly excluded when sourced_only=True."""
         save_knowledge_unit(
-            "grounded_row",
-            "Nebius",
-            "positioning",
-            "high",
-            "Empirical positioning from scraped site",
-            enriched_by="grounded_crawler",
+            id_str="grounded_row", organization="Nebius", k_class="positioning",
+            confidence="high", content="Empirical positioning from scraped site",
+            source_url="https://example.com/research", enriched_by="grounded_crawler",
         )
         save_knowledge_unit(
-            "agent_row",
-            "Nebius",
-            "positioning",
-            "high",
-            "Synthesized agent draft claim",
-            enriched_by="branding_agent",
+            id_str="agent_row", organization="Nebius", k_class="positioning",
+            confidence="high", content="Synthesized agent draft claim",
+            source_url="https://example.com/research", enriched_by="branding_agent",
         )
         sourced = search_knowledge_units("Nebius", sourced_only=True)
         all_rows = search_knowledge_units("Nebius", sourced_only=False)
