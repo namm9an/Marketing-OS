@@ -34,7 +34,8 @@ from langgraph.graph import StateGraph, START, END
 from app.core.config import settings
 from app.core.primitives import new_id
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER
-from app.db.database import search_knowledge_units, save_decision
+from app.db.database import search_knowledge_units, save_decision, save_workflow_result
+from app.core.exceptions import PersistenceError
 from app.memory import gate, graph, store
 from app.services.llm_service import LLMService
 
@@ -305,8 +306,8 @@ def _governance(state: ChatState) -> Dict[str, Any]:
             rationale=reply[:500] if reply else f"Chat consultation with {agent_type}",
             risks=reason or risks or "None identified",
         )
-    except Exception as db_err:  # pragma: no cover
-        log.warning(f"[DB Warning] Could not persist chat decision: {db_err}")
+    except Exception as db_err:
+        raise PersistenceError("Could not persist the chat decision") from db_err
     return {
         "escalated": escalated,
         "escalation_reason": reason,
@@ -408,6 +409,7 @@ def run_chat(
     }
     if final.get("notice"):
         res["notice"] = final["notice"]
+    save_workflow_result(final["decision_id"], "chat", res)
     return res
 
 

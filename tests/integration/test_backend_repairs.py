@@ -138,6 +138,95 @@ def test_fix_2_full_workflow(repair_client):
     exercise_workflows(repair_client)
 
 
+def test_fix_3_review_is_authenticated_persistent_and_decision_bound(repair_client):
+    first = repair_client.post("/api/run", json={"goal": "Avoid a price war"}).get_json()
+    decision_id = first["decision"]["id"]
+    url = f"/api/decisions/{decision_id}/review"
+    assert app.test_client().post(url, json={"status": "approved"}).status_code == 401
+    reviewed = repair_client.post(url, json={"status": "approved", "reason": "Reviewed the evidence"})
+    assert reviewed.status_code == 200
+    row = repair_client.get(f"/api/decisions/{decision_id}").get_json()["decision"]
+    assert row["review_status"] == "approved"
+    assert row["reviewed_by"] == settings.ADMIN_USER and row["reviewed_at"]
+    assert row["escalated"]  # Approval does not erase the original risk signal.
+    assert row["reviews"][0]["reason"] == "Reviewed the evidence"
+    second = repair_client.post("/api/run", json={"goal": "New B200 strategy"}).get_json()
+    other = repair_client.get(f"/api/decisions/{second['decision']['id']}").get_json()["decision"]
+    assert other["review_status"] == "unreviewed" and other["reviewed_by"] is None
+    assert repair_client.post(url, json={"status": "invalid"}).status_code == 400
+    assert repair_client.post("/api/decisions/missing/review", json={"status": "approved"}).status_code == 404
+
+
+def test_fix_3_full_workflow(repair_client):
+    exercise_workflows(repair_client)
+
+
+def test_fix_4_original_result_survives_history_reload(repair_client):
+    run = repair_client.post("/api/run", json={"goal": "Position B200 against Nebius"}).get_json()
+    row = repair_client.get(f"/api/decisions/{run['decision']['id']}").get_json()["decision"]
+    assert row["workflow_type"] == "run"
+    assert row["result_available"] is True
+    assert row["result"] == run
+    assert row["result"]["positioning"]["statement"] != row["selected_option"]
+    assert isinstance(row["result"]["knowledge_units"], list)
+    history = repair_client.get("/api/history").get_json()["history"]
+    assert next(r for r in history if r["id"] == row["id"])["result"] == run
+
+
+def test_fix_4_snapshot_redaction_preserves_quoted_json(repair_client):
+    response = repair_client.post("/api/run", json={
+        "goal": 'B200 comparison with https://example.com/?key=offline-test-value" quoted text',
+    })
+    assert response.status_code == 200
+    decision_id = response.get_json()["decision"]["id"]
+    restored = repair_client.get(f"/api/decisions/{decision_id}")
+    assert restored.status_code == 200
+    snapshot = restored.get_json()["decision"]["result"]
+    assert "offline-test-value" not in json.dumps(snapshot)
+    assert 'REDACTED" quoted text' in snapshot["goalStatement"]
+
+
+def test_fix_4_persistence_failure_is_not_success(repair_client):
+    with patch("app.graph.workflow.save_decision", side_effect=OSError("controlled persistence failure")):
+        response = repair_client.post("/api/run", json={"goal": "Position B200"})
+    assert response.status_code == 503
+    assert "decision" not in response.get_json()
+
+
+def test_fix_4_full_workflow(repair_client):
+    exercise_workflows(repair_client)
+
+
+@pytest.mark.parametrize("path,payload,kind", [
+    ("/api/chat", {"agent": "branding", "message": "What is B200?"}, "chat"),
+    ("/api/triage", {"agents": ["branding", "pr"], "message": "Compare B200"}, "triage"),
+])
+def test_fix_4_other_workflows_keep_original_results(repair_client, path, payload, kind):
+    result = repair_client.post(path, json=payload).get_json()
+    row = database.get_decision(result["decision_id"])
+    assert row["workflow_type"] == kind and row["result"] == result
+
+
+def test_fix_4_legacy_migration_does_not_invent_lost_output(repair_client, tmp_path, monkeypatch):
+    import sqlite3
+    path = tmp_path / "legacy.db"
+    with sqlite3.connect(path) as conn:
+        conn.executescript("""
+            CREATE TABLE decisions (id TEXT PRIMARY KEY, goal_statement TEXT,
+            selected_option TEXT, confidence TEXT, escalated INTEGER,
+            reasoning_source TEXT, rationale TEXT, risks TEXT, created_at TEXT);
+            INSERT INTO decisions VALUES ('old', 'Goal', 'Title', 'High', 0,
+            'legacy', 'Reason', 'None', '2026-01-01');
+        """)
+    monkeypatch.setattr(settings, "DB_PATH", path)
+    database.init_db(force=True)
+    database.init_db(force=True)
+    row = database.get_decision("old")
+    assert row["selected_option"] == "Title" and row["created_at"] == "2026-01-01"
+    assert row["workflow_type"] == "legacy" and row["result"] is None
+    assert row["result_available"] is False
+
+
 @pytest.mark.parametrize("path,payload", [
     ("/api/run", {"goal": ["wrong type"]}),
     ("/api/run", ["not an object"]),
@@ -173,3 +262,29 @@ def test_fix_9_console_direct_navigation(repair_client, tmp_path, monkeypatch):
         assert response.status_code == 200
         assert "console-routing-sentinel" in response.get_data(as_text=True)
     assert repair_client.get("/api/not-a-real-endpoint").status_code == 404
+
+
+def test_fix_9_concurrent_legacy_schema_upgrade(tmp_path, monkeypatch):
+    """Workers starting together must preserve old results and agree on new columns."""
+    import sqlite3
+    from concurrent.futures import ThreadPoolExecutor
+
+    monkeypatch.setattr(settings, "DB_PATH", tmp_path / "concurrent-upgrade.db")
+    with sqlite3.connect(settings.DB_PATH) as conn:
+        conn.execute("""CREATE TABLE decisions (
+            id TEXT PRIMARY KEY, goal_statement TEXT, selected_option TEXT,
+            confidence TEXT, escalated INTEGER, reasoning_source TEXT,
+            rationale TEXT, risks TEXT, created_at TEXT
+        )""")
+        conn.execute("INSERT INTO decisions VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)", (
+            "legacy-parallel", "Old goal", "Old title", "High", 0, "old", "Old rationale", "Old risks", "2026-01-01",
+        ))
+    try:
+        with ThreadPoolExecutor(max_workers=8) as pool:
+            list(pool.map(lambda _: database.init_db(force=True), range(8)))
+        saved = database.get_decision("legacy-parallel")
+        assert saved["goal_statement"] == "Old goal"
+        assert saved["workflow_type"] == "legacy" and saved["result"] is None
+        assert saved["reviews"] == [] and saved["review_status"] == "unreviewed"
+    finally:
+        database.reset_db_state()

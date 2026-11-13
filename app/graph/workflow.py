@@ -31,8 +31,8 @@ from langgraph.graph import StateGraph, START, END
 
 from app.agents.base import run_agent, AGENT_REGISTRY, DEFAULT_PROVIDER
 from app.graph.state import SwarmState
-from app.db.database import save_decision
-from app.core.exceptions import AppException
+from app.db.database import save_decision, save_workflow_result
+from app.core.exceptions import AppException, PersistenceError
 from app.core.primitives import new_id
 
 log = logging.getLogger(__name__)
@@ -173,8 +173,8 @@ def _governance(state: SwarmState) -> Dict[str, Any]:
             evidence_ids=state.get("evidence_ids", []),
             invalid_evidence_ids_count=state.get("invalid_evidence_ids_count", 0),
         )
-    except Exception as db_err:  # pragma: no cover - persistence is best-effort
-        log.warning(f"[DB Warning] Could not persist decision: {db_err}")
+    except Exception as db_err:
+        raise PersistenceError("Could not persist the decision") from db_err
     return {"escalated": escalated, "escalation_reason": reason, "decision_id": record_id}
 
 
@@ -292,6 +292,8 @@ class SwarmWorkflowEngine:
         }
         if final.get("notice"):
             res["notice"] = final["notice"]
+        res["goalStatement"] = goal_statement
+        save_workflow_result(final["decision_id"], "run", res)
         return res
 
 

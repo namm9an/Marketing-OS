@@ -18,6 +18,11 @@ class UpstreamProviderError(AppException):
         self.status_code = status_code
 
 
+class PersistenceError(AppException):
+    """The result could not be durably stored; do not claim a successful audit record."""
+    status_code = 503
+
+
 class UpstreamRateLimitError(AppException):
     """Raised when an upstream AI provider rate limit is encountered (HTTP 429)."""
     def __init__(self, message: str = "Upstream rate limit exceeded", retry_after: int = 60):

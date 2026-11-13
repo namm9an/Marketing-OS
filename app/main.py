@@ -21,6 +21,7 @@ from app.core.exceptions import (
     GlobalQuotaExhaustedError,
     UpstreamRateLimitError,
     UpstreamProviderError,
+    PersistenceError,
 )
 from app.core.security import (
     validate_prompt,
@@ -37,7 +38,7 @@ from app.graph.chat import run_chat
 from app.graph.triage import run_triage
 from app.graph.digest import run_digest, build_network
 from app.memory import store
-from app.db.database import get_all_decisions, init_db, get_connection
+from app.db.database import get_all_decisions, get_decision, review_decision, init_db, get_connection
 from app.memory.graph import rebuild_corpus_graph
 
 init_db()
@@ -208,6 +209,9 @@ def request_entity_too_large(error):
     }), 413
 
 
+@app.errorhandler(PersistenceError)
+def persistence_unavailable(error):
+    return jsonify({"error": "persistence_unavailable", "message": "Could not store the result. Please try again later."}), 503
 
 
 @app.errorhandler(UpstreamRateLimitError)
@@ -359,6 +363,8 @@ def api_run():
         return RateLimiter.make_429_response(e.retry_after, message=str(e))
     except UpstreamProviderError as e:
         return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
+    except PersistenceError:
+        raise
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -376,8 +382,21 @@ def api_history():
     return jsonify({"success": True, "history": get_all_decisions(limit=limit, offset=offset)})
 
 
+@app.route("/api/decisions/<decision_id>", methods=["GET"])
+def api_decision_detail(decision_id):
+    decision = get_decision(decision_id)
+    if decision is None:
+        return jsonify({"error": "unknown decision"}), 404
+    return jsonify({"success": True, "decision": decision})
 
 
+@app.route("/api/decisions/<decision_id>/review", methods=["POST"])
+def api_decision_review(decision_id):
+    data = _request_data(DecisionReviewRequestSchema)
+    reason = data["reason"]
+    if not review_decision(decision_id, data["status"], g.current_user, reason):
+        return jsonify({"error": "unknown decision"}), 404
+    return jsonify({"success": True, "decision": get_decision(decision_id)})
 
 
 @app.route("/api/export/markdown", methods=["POST"])
@@ -476,6 +495,8 @@ def api_chat():
         return RateLimiter.make_429_response(e.retry_after, message=str(e))
     except UpstreamProviderError as e:
         return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
+    except PersistenceError:
+        raise
     except ValueError as e:  # unknown agent / unknown thread / empty message
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -577,6 +598,8 @@ def api_triage():
         return RateLimiter.make_429_response(e.retry_after, message=str(e))
     except UpstreamProviderError as e:
         return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
+    except PersistenceError:
+        raise
     except ValueError as e:  # bad pair / unknown agent / empty message / wrong thread
         return jsonify({"error": str(e)}), 400
     except Exception as e:

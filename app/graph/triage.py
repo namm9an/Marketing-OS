@@ -39,7 +39,8 @@ from langgraph.graph import StateGraph, START, END
 from app.core.config import settings
 from app.core.primitives import new_id
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER, _strip_code_fence
-from app.db.database import save_decision
+from app.db.database import save_decision, save_workflow_result
+from app.core.exceptions import PersistenceError
 from app.graph.chat import _facts_block, _memory_block, recall_for
 from app.memory import gate, store
 from app.services.llm_service import LLMService
@@ -283,8 +284,8 @@ def _governance(state: TriageState) -> Dict[str, Any]:
             rationale=merged.get("answer", "")[:500] if merged.get("answer") else f"Triage synthesis between {agents_label}",
             risks=reason or "; ".join(merged.get("tensions", [])) or risks or "None identified",
         )
-    except Exception as db_err:  # pragma: no cover
-        log.warning(f"[DB Warning] Could not persist triage decision: {db_err}")
+    except Exception as db_err:
+        raise PersistenceError("Could not persist the triage decision") from db_err
     return {
         "escalated": escalated,
         "escalation_reason": reason,
@@ -405,6 +406,7 @@ def run_triage(
                 break
     if notice:
         res["notice"] = notice
+    save_workflow_result(final["decision_id"], "triage", res)
     return res
 
 
