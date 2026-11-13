@@ -251,6 +251,191 @@ def test_fix_6_full_workflow(repair_client):
     exercise_workflows(repair_client)
 
 
+def provider_response(**changes):
+    data = {
+        "modelVersion": "gemini-3.8-flash-version-test",
+        "candidates": [{"finishReason": "STOP", "content": {"parts": [
+            {"thought": True, "text": "private reasoning"}, {"text": "public answer"},
+        ]}}],
+        "usageMetadata": {"promptTokenCount": 20, "candidatesTokenCount": 5,
+                          "thoughtsTokenCount": 3, "totalTokenCount": 28},
+    }
+    data.update(changes)
+    return io.BytesIO(json.dumps(data).encode())
+
+
+def test_fix_7_mock_does_not_invent_provider_measurements(repair_client):
+    run = repair_client.post("/api/run", json={"goal": "B200"}).get_json()
+    metrics = run["metrics"]
+    assert metrics["source"] == "mock"
+    assert metrics["attempts"] == 0
+    assert metrics["latency_ms"] is None
+    assert metrics["total_tokens"] is None
+    assert metrics["prompt_tokens"] is None
+    assert metrics["model"] == "mock-fallback"
+    assert run["decision"]["reasoning_source"].endswith(":mock-fallback")
+    saved = database.get_decision(run["decision"]["id"])
+    assert saved["attempts"] == 0 and saved["prompt_tokens"] is None
+
+
+def test_fix_7_retry_uses_same_model_and_debits_each_attempt(repair_client):
+    calls = []
+
+    def respond(req, timeout=30):
+        calls.append(req.full_url)
+        if len(calls) < 3:
+            raise urllib.error.HTTPError(req.full_url, 503, "Busy", {}, None)
+        return provider_response()
+
+    with patch("urllib.request.urlopen", side_effect=respond), patch("time.sleep") as sleep:
+        result = LLMService.generate("system", "goal", api_key="test-key")
+    assert len(set(calls)) == 1 and "gemini-3.8-flash:" in calls[0]
+    assert [c.args[0] for c in sleep.call_args_list] == [2, 4]
+    assert len(rate_limiter._global_gemini_calls) == 3
+    assert result["attempts"] == 3
+    assert result["model"] == "gemini-3.8-flash-version-test"
+    assert result["fallback_used"] is False
+    assert result["text"] == "public answer"
+    assert result["tokens"] == 28
+    assert result["finish_reason"] == "STOP"
+
+
+def test_fix_7_rate_limit_does_not_switch_models(repair_client):
+    error = urllib.error.HTTPError("https://provider.invalid", 429, "Quota", {"Retry-After": "37"}, None)
+    with patch("urllib.request.urlopen", side_effect=error) as call, patch("time.sleep") as sleep:
+        with pytest.raises(UpstreamRateLimitError) as exc:
+            LLMService.generate("system", "goal", api_key="test-key")
+    assert exc.value.retry_after == 37
+    assert call.call_count == 1
+    sleep.assert_not_called()
+    assert len(rate_limiter._global_gemini_calls) == 1
+
+
+@pytest.mark.parametrize("finish,parts", [
+    ("MAX_TOKENS", [{"text": "partial"}]),
+    ("SAFETY", []), ("STOP", []), (None, [{"text": "unverified completion"}]),
+])
+def test_fix_7_incomplete_provider_output_is_rejected(repair_client, finish, parts):
+    with patch("urllib.request.urlopen", return_value=provider_response(candidates=[{
+        "finishReason": finish, "content": {"parts": parts},
+    }])) as call:
+        with pytest.raises(UpstreamProviderError):
+            LLMService.generate("system", "goal", api_key="test-key")
+    assert call.call_count == 1
+
+
+def test_fix_7_missing_usage_and_model_are_unknown(repair_client):
+    with patch("urllib.request.urlopen", return_value=provider_response(modelVersion=None, usageMetadata={})):
+        result = LLMService.generate("system", "goal", api_key="test-key")
+    assert result["model"] == "unknown"
+    assert result["served_model_verified"] is False
+    assert result["prompt_tokens"] is None and result["tokens"] is None
+
+
+@pytest.mark.parametrize("path,payload,calls", [
+    ("/api/chat", {"message": "B200"}, 1),
+    ("/api/triage", {"message": "B200", "agents": ["branding", "pr"]}, 3),
+    ("/api/digest", {}, 6),
+])
+def test_fix_7_all_workflows_report_actual_execution(repair_client, path, payload, calls):
+    response = repair_client.post(path, json=payload)
+    assert response.status_code == 200, response.get_json()
+    data = response.get_json()
+    assert data["metrics"]["source"] == "mock"
+    assert data["metrics"]["attempts"] == 0
+    assert data["metrics"]["total_tokens"] is None
+    assert len(data["metrics"]["calls"]) == calls
+    assert "quota reached" not in data.get("notice", "").lower()
+    if "decision_id" in data:
+        saved = database.get_decision(data["decision_id"])
+        assert saved["source"] == "mock" and saved["attempts"] == 0
+        assert saved["reasoning_source"].endswith(":mock-fallback")
+        assert saved["result"]["metrics"] == data["metrics"]
+
+
+def test_fix_7_full_workflow(repair_client):
+    exercise_workflows(repair_client)
+
+
+@pytest.mark.parametrize("path,payload,call_count", [
+    ("/api/run", {"goal": "B200"}, 1),
+    ("/api/chat", {"message": "B200"}, 1),
+    ("/api/triage", {"message": "B200", "agents": ["branding", "pr"]}, 3),
+    ("/api/digest", {}, 6),
+])
+def test_fix_7_live_contract_and_exact_capacity(repair_client, monkeypatch, path, payload, call_count):
+    """Parallel workers must consume the reservation captured at the request boundary."""
+    monkeypatch.setattr(settings, "GEMINI_API_KEY", "offline-test-key")
+    monkeypatch.setattr(rate_limiter, "_host_daily_limit", call_count)
+
+    def respond(req, timeout=30):
+        prompt = json.loads(req.data)["contents"][0]["parts"][0]["text"]
+        answer = "Use reliable B200 positioning."
+        if "THE TWO VIEWS:" in prompt:
+            answer = json.dumps({"answer": "Branding and PR agree on reliability.", "agreements": [],
+                                 "tensions": [], "recommended_action": "Review the positioning."})
+        elif "Produce the CMO digest." in prompt:
+            answer = json.dumps({"headline": "Rival positioning", "executive_summary": "Review B200 rivals.",
+                                 "competitor_movements": [], "recommended_actions": []})
+        elif "Formulate the strategy for your domain." in prompt:
+            answer = json.dumps({"selected_option": "Reliability", "statement": answer,
+                                 "rationale": "Grounded comparison", "risks": "Price pressure", "confidence": "Medium"})
+        return provider_response(candidates=[{"finishReason": "STOP", "content": {"parts": [{"text": answer}]}}])
+
+    with patch("urllib.request.urlopen", side_effect=respond) as calls:
+        response = repair_client.post(path, json=payload)
+    assert response.status_code == 200, response.get_json()
+    data = response.get_json()
+    assert calls.call_count == call_count
+    assert len(rate_limiter._global_gemini_calls) == call_count
+    assert not rate_limiter._active_reservations
+    assert data["metrics"]["source"] == "live"
+    assert data["metrics"]["model"] == "gemini-3.8-flash-version-test"
+    assert data["metrics"]["total_tokens"] == 28 * call_count
+    assert data["metrics"]["fallback_used"] is False
+    decision_id = data.get("decision_id") or data.get("decision", {}).get("id")
+    if decision_id:
+        saved = database.get_decision(decision_id)
+        assert saved["total_tokens"] == data["metrics"]["total_tokens"]
+        assert saved["model"] == data["metrics"]["model"]
+        assert saved["result"]["metrics"] == data["metrics"]
+
+
+def test_fix_9_combined_workflow_and_review_reload(repair_client):
+    """The ninth pass combines all product workflows with durable review and isolation."""
+    runs = exercise_workflows(repair_client)
+    assert repair_client.post("/api/login", json={
+        "username": settings.ADMIN_USER, "password": settings.ADMIN_PASSWORD,
+    }).status_code == 200
+    decision_id = runs[0]["decision"]["id"]
+    reviewed = repair_client.post(f"/api/decisions/{decision_id}/review", json={
+        "status": "approved", "reason": "Reviewed the combined workflow evidence",
+    })
+    assert reviewed.status_code == 200
+    assert repair_client.post("/api/logout").status_code == 200
+    reloaded_client = app.test_client()
+    assert reloaded_client.post("/api/login", json={
+        "username": settings.ADMIN_USER, "password": settings.ADMIN_PASSWORD,
+    }).status_code == 200
+    record = reloaded_client.get(f"/api/decisions/{decision_id}").get_json()["decision"]
+    assert record["result"] == runs[0]
+    assert record["review_status"] == "approved" and len(record["reviews"]) == 1
+    other = reloaded_client.get(f"/api/decisions/{runs[1]['decision']['id']}").get_json()["decision"]
+    assert other["review_status"] == "unreviewed"
+    assert other["result"]["metrics"]["source"] == "mock"
+    assert other["result"]["metrics"]["total_tokens"] is None
+    foreign = store.create_thread("agent:branding", "Private")
+    store.add_turn(foreign, "user", "private-sentinel")
+    with patch("app.services.llm_service.LLMService.generate") as generate:
+        rejected = reloaded_client.post("/api/chat", json={
+            "agent": "pr", "thread_id": foreign, "message": "Continue",
+        })
+        assert rejected.status_code == 400
+        assert reloaded_client.post("/api/run", json={"goal": {"wrong": "type"}}).status_code == 400
+        generate.assert_not_called()
+    assert not rate_limiter._active_reservations
+
+
 def test_fix_9_console_direct_navigation(repair_client, tmp_path, monkeypatch):
     """Use a minimal build artifact to verify Flask's SPA routing independently."""
     import importlib

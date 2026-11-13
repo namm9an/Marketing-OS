@@ -33,7 +33,8 @@ def test_server_model_enforcement_and_no_key_in_url():
         mock_resp = MagicMock()
         mock_resp.__enter__.return_value = mock_resp
         mock_resp.read.return_value = json.dumps({
-            "candidates": [{"content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
+            "modelVersion": "gemini-3.8-flash",
+            "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
         }).encode("utf-8")
         return mock_resp
 
@@ -75,7 +76,8 @@ def test_captured_headers_contain_key_without_logging_it():
         mock_resp = MagicMock()
         mock_resp.__enter__.return_value = mock_resp
         mock_resp.read.return_value = json.dumps({
-            "candidates": [{"content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
+            "modelVersion": "gemini-3.8-flash",
+            "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
         }).encode("utf-8")
         return mock_resp
 

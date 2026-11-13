@@ -23,7 +23,9 @@ class SwarmState(TypedDict, total=False):
     api_key: Optional[str]
     client_ip: Optional[str]
     request_id: Optional[str]
+    reservation_id: Optional[str]
     notice: Optional[str]
+    telemetry: Dict[str, Any]
     # Telemetry and provenance citations
     latency_ms: Optional[float]
     total_wall_ms: Optional[float]

@@ -74,16 +74,16 @@ def test_mock_run_agent_telemetry():
     assert out["model"] == "mock-fallback"
     assert out["requested_model"] == "gemini-3.8-flash"
     assert out["fallback_used"] is False
-    assert out["attempts"] == 1
-    assert isinstance(out["latency_ms"], (int, float))
+    assert out["attempts"] == 0
+    assert out["latency_ms"] is None
     assert isinstance(out["total_wall_ms"], (int, float))
     assert isinstance(out["retrieval_ms"], (int, float))
     assert isinstance(out["facts_retrieved"], int)
     assert out["facts_retrieved"] >= 0
-    assert out["tokens"] == 150
-    assert out["prompt_tokens"] == 100
-    assert out["completion_tokens"] == 50
-    assert out["thoughts_tokens"] == 0
+    assert out["tokens"] is None
+    assert out["prompt_tokens"] is None
+    assert out["completion_tokens"] is None
+    assert out["thoughts_tokens"] is None
     assert isinstance(out["evidence_ids"], list)
     assert out["invalid_evidence_ids_count"] == 0
 

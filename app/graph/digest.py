@@ -26,12 +26,13 @@ from langgraph.graph import StateGraph, START, END
 
 from app.core.config import settings
 from app.agents.base import ACTIVE_AGENTS, DEFAULT_PROVIDER, run_agent, _strip_code_fence
-from app.core.exceptions import AppException
 from app.core.primitives import now_iso, new_id
 from app.core.schemas import DigestSchema
+from app.core.exceptions import AppException, UpstreamProviderError
+from app.core.telemetry import provider_metrics, aggregate_metrics
 from app.db.database import get_competitor_facts
 from app.memory.graph import shared_sku_links
-from app.services.llm_service import LLMService
+from app.services.llm_service import LLMService, current_quota_reservation
 
 log = logging.getLogger(__name__)
 
@@ -57,7 +58,9 @@ class DigestState(TypedDict, total=False):
     api_key: Optional[str]
     client_ip: Optional[str]
     request_id: Optional[str]
+    reservation_id: Optional[str]
     notice: Optional[str]
+    telemetry: Dict[str, Any]
     facts: List[Dict[str, Any]]
     briefs: Annotated[List[Dict[str, Any]], operator.add]  # 5 parallel writers
     headline: str
@@ -93,9 +96,11 @@ def _make_digest_worker(agent_type: str):
                 api_key=state.get("api_key"),
                 client_ip=state.get("client_ip"),
                 request_id=state.get("request_id"),
+                reservation_id=state.get("reservation_id"),
             )
             brief_data = {
                 "agent": agent_type,
+                "metrics": provider_metrics(parsed),
                 "headline": parsed.get("selected_option", ""),
                 "finding": parsed.get("statement", ""),
                 "rationale": parsed.get("rationale", ""),
@@ -191,13 +196,18 @@ def _synthesize(state: DigestState) -> Dict[str, Any]:
             api_key=state.get("api_key"),
             client_ip=state.get("client_ip"),
             request_id=state.get("request_id"),
+            reservation_id=state.get("reservation_id"),
             max_tokens=1600,
         )
         notice = result.get("notice")
-        parsed = json.loads(_strip_code_fence(result["text"]))
-        if "selected_option" in parsed and "headline" not in parsed:
-            return _fallback_digest(state, notice=notice or "Quota reached")
-        data = DigestSchema(**parsed).model_dump()
+        if result.get("source") == "mock":
+            return {**_fallback_digest(state, notice=notice), "telemetry": provider_metrics(result)}
+        try:
+            parsed = json.loads(_strip_code_fence(result["text"]))
+            data = DigestSchema(**parsed).model_dump()
+        except (ValueError, TypeError, KeyError, IndexError):
+            raise UpstreamProviderError("Model output did not satisfy the digest schema") from None
+        data["telemetry"] = provider_metrics(result)
         if notice:
             data["notice"] = notice
         return data
@@ -300,8 +310,13 @@ def run_digest(
         "api_key": api_key,
         "client_ip": client_ip,
         "request_id": req_id,
+        "reservation_id": current_quota_reservation(),
     })
     network = build_network()
+    telemetry = aggregate_metrics(
+        [b.get("metrics", provider_metrics({})) for b in final.get("briefs", [])]
+        + [provider_metrics(final.get("telemetry", {}))]
+    )
     res = {
         "success": True,
         "generated_at": now_iso(),
@@ -311,6 +326,7 @@ def run_digest(
         "competitor_movements": final.get("competitor_movements", []),
         "recommended_actions": final.get("recommended_actions", []),
         "agent_briefs": sorted(final.get("briefs", []), key=lambda b: b["agent"]),
+        "metrics": telemetry,
         "network": network,
         # Citations are DB rows, never model output — this is the grounding guarantee.
         "citations": [

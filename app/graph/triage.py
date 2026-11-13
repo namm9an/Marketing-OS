@@ -40,10 +40,11 @@ from app.core.config import settings
 from app.core.primitives import new_id
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER, _strip_code_fence
 from app.db.database import save_decision, save_workflow_result
-from app.core.exceptions import PersistenceError
+from app.core.exceptions import AppException, PersistenceError, UpstreamProviderError
+from app.core.telemetry import provider_metrics, aggregate_metrics, persistence_metrics
 from app.graph.chat import _facts_block, _memory_block, recall_for
 from app.memory import gate, store
-from app.services.llm_service import LLMService
+from app.services.llm_service import LLMService, current_quota_reservation
 
 log = logging.getLogger(__name__)
 
@@ -90,7 +91,9 @@ class TriageState(TypedDict, total=False):
     api_key: Optional[str]
     client_ip: Optional[str]
     request_id: Optional[str]
+    reservation_id: Optional[str]
     notice: Optional[str]
+    telemetry: Dict[str, Any]
     user_turn_id: str
     views: Annotated[List[Dict[str, Any]], operator.add]  # 2 parallel writers
     merged: Dict[str, Any]
@@ -120,6 +123,7 @@ def _make_view_worker(index: int):
         message = state["message"]
         recall = recall_for(agent_type, message)
         notice = None
+        telemetry = provider_metrics({})
 
         try:
             result = LLMService.generate(
@@ -133,19 +137,23 @@ def _make_view_worker(index: int):
                 api_key=state.get("api_key"),
                 client_ip=state.get("client_ip"),
                 request_id=state.get("request_id"),
+                reservation_id=state.get("reservation_id"),
                 temperature=0.5,
                 max_tokens=700,
             )
+            telemetry = provider_metrics(result)
             notice = result.get("notice")
-            if result.get("model_used", "").endswith("fallback"):
+            if result.get("source") == "mock":
                 view = (
                     f"[{agent_type}] working from {len(recall['facts'])} sourced fact(s) and "
                     f"{len(recall['memories'])} remembered note(s); LLM synthesis unavailable."
                 )
             else:
                 view = result["text"].strip()
+                if not view:
+                    raise UpstreamProviderError("Model returned no specialist view")
         except Exception as err:
-            if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+            if isinstance(err, AppException) or settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
                 raise
             log.warning(f"[Triage/{agent_type}] view worker error, using fallback view: {err}")
             view = (
@@ -156,6 +164,7 @@ def _make_view_worker(index: int):
         view_dict = {
             "agent": agent_type,
             "view": view,
+            "metrics": telemetry,
             # Visible recall, per agent — the CMO can see the two were briefed differently.
             "recall": {
                 "memories": [
@@ -209,15 +218,28 @@ def _merge(state: TriageState) -> Dict[str, Any]:
             api_key=state.get("api_key"),
             client_ip=state.get("client_ip"),
             request_id=state.get("request_id"),
+            reservation_id=state.get("reservation_id"),
             max_tokens=1200,
         )
         notice = result.get("notice")
-        parsed = json.loads(_strip_code_fence(result["text"]))
-        if "selected_option" in parsed and "answer" not in parsed:
-            return {"merged": _fallback_merge(views), "notice": notice or "Quota reached"}
+        if result.get("source") == "mock":
+            return {"merged": _fallback_merge(views), "telemetry": provider_metrics(result)}
+        try:
+            parsed = json.loads(_strip_code_fence(result["text"]))
+            if not isinstance(parsed, dict):
+                raise ValueError
+        except (ValueError, TypeError, KeyError, IndexError):
+            raise UpstreamProviderError("Model output did not satisfy the triage schema") from None
         if not isinstance(parsed.get("answer"), str) or not parsed["answer"].strip():
-            raise ValueError("merge returned no answer")
+            raise UpstreamProviderError("Model output did not satisfy the triage schema")
+        for key in ("agreements", "tensions"):
+            value = parsed.get(key, [])
+            if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+                raise UpstreamProviderError("Model output did not satisfy the triage schema")
+        if not isinstance(parsed.get("recommended_action", ""), str):
+            raise UpstreamProviderError("Model output did not satisfy the triage schema")
         res = {
+            "telemetry": provider_metrics(result),
             "merged": {
                 "answer": parsed["answer"],
                 "agreements": list(parsed.get("agreements") or []),
@@ -230,7 +252,7 @@ def _merge(state: TriageState) -> Dict[str, Any]:
             res["notice"] = notice
         return res
     except Exception as err:
-        if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+        if isinstance(err, AppException) or settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
             raise
         log.info(f"[Triage] falling back to unmerged attributed views: {err}")
         fallback_res = {"merged": _fallback_merge(views)}
@@ -272,12 +294,17 @@ def _governance(state: TriageState) -> Dict[str, Any]:
     escalated, reason = _governance_check(confidence, message, merged, views, risks)
     record_id = new_id()
     agents_label = "+".join(sorted(state.get("agents", [])))
-    source = f"langgraph:triage:{agents_label}:{state.get('provider', DEFAULT_PROVIDER)}"
+    telemetry = aggregate_metrics(
+        [v.get("metrics", provider_metrics({})) for v in views]
+        + [provider_metrics(state.get("telemetry", {}))]
+    )
+    source = f"langgraph:triage:{agents_label}:{telemetry['model']}"
     try:
         save_decision(
             decision_id=record_id,
             goal_statement=message,
             selected_option=merged.get("recommended_action") or f"Triage Consensus ({agents_label})",
+            **persistence_metrics(telemetry),
             confidence=confidence,
             escalated=escalated,
             reasoning_source=source,
@@ -374,15 +401,21 @@ def run_triage(
         "api_key": api_key,
         "client_ip": client_ip,
         "request_id": req_id,
+        "reservation_id": current_quota_reservation(),
     })
 
     merged = final.get("merged", {})
+    telemetry = aggregate_metrics(
+        [v.get("metrics", provider_metrics({})) for v in final.get("views", [])]
+        + [provider_metrics(final.get("telemetry", {}))]
+    )
     res = {
         "success": True,
         "agents": agents,
         "namespace": namespace,
         "thread_id": thread_id,
         "answer": merged.get("answer", ""),
+        "metrics": telemetry,
         "agreements": merged.get("agreements", []),
         "tensions": merged.get("tensions", []),
         "recommended_action": merged.get("recommended_action", ""),

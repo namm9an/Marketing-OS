@@ -13,6 +13,7 @@ from typing import Dict, Any, Optional, List, Tuple
 
 from app.core.config import settings
 from app.services.llm_service import LLMService
+from app.core.telemetry import provider_metrics
 from app.db.database import search_knowledge_units
 from app.core.schemas import AgentResponseSchema
 from app.core.exceptions import UpstreamProviderError
@@ -159,6 +160,7 @@ def run_agent(
     api_key: Optional[str] = None,
     client_ip: Optional[str] = None,
     request_id: Optional[str] = None,
+    reservation_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one agent. `extra_context` replaces the default retrieval when supplied —
     the weekly digest uses it to ground agents on competitor-only facts."""
@@ -193,6 +195,7 @@ def run_agent(
         api_key=api_key,
         client_ip=client_ip,
         request_id=request_id,
+        reservation_id=reservation_id,
     )
     # 3. Validate against the Pydantic contract (every agent, consistently).
     try:
@@ -210,23 +213,11 @@ def run_agent(
     parsed["evidence_ids"] = valid_evidence_ids
     parsed["invalid_evidence_ids_count"] = invalid_evidence_count
 
-    # 4. Attach real measured telemetry
-    parsed["latency_ms"] = result.get("latency_ms", 0.0)
-    parsed["total_wall_ms"] = result.get("total_wall_ms", parsed["latency_ms"])
+    # Keep missing usage unknown, and preserve the provider's reported identity.
+    parsed.update(provider_metrics(result))
+    parsed["tokens"] = parsed["total_tokens"]
     parsed["retrieval_ms"] = retrieval_ms
-    parsed["attempts"] = result.get("attempts", 1)
-    parsed["prompt_tokens"] = result.get("prompt_tokens", 0)
-    parsed["completion_tokens"] = result.get("completion_tokens", 0)
-    parsed["thoughts_tokens"] = result.get("thoughts_tokens", 0)
-    parsed["tokens"] = result.get(
-        "tokens",
-        parsed["prompt_tokens"] + parsed["completion_tokens"] + parsed["thoughts_tokens"],
-    )
     parsed["facts_retrieved"] = facts_retrieved
-    parsed["source"] = result.get("source", "mock")
-    parsed["model"] = result.get("model") or result.get("model_used") or provider
-    parsed["requested_model"] = result.get("requested_model", settings.DEFAULT_MODEL or "gemini-3.8-flash")
-    parsed["fallback_used"] = result.get("fallback_used", False)
 
     if result.get("notice"):
         parsed["notice"] = result["notice"]

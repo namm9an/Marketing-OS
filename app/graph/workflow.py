@@ -32,8 +32,10 @@ from langgraph.graph import StateGraph, START, END
 from app.agents.base import run_agent, AGENT_REGISTRY, DEFAULT_PROVIDER
 from app.graph.state import SwarmState
 from app.db.database import save_decision, save_workflow_result
-from app.core.exceptions import AppException, PersistenceError
+from app.services.llm_service import current_quota_reservation
+from app.core.telemetry import provider_metrics, persistence_metrics
 from app.core.primitives import new_id
+from app.core.exceptions import AppException, PersistenceError
 
 log = logging.getLogger(__name__)
 
@@ -92,26 +94,18 @@ def _make_worker(agent_type: str):
                 api_key=state.get("api_key"),
                 client_ip=state.get("client_ip"),
                 request_id=state.get("request_id"),
+                reservation_id=state.get("reservation_id"),
             )
             return {
+                "telemetry": provider_metrics(parsed),
                 "selected_option": parsed.get("selected_option"),
                 "positioning_statement": parsed.get("statement"),
                 "rationale": parsed.get("rationale"),
                 "risks": parsed.get("risks"),
                 "confidence": parsed.get("confidence", "High"),
                 "notice": parsed.get("notice"),
-                "latency_ms": parsed.get("latency_ms", 0.0),
-                "total_wall_ms": parsed.get("total_wall_ms", parsed.get("latency_ms", 0.0)),
                 "retrieval_ms": parsed.get("retrieval_ms", 0.0),
-                "attempts": parsed.get("attempts", 1),
-                "prompt_tokens": parsed.get("prompt_tokens", 0),
-                "completion_tokens": parsed.get("completion_tokens", 0),
-                "thoughts_tokens": parsed.get("thoughts_tokens", 0),
                 "facts_retrieved": parsed.get("facts_retrieved", 0),
-                "source": parsed.get("source", "mock"),
-                "model": parsed.get("model", "mock-fallback"),
-                "requested_model": parsed.get("requested_model", "gemini-3.8-flash"),
-                "fallback_used": parsed.get("fallback_used", False),
                 "evidence_ids": parsed.get("evidence_ids", []),
                 "invalid_evidence_ids_count": parsed.get("invalid_evidence_ids_count", 0),
             }
@@ -147,7 +141,8 @@ def _governance(state: SwarmState) -> Dict[str, Any]:
         rationale=rationale,
     )
     record_id = new_id()
-    source = f"langgraph:{state.get('active_agent')}:{state.get('provider')}"
+    telemetry = provider_metrics(state.get("telemetry", {}))
+    source = f"langgraph:{state.get('active_agent')}:{telemetry['model']}"
     try:
         save_decision(
             decision_id=record_id,
@@ -158,18 +153,9 @@ def _governance(state: SwarmState) -> Dict[str, Any]:
             reasoning_source=source,
             rationale=rationale,
             risks=reason or risks or "None identified",
-            latency_ms=state.get("latency_ms", 0.0),
-            total_wall_ms=state.get("total_wall_ms", state.get("latency_ms", 0.0)),
+            **persistence_metrics(telemetry),
             retrieval_ms=state.get("retrieval_ms", 0.0),
-            attempts=state.get("attempts", 1),
-            prompt_tokens=state.get("prompt_tokens", 0),
-            completion_tokens=state.get("completion_tokens", 0),
-            thoughts_tokens=state.get("thoughts_tokens", 0),
             facts_retrieved=state.get("facts_retrieved", 0),
-            source=state.get("source", "mock"),
-            model=state.get("model", "mock-fallback"),
-            requested_model=state.get("requested_model", "gemini-3.8-flash"),
-            fallback_used=state.get("fallback_used", False),
             evidence_ids=state.get("evidence_ids", []),
             invalid_evidence_ids_count=state.get("invalid_evidence_ids_count", 0),
         )
@@ -222,6 +208,7 @@ class SwarmWorkflowEngine:
             "api_key": api_key,
             "client_ip": client_ip,
             "request_id": request_id,
+            "reservation_id": current_quota_reservation(),
         }
         config: Dict[str, Any] = {}
         handler = _langfuse_handler()
@@ -233,27 +220,19 @@ class SwarmWorkflowEngine:
         selected_option = final.get("selected_option") or "Strategy Brief"
         confidence = final.get("confidence") or "High"
         active = final.get("active_agent", agent_type)
+        telemetry = provider_metrics(final.get("telemetry", {}))
         decision_payload = {
             "id": final.get("decision_id"),
             "selected_option": selected_option,
             "confidence": confidence,
             "escalated": final.get("escalated", False),
             "escalation_reason": final.get("escalation_reason"),
-            "reasoning_source": f"langgraph:{active}:{provider}",
+            "reasoning_source": f"langgraph:{active}:{telemetry['model']}",
             "rationale": final.get("rationale") or "",
             "risks": final.get("risks") or "",
-            "latency_ms": final.get("latency_ms", 0.0),
-            "total_wall_ms": final.get("total_wall_ms", final.get("latency_ms", 0.0)),
+            **telemetry,
             "retrieval_ms": final.get("retrieval_ms", 0.0),
-            "attempts": final.get("attempts", 1),
-            "prompt_tokens": final.get("prompt_tokens", 0),
-            "completion_tokens": final.get("completion_tokens", 0),
-            "thoughts_tokens": final.get("thoughts_tokens", 0),
             "facts_retrieved": final.get("facts_retrieved", 0),
-            "source": final.get("source", "mock"),
-            "model": final.get("model", "mock-fallback"),
-            "requested_model": final.get("requested_model", "gemini-3.8-flash"),
-            "fallback_used": final.get("fallback_used", False),
             "evidence_ids": final.get("evidence_ids", []),
             "invalid_evidence_ids_count": final.get("invalid_evidence_ids_count", 0),
         }
@@ -266,19 +245,9 @@ class SwarmWorkflowEngine:
             },
             "decision": decision_payload,
             "metrics": {
-                "latency_ms": decision_payload["latency_ms"],
-                "total_wall_ms": decision_payload["total_wall_ms"],
+                **telemetry,
                 "retrieval_ms": decision_payload["retrieval_ms"],
-                "attempts": decision_payload["attempts"],
-                "prompt_tokens": decision_payload["prompt_tokens"],
-                "completion_tokens": decision_payload["completion_tokens"],
-                "thoughts_tokens": decision_payload["thoughts_tokens"],
-                "total_tokens": decision_payload["prompt_tokens"] + decision_payload["completion_tokens"] + decision_payload["thoughts_tokens"],
                 "facts_retrieved": decision_payload["facts_retrieved"],
-                "source": decision_payload["source"],
-                "model": decision_payload["model"],
-                "requested_model": decision_payload["requested_model"],
-                "fallback_used": decision_payload["fallback_used"],
                 "evidence_ids": decision_payload["evidence_ids"],
                 "invalid_evidence_ids_count": decision_payload["invalid_evidence_ids_count"],
             },
