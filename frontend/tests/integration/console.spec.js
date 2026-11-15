@@ -27,4 +27,33 @@ test('history restores the original result through Vite and Flask after a reload
   expect(errors).toEqual([]);
 });
 
+test('operator approval persists after reload and does not transfer to the next decision', async ({ page }) => {
+  await login(page);
+  const run = async (goal) => {
+    await page.getByPlaceholder('Describe your business goal to trigger positioning development...').fill(goal);
+    const response = page.waitForResponse((r) => r.url().endsWith('/api/run') && r.request().method() === 'POST');
+    await page.getByRole('button', { name: 'Run Agent', exact: true }).click();
+    const result = await response;
+    expect(result.status()).toBe(200);
+    return result.json();
+  };
+  const first = await run('Position B200 while avoiding a price war');
+  await expect(page.getByText('Review status: pending', { exact: true })).toBeVisible();
+  await page.getByRole('textbox', { name: 'Review reason (optional)' }).fill('Reviewed the sources and risks');
+  await page.getByRole('button', { name: 'Approve decision', exact: true }).click();
+  await expect(page.getByText('Review status: approved', { exact: true })).toBeVisible();
+  await page.reload();
+  await page.getByRole('button', { name: new RegExp(`decision ${first.decision.id}$`) }).click();
+  await expect(page.getByText('Review status: approved', { exact: true })).toBeVisible();
+  const second = await run('Position B200 against Nebius using reliability');
+  await expect(page.getByText('Review status: unreviewed', { exact: true })).toBeVisible();
+  const savedFirst = (await (await page.request.get(`/api/decisions/${first.decision.id}`)).json()).decision;
+  const savedSecond = (await (await page.request.get(`/api/decisions/${second.decision.id}`)).json()).decision;
+  expect(savedFirst.reviewed_by).toBe('e2e-operator');
+  expect(savedFirst.reviews).toHaveLength(1);
+  expect(savedFirst.escalated).toBeTruthy();
+  expect(savedSecond.review_status).toBe('unreviewed');
+  expect(savedSecond.reviews).toEqual([]);
+});
+
 export { login };

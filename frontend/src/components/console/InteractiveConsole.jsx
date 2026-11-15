@@ -7,6 +7,7 @@ import {
 import CompetitorNetwork from '../CompetitorNetwork';
 import ChatPanel from '../ChatPanel';
 import SavedConversation from './SavedConversation';
+import DecisionReview from './DecisionReview';
 import { restoreSavedDecision, newRunRecord } from '../../lib/savedDecisions';
 
 // The gradient background pulls in three + @react-three/fiber (~150kB gzipped) for
@@ -57,7 +58,6 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
   const [currentData, setCurrentData] = useState(null);
   const [history, setHistory] = useState([]);
   const [copied, setCopied] = useState(false);
-  const [ratified, setRatified] = useState(false);
 
   // Weekly digest (M5). The network map is cheap (DB-only) so it loads with the tab;
   // the digest itself fans out to 5 agents, so it runs on demand.
@@ -109,6 +109,12 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
         .catch(err => console.error('Failed to load history', err));
     }
   }, [authenticated]);
+
+  const updateReview = (row) => {
+    const restored = restoreSavedDecision(row);
+    setCurrentData((previous) => previous?.decision.id === row.id ? restored : previous);
+    setHistory((previous) => previous.map((item) => item.decision.id === row.id ? restored : item));
+  };
 
   // Check auth on load
   useEffect(() => {
@@ -446,6 +452,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 {history.map((run, idx) => (
                   <button
                     key={idx}
+                    aria-label={`Open ${run.decision.selected_option}, decision ${run.decision.id}`}
                     onClick={() => {
                       setCurrentData(run);
                       setGoal(run.goalStatement);
@@ -738,47 +745,21 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             )}
 
             {currentData && !loading && (currentData.workflow_type !== 'run' || !currentData.result_available || !currentData.positioning) && (
-              <SavedConversation data={currentData} />
+              <div className="space-y-3">
+                <SavedConversation data={currentData} />
+                <DecisionReview decisionId={currentData.decision.id} onUpdated={updateReview} />
+              </div>
             )}
 
             {/* Document Artifact Brief Card */}
             {currentData?.result_available && currentData.workflow_type === 'run' && currentData.positioning && !loading && (
               <div className="bg-white/90 backdrop-blur-xl border border-[#E7E2D8] rounded-2xl p-6 space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] print-artifact relative">
                 
-                {/* Human-in-the-Loop Executive Ratification Banner */}
-                {ratified ? (
-                  <div className="p-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-800 text-xs font-medium flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Check className="w-4 h-4 text-emerald-600 shrink-0" />
-                      <span><strong>Executive Ratification Complete:</strong> Positioning Brief approved by CMO Gatekeeper ({username})</span>
-                    </div>
-                    <span className="text-[10px] font-mono text-emerald-700 bg-white px-2 py-0.5 rounded font-semibold border border-emerald-200">APPROVED</span>
-                  </div>
-                ) : (
-                  <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-900 text-xs font-medium flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-amber-600 shrink-0" />
-                      <span><strong>Executive Gate Active:</strong> Decision confidence is rated <u>{currentData.decision.confidence}</u>. Require CMO ratification?</span>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        onClick={() => setRatified(true)}
-                        className="px-3 py-1 bg-[#059669] hover:bg-[#047857] text-white font-medium text-xs rounded-lg transition-colors shadow-xs"
-                      >
-                        Ratify & Approve
-                      </button>
-                      <button
-                        onClick={() => {
-                          setGoal(`Revise positioning for: ${currentData.goalStatement} - focusing more on enterprise compliance`);
-                          setCurrentData(null);
-                        }}
-                        className="px-3 py-1 bg-white hover:bg-[#F7F5F0] text-[#44403C] font-medium text-xs rounded-lg border border-[#E0DACE] transition-colors"
-                      >
-                        Request AI Revision
-                      </button>
-                    </div>
-                  </div>
-                )}
+                <DecisionReview decisionId={currentData.decision.id} onUpdated={updateReview} />
+                <button onClick={() => {
+                  setGoal(`Revise positioning for: ${currentData.goalStatement}`);
+                  setCurrentData(null);
+                }} className="px-3 py-2 border rounded text-xs">Request AI revision</button>
 
                 {/* Header with Copy, Download, AND Dismiss (X) */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E7E2D8]">
