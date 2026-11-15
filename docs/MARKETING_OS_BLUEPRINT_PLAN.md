@@ -1,7 +1,7 @@
 # Marketing OS — blueprint and phased build plan
 
-Updated: 15 November 2026 (Asia/Calcutta).
-Status: F01 functional baseline PASS on `feat/frontend-foundation`, application revision `d6c9973`. F00 reference/detail reviews remain open. F02 is next and has not started; see section 13 for evidence and limits.
+Updated: 16 November 2026 (Asia/Calcutta).
+Status: F01 functional baseline PASS on `feat/frontend-foundation`, application revision `d6c9973`. F02 is IN PROGRESS / BLOCKED on `feat/frontend-data-contracts`: adapters, capture tooling and static inspection implemented; genuine generation returns upstream HTTP 402. F00 reference/detail reviews remain open. See sections 13–14 for evidence and limits; F03 is not eligible.
 
 ## 1. Purpose and authority
 
@@ -121,7 +121,7 @@ F01 introduced these frontend test commands; they must remain runnable before a 
 ```bash
 npm run test:unit
 npm run test:integration
-npm run test:integration:built -- baseline.spec.js workflow.spec.js
+npm run test:integration:built -- baseline.spec.js workflow.spec.js examples.spec.js
 ```
 
 The integration configurations use temporary SQLite databases, controlled/mock inference and synthetic test credentials. The normal suite starts Flask plus a Vite proxy; the built suite requires `npm run build` and serves the actual SPA directly through two Gunicorn workers on Linux (Flask on native Windows). Run the suites sequentially because they share port 5120. See `frontend/playwright.config.js`, `frontend/playwright.built.config.js` and `frontend/tests/integration/start-api.mjs`; set `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` or `MARKETING_OS_TEST_PYTHON` for alternate installed executables. Install Playwright's Chromium if no compatible browser is available. Use controlled inference for routine checks; do not require paid calls at every phase. Future phases must rerun the complete gate rather than reuse F01's results.
@@ -289,7 +289,8 @@ For each reference capture its URL/source/license, the specific useful property,
 |---|---|---|
 | F00 | PARTIAL; Q01–Q06 owner direction recorded, references/details still open | Exact machine material/modelling/stills and camera framing; graphite comparison, shorter-opening geometry and responsive comparison details. Optional visitor rotation is not approved |
 | F01 | PASS — functional baseline, 15 November | Application revision `d6c9973`; five atomic implementation commits; all six gate lanes have evidence in section 13. Final art direction and complete visual/performance acceptance remain later work |
-| F02–F14, including every F07 subphase | NOT STARTED | Implement and verify in sequence; no assumed passes |
+| F02 | IN PROGRESS / BLOCKED — see section 14 | Five genuine saved responses require working provider generation access; upstream generation currently returns HTTP 402. Controlled tests cannot close that gate |
+| F03–F14, including every F07 subphase | NOT STARTED | Implement and verify in sequence; F03 requires F02 PASS |
 
 Update these three documents when a decision changes: record the decision, source/date, affected phases, superseded choice, and required retesting. Keep the original Claude archive unchanged.
 
@@ -346,7 +347,7 @@ This is the mandatory navigation map for phase work, not evidence that its plann
 
 ### System boundaries and data flow
 
-Solid arrows show runtime data/actions. Dashed arrows show deliberate preparation or saved-data adaptation. The public presentation adapter and physical scene system are planned F02–F08 work; the console and Flask workflows have passed the F01 functional gate; later visual integration remains F11 work.
+Solid arrows show runtime data/actions. Dashed arrows show deliberate preparation or saved-data adaptation. F02 now implements the presentation adapters, capture tooling and a readiness-gated static inspector, but its five genuine recordings are blocked. The diagram's comparison/physical scene system remains planned F04–F08 work. The console and Flask workflows passed F01; later visual integration remains F11 work.
 
 ```mermaid
 flowchart TB
@@ -522,7 +523,7 @@ Ask the owner when a choice is unclear or changes their intended experience. Mak
 
 | ID | Decision to resolve with the owner | Needed before | Current status / question |
 |---|---|---|---|
-| Q01 | Public example provenance | F02 exit and any public claim of genuine model output | CONFIRMED by owner, 15 November: genuine saved model responses for public examples; routine tests use controlled/mock responses. Capture depends on available provider/credentials; their availability is not yet verified |
+| Q01 | Public example provenance | F02 exit and any public claim of genuine model output | CONFIRMED by owner, 15 November: genuine saved model responses; controlled/mock routine tests. Credential and provider host are available in the running environment and model listing succeeds, but generation returns upstream HTTP 402. Five genuine recordings remain BLOCKED; do not change mode/model or infer the precise account/billing cause |
 | Q02 | Visitor comparison layout and selection count | F04 implementation | CONFIRMED by owner, 15 November: choose two agents side by side, then open one shared animation stage. All five remain discoverable; detailed mobile arrangement still needs review |
 | Q03 | First physical pilot | F05; update F06/F07 mapping if changed | CONFIRMED by owner, 15 November: PR & Policy first, with a risk checkpoint and separate human-review route. F07 covers the other four agents |
 | Q04 | Graphite reference, texture placement, and how selective dithering complements it | F03 surface implementation | DIRECTION CONFIRMED by owner, 15 November: keep the light paper page and try subtle graphite speckling. Compare plain/textured surfaces; exact asset/intensity and selective dithering placement remain for visual review |
@@ -621,4 +622,107 @@ Motion/UX review: A §12 rapid-switch/stale-state, meaningful final state, truth
 - Broader open backend/product items remain in the backend tracker; F01 does not silently change memory policy, add triage conversational continuity, or complete container/deployment work.
 - Section 11's lookup, prerequisite, per-change coverage/commit, full-gate, design/motion review and evidence steps were applied. No required F01 item is failed or untested. Required visual decisions for later phases remain explicitly open.
 
-Next phase eligible: **YES, F02**, subject to its own entry scope and evidence. F02 has not started. Its genuine public-capture requirement needs an available provider and credentials; if unavailable, keep that acceptance item BLOCKED rather than replacing recordings with unlabelled mocks. F00's remaining concrete visual reviews continue before their dependent phases. The phase pass does not merge or deploy the branch.
+At F01 closure, next phase eligible: **YES, F02**, subject to its own entry scope and evidence. The subsequent F02 work is recorded below. Its genuine public-capture requirement stays BLOCKED while generation access is unavailable. F00's concrete visual reviews continue before dependent phases. A phase pass does not merge or deploy the branch.
+
+## 14. F02 implementation and blocked verification record
+
+Date: 16 November 2026 (Asia/Calcutta). Status: **IN PROGRESS / BLOCKED, not PASS**.
+Application revision: **`9fab905270b56a7001386802812bea39acd62f62`**, branch
+`feat/frontend-data-contracts`, based on F01's documentation head `8613424`.
+F01 and the earlier backend/Anti Gravity commits remain ancestors. This branch is
+stacked on F01 because the integration branch has not been merged; no merge into
+`showcase-redesign` or `main`, deployment or environment publication is included.
+The documentation commit following that application revision records these results.
+
+### Scope, prerequisites and atomic changes
+
+Consulted section 6 F02, section 10's diagrams/correspondence row, section 11,
+D §3/§7/§8/§12 and A §3/§4/§6. F01 PASS and owner decision Q01 establish entry;
+Q02–Q06 remain preserved rather than reopened. Exact materials/camera/layout are
+not dependencies of these data contracts. No physical scene or new visual system
+has been built.
+
+| Commit | Coherent change and targeted evidence |
+|---|---|
+| `5229fca` `feat: add truthful workflow presentation adapters` | Run/chat/triage/digest/history and five scene bindings, immutable snapshots, exact/null/legacy/zero handling and truthful evidence/metrics. Thirteen new adapter tests; frontend suite then 42 passed; combined API/browser workflow and error checks 2 passed |
+| `4ab124d` `feat: capture request-bound example evidence` | Optional context-local retrieval observation and isolated authenticated capture/resume CLI. Eleven new backend tests prove exact response preservation, same-request source rows, concurrent capture isolation, no post-hoc search, mock rejection, partial resume, checksum failure and credential-safe errors |
+| `9fab905` `feat: inspect verified saved agent examples` | Live-only static catalog, checksums/attribution checks, readiness-gated plain inspector, LF protection, labelled controlled contract fixtures and usage documentation. Nine catalog tests; frontend suite 51 passed; focused browser rerun 3 passed including existing review and the new selection/empty-state cases |
+
+All three commits use `namm9an <naman.moudgill77@gmail.com>` as author and committer,
+with no AI co-author trailers. The original Claude appendix in the working record
+is byte-identical to `67a1c57` (section-16 suffix SHA-256
+`0450ab2b35bd06660cdfd676f365de39788a921ae7265e2bcaa314e5ee9f9491`).
+
+### Acceptance mapping
+
+| ID | Requirement/spec reference | Implementation and targeted check | Current disposition |
+|---|---|---|---|
+| F02-01 | Section 6: common adapter family and untouched snapshots; D §12 | `presentation.js` and `presentation.test.js`; real consumers in execution details, saved conversation and generated-summary display | PASS for controlled contract cases: run/chat/triage/digest/saved history and five scene projections; raw snapshots cloned, not repaired |
+| F02-02 | Exact/null/legacy/error fields and source boundaries; D §12, A §3/§6 | Adapter tests preserve zero, missing measurements/IDs, original risk versus current review, per-agent triage context and digest corpus links | PASS for tested contracts; generated summaries never become retrieved rows; missing flagged phrase/review remains unavailable |
+| F02-03 | Explicit deterministic test fixtures | `workflowFixtures.js`, `recordingFixtures.js`, backend controlled upstream fixtures | PASS: labelled test inputs; live-shaped positive contract fixtures remain in tests and are not accepted public captures |
+| F02-04 | Same-request capture, bounded instrumentation, no later search | `evidence_capture.py`, one-shot observer in `base.py`, `recordings/capture.py`; backend capture tests compare original stored response and exact observed retrieval | PASS with controlled inference; ordinary API/result shape unchanged, temporary database isolated, quotas retained |
+| F02-05 | Verify provider/credentials securely; Q01 | Runtime key binding and provider host available; authenticated model-list HTTP 200; attempted live CLI capture and bounded upstream diagnostic | BLOCKED for generation: upstream HTTP 402; API capture surfaces HTTP 502. No configured-model change, fallback, repeated retry loop or credential disclosure |
+| F02-06 | Five genuine public examples, actual citations/mode/metrics | `frontend/public/examples/manifest.json` remains `blocked`, zero example files; actual-public-catalog browser test requires all five | BLOCKED: zero accepted genuine recordings. No hand-edited or controlled output substituted |
+| F02-07 | Comparison/scene data available without inference; A §6 | `adaptAgentScene` binds six explanatory stations for each attributable one-shot agent; catalog validates SHA-256 and citation membership | PASS for controlled data contracts; genuine-recording acceptance remains BLOCKED. No renderer, comparison UI or hidden-reasoning replay is claimed |
+| F02-08 | Static selection/read-only boundary; D §7, A §3 | Optional `RecordedAgentExamples` plus browser request observation; keyboard selection, mobile widths, scoped axe audit | PASS with controlled catalog: zero `/api/` requests on selection. Missing/blocked manifest exposes no pretend recording. Actual five-recording playback remains BLOCKED |
+| F02-09 | All common gate lanes, current evidence | Results below; all tests use controlled inference except deliberate genuine capture | OPEN: public catalog requirement fails; initial normal-motion review timeout passed isolated rerun, but no clean full development-suite result is claimed |
+
+### Common gate results and evidence
+
+Logs below are local-only files in `/workspace/reviews/`; the reproducible tests
+are committed. These overlapping layers must not be added together as distinct tests.
+
+| Lane | Command/result | Evidence and limits |
+|---|---|---|
+| Backend connection | Real browser → Vite proxy → Flask; compiled SPA → two Gunicorn workers | Combined workflow passes in both modes; built direct console navigation/reload and cookie sessions work |
+| Backend unit/integration | Isolated `DB_PATH`, blank key: `.venv/bin/python -m pytest -q tests/unit tests/integration` — exit 0, **334 passed** | `f02-final-backend.log`; includes all earlier repair cases and eleven new capture cases; no paid calls |
+| Frontend unit | `npm run test:unit` — exit 0, **51 passed / 11 files** | `f02-final-unit.log`; adapter and catalog contract cases included |
+| Development browser integration | `npm run test:integration` — exit 1, **11 passed / 2 failed** | `f02-final-browser.log`: required genuine-catalog failure plus 90-second normal-motion approval timeout. This run preceded the added mobile/axe assertions in the inspector test; application code is unchanged |
+| Focused development rerun | `npm run test:integration -- console.spec.js examples.spec.js --grep 'operator approval\|controlled recording\|empty public'` — exit 0, **3 passed** | `f02-browser-focused.log`: approval passed unchanged in 46.8s; latest inspector keyboard/mobile/axe and empty-state checks pass. This does not erase the initial timeout or produce a clean full-suite pass |
+| Compiled browser integration | `npm run test:integration:built -- baseline.spec.js workflow.spec.js examples.spec.js` — exit 1, **9 passed / 1 failed** | `f02-final-built.log`: sole failure is the required actual-public-catalog check (`blocked` rather than `ready`); no test is skipped or relabelled as a success |
+| Agent operation | `workflow.spec.js` passes in development and compiled modes | Five one-shot agents; two-turn scoped chat memory; two-agent triage; five briefs plus digest synthesis; original saved chat/triage restoration; source inspection; review/reload/new decision; Markdown download and logout/401 |
+| UI/build/lint | Build exit 0; lint exit 0, **27 warnings / 0 errors**; tested browser journeys report no application page errors where asserted | `f02-final-build.log`, `f02-final-lint.log`. Landing JS 138.40 kB gzip; console 16.22 kB; inherited lazy shader 279.43 kB. Existing shader/chunk/font warnings remain; no final performance pass |
+| Design/accessibility | Inspector keyboard opening/select, 360/390/768px overflow checks and scoped axe WCAG 2 A/AA + 2.1 AA audit pass | Controlled mobile screenshot inspected at `f02-focused-browser-artifacts/examples-controlled-record-d8407-eneration-or-memory-request/recorded-example-mobile-controlled.png`; compiled baseline checks also pass. Not a final visual approval or complete accessibility audit |
+
+### Scoped design/motion review
+
+- **U01–U04, U06, U08, U13, U19; S01–S04, S09–S11, S13–S14, S16–S17:** PASS for this limited addition: no decorative badges/italics/serif/mono/diagrams, optional technical detail, concise provenance, attributable output, honest source/model/review states and real loading/failure behaviour. Genuine content availability is still blocked.
+- **U15–U16:** PASS for controlled inspector keyboard, contrast audit and tested mobile wrapping. U05/U07/U09–U12/U14/U17–U18/U20 are N/A to final-site completion in F02: design-system composition, new palette/icon/geometry/typographic treatment and motion remain mapped later work. No new transition was added to satisfy a list item.
+- **S05–S08, S12, S15, S18–S19:** N/A for the global overhaul at this phase. The plain inspector uses the existing shell; no global container/divider/numbering/corner/gradient/copy audit is claimed. Master D §11 checkboxes remain open.
+- **A §12/§15:** Data attribution, missing-state honesty, stale selection guards and no unintended API request are supported by controlled tests. Six station projections are not physical motion. Scene poses/materials, replay/pause/close/focus, renderer cleanup/fallback and scene budgets remain N/A until their implementation phases. Genuine input/output acceptance is blocked.
+- **M01–M21 / P01–P21:** Physical-motion techniques are N/A because no animation was introduced. Relevant P14/P15/P18/P19/P20 checks apply through native controls, keyboard, immediate loading text, understandable failure state and strict capture/catalog contracts; no provider latency guarantee is inferred. Final motion and full-site UX acceptance remain open.
+
+### Execution checklist and resume boundary
+
+- [x] Read phase map, active scope, common gates and mapped design/motion requirements.
+- [x] Record branch/base, inherited work and uncommitted scope; preserve Claude archive.
+- [x] Verify F01 exit and Q01; retain all other owner decisions.
+- [x] Map each F02 acceptance item to implementation/tests and honest status.
+- [x] Make at least two coherent atomic implementation/test commits under the owner's identity.
+- [x] Run all common lanes and record failures, not just successful counts.
+- [x] Exercise the full real browser/API agent workflow in development and compiled modes.
+- [x] Add static-selection, checksum, provenance, missing-data, keyboard/mobile and scoped accessibility checks.
+- [ ] Close every F02 acceptance item: five genuine recordings and current full-suite evidence remain required.
+- [x] Save revision, commands/results, local evidence and limits; synchronize the three specifications.
+- [ ] Mark PASS / authorize next phase: **not eligible**. No F03 implementation begins.
+
+The credential is present and model listing works; the outstanding access check
+belongs to generation. HTTP 402 alone does not prove the exact project/account/
+billing cause. The owner has been asked to check the API project's generation
+access without sharing credentials or payment details. No payment/account setting
+was changed by this implementation.
+
+When the owner confirms access is ready, run one bounded resume attempt from the
+repository root:
+
+```bash
+.venv/bin/python -m app.recordings.capture --output frontend/public/examples --mode live --resume
+```
+
+Retain the configured model. Inspect all five original outputs, actual metrics and
+same-request citations; preserve file bytes and hashes. Do not manually change a
+failed output into a successful recording. Once five genuine examples pass, rerun
+the full common/phase-specific gates, including the public-file browser test in
+both modes and the previously timed-out review journey. Address any reproduced
+failure before marking F02 PASS. Only then make F03 eligible. Routine test runs
+continue using controlled inference; replaying saved data never makes paid calls.

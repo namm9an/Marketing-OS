@@ -1,6 +1,6 @@
 # Marketing OS — animation and miniature 3D scenes
 
-Updated: 15 November 2026 (Asia/Calcutta).
+Updated: 16 November 2026 (Asia/Calcutta).
 Status: current working motion specification; no new scenes have been implemented by this document.
 
 Read with [the blueprint](MARKETING_OS_BLUEPRINT_PLAN.md) and [design/layout specification](DESIGN_AND_LAYOUT.md). The owner has chosen click-to-play miniature physical 3D machines/scenes that explain the agents, and visitor-facing agent comparison. These decisions supersede the original flat-SVG-only restriction. The original Claude animation file remains unchanged in the [historical archive](FRONTEND_DESIGN_WORKING.md#16-original-claude-documents--verbatim-snapshots).
@@ -23,7 +23,7 @@ The miniature machine is a visual metaphor. It does not reproduce hidden model t
 | Paper/dossier identity around the scenes | CONFIRMED by owner |
 | Visitors compare agents before choosing one to explore | CONFIRMED by owner |
 | Compare two agents side by side, then open one shared animation stage | CONFIRMED by owner, 15 November; all five remain discoverable |
-| Genuine saved model responses for public examples; controlled/mock responses for routine tests | CONFIRMED by owner, 15 November; provider/credential availability not yet verified |
+| Genuine saved model responses for public examples; controlled/mock responses for routine tests | CONFIRMED by owner, 15 November. F02: credential/model listing available, genuine capture BLOCKED by upstream generation HTTP 402; do not substitute test fixtures |
 | Physical-scene material, scale, modelling style, lighting, exact camera framing | OPEN DETAILS; collect and compare references/stills before full modelling/animation |
 | Guided camera that shows the machine's story | CONFIRMED by owner, 15 November; visitor-controlled rotation is not approved |
 | PR & Policy as the first pilot | CONFIRMED by owner, 15 November; risk checkpoint and separate human-review route |
@@ -139,6 +139,8 @@ Claude proposed six stations: Input, Retrieve, Model call, Validate, Govern, Out
 
 Missing evidence leaves a station incomplete/unavailable with a plain explanation, not a fabricated success. The scene can still communicate the supported high-level story.
 
+F02 provides these six station bindings through `adaptAgentScene`, for each attributable one-shot specialist. They are data projections, not an implemented renderer, animation timeline or hidden-reasoning trace. Captured source rows support Retrieve; a generated summary alone leaves it partial. Successful one-shot schema acceptance does not establish claim entailment. Risk escalation stays separate from absent human-review events. The static example inspector reads files only; future scene playback must retain that boundary. Five genuine captures remain blocked by provider generation HTTP 402, so this does not close F02 or approve any scene/material choice.
+
 ## 7. Timing and all 21 supplied motion notes
 
 Starting timing ranges: routine UI 150–250ms; a readable scene beat roughly 400–900ms; a short explanatory scene roughly 4–6s when the actual content fits. These are experiments. Reading a longer result must not be compressed into an unreadable typewriter sequence to meet a number.
@@ -245,6 +247,8 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 - [ ] Both design checklists and all common phase-gate lanes pass before the next phase.
 
 ## 13. Open decisions and revision log
+
+2026-11-16 F02 in progress / blocked: added workflow and scene data bindings, same-request retrieval capture, live-only static catalog validation and optional plain inspection. No miniature renderer, physical motion, comparison layout, camera behaviour, new timing, texture or dependency has been introduced. Controlled selection tests prove no API generation/review/memory request; public recording acceptance remains blocked, not passed. See blueprint section 14 for current evidence and the resume gate.
 
 Resolve exact material/modelling references, guided camera framing, detailed responsive comparison, opening/scroll geometry and rendering/asset budgets before their dependent phases. The owner answered Q01–Q06 on 15 November: PR & Policy first, two-agent/shared-stage comparison, genuine public recordings, light paper with subtle graphite, guided story camera and a shorter stack/simpler opening. Exact machine quality needs reference/still review; visitor rotation is not approved. “Tabular notes,” “Pretext,” “spring balance,” and “handheld animation” have interpretations recorded in the design/motion documents but are not silently turned into package requirements.
 
