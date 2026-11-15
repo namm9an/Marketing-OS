@@ -14,6 +14,7 @@ import { AGENTS } from '../../lib/agents';
 import ExecutionDetails from '../ExecutionDetails';
 import { useRequestScope } from '../../lib/useRequestScope';
 import { useMediaQuery } from '../../lib/useMediaQuery';
+import { adaptEvidence } from '../../lib/presentation';
 
 // The gradient background pulls in three + @react-three/fiber (~150kB gzipped) for
 // something purely decorative. Lazy so it never sits on the critical path — the app is
@@ -833,6 +834,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 {/* Knowledge Stream */}
                 <div className="space-y-2.5 pt-3 border-t border-[#E7E2D8]">
                   <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Generated Knowledge Summary</div>
+                  <p className="text-xs text-[#44403C]">{adaptEvidence('run', currentData).note}</p>
                   <div className="space-y-2">
                     {currentData.knowledge_units.map((ku, i) => (
                       <div key={i} className="p-3 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] flex items-center justify-between text-xs text-[#44403C] gap-3">

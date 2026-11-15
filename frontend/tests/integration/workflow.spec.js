@@ -82,6 +82,11 @@ test('all five specialists, chat memory, triage, digest, saved reviews, export a
   await page.getByRole('button', { name: new RegExp(`decision ${runs[0].decision.id}$`) }).click();
   await expect(page.getByText(runs[0].positioning.statement, { exact: true })).toBeVisible();
   await expect(page.getByText('Review status: unreviewed', { exact: true })).toBeVisible();
+  await page.getByRole('button', { name: new RegExp(`decision ${first.decision_id}$`) }).click();
+  await expect(page.getByRole('region', { name: 'Saved result' }).getByText(first.reply, { exact: true })).toBeVisible();
+  await expect(page.getByText(/Fact excerpts reported by this reply/)).toBeVisible();
+  await page.getByRole('button', { name: new RegExp(`decision ${triage.decision_id}$`) }).click();
+  await expect(page.getByRole('region', { name: 'Saved result' }).getByText(triage.answer, { exact: true })).toBeVisible();
   const history = (await (await page.request.get('/api/history')).json()).history;
   for (const id of [first.decision_id, triage.decision_id]) expect(history.some((r) => r.id === id && r.result_available)).toBe(true);
   await page.getByTitle('Sign out').click();
