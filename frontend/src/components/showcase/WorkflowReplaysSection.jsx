@@ -41,10 +41,10 @@ export default function WorkflowReplaysSection() {
             <span className="text-[#111315] font-semibold">Workflow Replays</span>
           </div>
           <h2 className="font-display font-bold text-2xl sm:text-3xl text-[#111315] tracking-tight">
-            Provenance-Verified Endpoint Payloads.
+            Illustrative workflow examples
           </h2>
           <p className="text-sm text-[#4A505C] leading-relaxed">
-            Every payload below is an unedited production record verified against our SQLite WAL database and multi-turn test suite. Experience how autonomous agents reason, cite facts, resolve tensions, and protect memory.
+            These hand-written examples explain the API workflows using the fictional Vanguard Cloud case and simulated signals. They are not captured provider responses or production records. Use the console for actual run results and execution mode.
           </p>
         </div>
       </div>
@@ -92,7 +92,7 @@ export default function WorkflowReplaysSection() {
               </div>
               <div className="flex items-center gap-1.5 text-[#15803D]">
                 <ShieldCheck size={14} />
-                <span>Verified Strategic Formulation</span>
+                <span>Illustrative strategy</span>
               </div>
             </div>
 
@@ -171,7 +171,7 @@ export default function WorkflowReplaysSection() {
             {/* Recalled Database Facts with Active Source Links */}
             <div className="space-y-3">
               <span className="text-xs font-mono uppercase tracking-wider text-[#6E7685]">
-                Attributed Primary Source Facts (Retrieved from SQLite)
+                Illustrative source-linked context
               </span>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {chatWorkflowFixture.recalled_facts.map((fact, idx) => (

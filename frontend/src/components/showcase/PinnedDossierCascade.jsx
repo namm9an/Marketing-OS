@@ -85,7 +85,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
       tag: '01 / BRANDING',
       name: 'Branding Specialist',
       domain: 'Positioning & Cluster SLAs',
-      telemetry: '1,240ms · 812 TOKENS · 26 SOURCES · GEMINI-3.8-FLASH',
+      telemetry: 'Illustrative scenario · execution metrics unavailable',
       signal: 'Competitor spot and reserved H100 discounting detected across CoreWeave and RunPod.',
       valueProp:
         'For enterprise AI teams deploying 100B+ parameter models who risk millions on silent hardware failure and spot reclamation, Vanguard Cloud guarantees dedicated 99.99% cluster SLA uptime on certified B200 and H200 pods, unlike spot-instance providers.',
@@ -97,7 +97,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
       tag: '02 / PR & POLICY',
       name: 'PR & Policy Specialist',
       domain: 'Narrative & Sovereign Governance',
-      telemetry: '1,180ms · 764 TOKENS · 22 SOURCES · GEMINI-3.8-FLASH',
+      telemetry: 'Illustrative scenario · execution metrics unavailable',
       signal: 'Draft launch proposals suggest public aggressive disparagement of competitor cluster downtime.',
       valueProp:
         'Pivots from aggressive competitor attack campaigns toward verified European data sovereignty, ISO 27001 auditing, and clean geothermal energy compliance proofs.',
@@ -109,7 +109,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
       tag: '03 / SOCIAL COMMUNITY',
       name: 'Social Community Specialist',
       domain: 'Developer Ecosystem & Sentiment',
-      telemetry: '980ms · 640 TOKENS · 18 SOURCES · GEMINI-3.8-FLASH',
+      telemetry: 'Illustrative scenario · execution metrics unavailable',
       signal: 'ML engineers on technical forums report frustration with orchestrator cold-starts and egress fees.',
       valueProp:
         'Win technical advocates organically by releasing open-source NCCL all-reduce benchmark scripts, sub-second bare-metal SSH provisioning, and zero-egress transparency.',
@@ -121,7 +121,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
       tag: '04 / PRODUCT MARKETING',
       name: 'Product Marketing Specialist',
       domain: 'SKUs & TCO Battlecards',
-      telemetry: '1,520ms · 910 TOKENS · 36 SOURCES · GEMINI-3.8-FLASH',
+      telemetry: 'Illustrative scenario · execution metrics unavailable',
       signal: 'Enterprise procurement RFPs comparing H100, H200, and B200 cluster pricing across 12 rivals.',
       valueProp:
         'Equip sales engineering with head-to-head InfiniBand vs RoCEv2 fabric battlecards, factoring in training restart overhead caused by competitor packet drop rates.',
@@ -133,7 +133,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
       tag: '05 / FIELD EVENTS',
       name: 'Field Events Specialist',
       domain: 'Executive Summits & Keynotes',
-      telemetry: '1,060ms · 580 TOKENS · 14 SOURCES · GEMINI-3.8-FLASH',
+      telemetry: 'Illustrative scenario · execution metrics unavailable',
       signal: 'Four tracked cloud competitors sponsoring multi-million dollar keynote tracks at major AI conferences.',
       valueProp:
         'Direct commercial field capital away from low-yield booth swag into private, invite-only CTO roundtables on sovereign AI economics backed by live telemetry.',
@@ -370,7 +370,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                       </span>
                     </button>
 
-                    {/* Monochromatic Telemetry (Real Recorded Data from Test Corpus) */}
+                    {/* Illustrative examples; genuine provider captures are a later phase */}
                     <div className="font-mono text-[10.5px] text-[#4A505C] tracking-tight">
                       {dossier.telemetry}
                     </div>
@@ -393,7 +393,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                           {/* Market Signal Intake */}
                           <div className="p-2.5 sm:p-3 bg-[#F6F5F1] border-l-2 border-[#111315] space-y-1">
                             <span className="font-mono text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#6E7685] font-semibold block">
-                              Detected Market Signal
+                              Simulated Market Signal
                             </span>
                             <p className="font-sans text-[11.5px] sm:text-[12.5px] text-[#111315] font-medium leading-relaxed">
                               {dossier.signal}
@@ -403,7 +403,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                           {/* Core Selling Statement (Value Proposition) */}
                           <div className="space-y-1">
                             <span className="font-mono text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#2563EB] font-semibold block">
-                              Formulated Value Proposition (Why Customers Choose Us)
+                              Illustrative Positioning Example
                             </span>
                             <blockquote className="p-2.5 sm:p-3 bg-[#F6F5F1] border border-[#D4D1C7] text-[11.5px] sm:text-[12.5px] font-serif italic text-[#111315] leading-relaxed">
                               "{dossier.valueProp}"
@@ -413,7 +413,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                           {/* Grounded Evidence & Strategic Rationale */}
                           <div className="space-y-0.5">
                             <span className="font-mono text-[9.5px] sm:text-[10px] uppercase tracking-wider text-[#111315] font-semibold block">
-                              Grounded Competitor Evidence & Rationale
+                              Illustrative Context & Rationale
                             </span>
                             <p className="font-sans text-[11px] sm:text-[11.5px] text-[#4A505C] leading-relaxed">
                               {dossier.evidence}
@@ -425,7 +425,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                         <div className="pt-2 border-t border-[#D4D1C7] flex items-center justify-between gap-3">
                           <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-mono text-[#15803D]">
                             <ShieldCheck size={13} className="shrink-0" />
-                            <span>Verified Primary Citation Grounding</span>
+                            <span>Fictional Vanguard Cloud example</span>
                           </div>
 
                           {/* Launch Console Button: ONLY on Card 5 (idx === 4) */}

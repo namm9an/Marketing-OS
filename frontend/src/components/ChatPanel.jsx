@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { apiJson } from '../lib/api';
 import { useRequestScope } from '../lib/useRequestScope';
+import { AGENTS } from '../lib/agents';
+import ExecutionDetails from './ExecutionDetails';
 import {
   Send, Loader2, Brain, Database, Link2, ChevronDown, ChevronRight,
-  Users, AlertTriangle, Check, X, Sparkles, Megaphone, Radio, Rocket, Tent,
+  Users, AlertTriangle, Check, X,
 } from 'lucide-react';
 
 /**
@@ -24,14 +26,6 @@ import {
  *      triage:branding+pr, so "neither private memory was touched" is something you
  *      can look at instead of something the README asserts.
  */
-
-const AGENTS = [
-  { id: 'branding',          label: 'Branding',          Icon: Sparkles,  active: true  },
-  { id: 'pr',                label: 'PR',                Icon: Megaphone, active: true  },
-  { id: 'social',            label: 'Social',            Icon: Radio,     active: false },
-  { id: 'product_marketing', label: 'Product Marketing', Icon: Rocket,    active: false },
-  { id: 'events',            label: 'Field Events',      Icon: Tent,      active: false },
-];
 
 const label = (id) => AGENTS.find((a) => a.id === id)?.label ?? id;
 
@@ -166,6 +160,7 @@ function MemoryVerdict({ verdict }) {
 function TriageResult({ data }) {
   return (
     <div className="space-y-3">
+      <ExecutionDetails metrics={data.metrics} />
       <div className="flex items-center gap-2 text-[11px] text-[#78716C]">
         <Users className="w-3.5 h-3.5" />
         <span>bridged in</span>
@@ -299,7 +294,7 @@ function MemoryInspector({ agent }) {
   );
 }
 
-export default function ChatPanel({ provider }) {
+export default function ChatPanel({ onResult }) {
   const [agent, setAgent] = useState('branding');
   const [input, setInput] = useState('');
   const [turns, setTurns] = useState([]);
@@ -346,8 +341,8 @@ export default function ChatPanel({ provider }) {
         signal: pending.signal,
         body: JSON.stringify(
           bridge
-            ? { agents: bridge.agents, message: bridge.message, thread_id: null, provider }
-            : { agent, message: raw, thread_id: threadId, provider },
+            ? { agents: bridge.agents, message: bridge.message, thread_id: null }
+            : { agent, message: raw, thread_id: threadId },
         ),
       });
       if (!pending.isCurrent()) return;
@@ -359,6 +354,7 @@ export default function ChatPanel({ provider }) {
         setTurns((t) => [...t, { role: 'agent', agent: data.agent, data }]);
       }
       setMemoryKey((k) => k + 1);   // memory may have changed; re-read it
+      onResult?.(data);
     } catch (e) {
       if (pending.isCurrent() && e.name !== 'AbortError') setError(e.message);
     } finally {
@@ -373,20 +369,19 @@ export default function ChatPanel({ provider }) {
       <div className="flex flex-col min-h-0">
         {/* Agent rail */}
         <div className="flex flex-wrap gap-1.5 mb-3">
-          {AGENTS.map(({ id, label: text, Icon, active }) => (
+          {AGENTS.map(({ id, label: text, Icon }) => (
             <button
               key={id}
               onClick={() => switchAgent(id)}
+              aria-pressed={agent === id}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                 agent === id
                   ? 'bg-[#D97757] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
-              title={active ? undefined : 'Registered, but parked pending a scope decision (Phase 8)'}
             >
               <Icon className="w-3.5 h-3.5 shrink-0" />
               {text}
-              {!active && <span className="text-[9px] opacity-60">parked</span>}
             </button>
           ))}
         </div>
@@ -424,6 +419,7 @@ export default function ChatPanel({ provider }) {
               <div key={i} className="border border-[#E7E2DA] rounded-xl p-3 bg-white">
                 <div className="text-[11px] font-semibold text-[#1C1917] mb-1.5">{label(t.agent)}</div>
                 <div className="text-[14px] text-[#1C1917] leading-relaxed whitespace-pre-wrap">{t.data.reply}</div>
+                <ExecutionDetails metrics={t.data.metrics} />
                 <RecallDisclosure recall={t.data.recall} />
                 <MemoryVerdict verdict={t.data.memory} />
               </div>
@@ -431,9 +427,9 @@ export default function ChatPanel({ provider }) {
           })}
 
           {busy && (
-            <div className="flex items-center gap-2 text-[12px] text-[#78716C]">
+            <div role="status" className="flex items-center gap-2 text-[12px] text-[#78716C]">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              {draft ? 'both agents reasoning separately…' : `${label(agent)} is thinking…`}
+              Waiting for the selected workflow to return…
             </div>
           )}
           <div ref={endRef} />
@@ -481,8 +477,8 @@ export default function ChatPanel({ provider }) {
         <MemoryInspector key={`${agent}-${memoryKey}`} agent={agent} />
         <div className="text-[11px] text-[#78716C] leading-relaxed">
           A joint namespace is readable by its two members and nobody else. A `/triage` turn is
-          written there and to neither private side — switch the tabs above after bridging to see
-          that the private namespaces stayed empty.
+          written there and to neither private side. Compare the namespace contents before and
+          after the request; existing private notes remain separate.
         </div>
       </div>
     </div>

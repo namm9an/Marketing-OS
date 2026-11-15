@@ -33,7 +33,7 @@ export default function HeroSection({ onOpenConsole }) {
 
             {/* Clear Product Showcase Copy */}
             <p className="text-sm sm:text-[15px] text-[#4A505C] leading-relaxed max-w-2xl">
-              Marketing OS coordinates 5 private domain specialists across branding, PR, social sentiment, product tiering, and field events—grounding strategic positioning in verified competitor facts and deterministic multi-turn governance.
+              Marketing OS offers five specialists for branding, PR, social community, product marketing and field events. Explore source-linked recommendations, scoped conversation memory and recorded human reviews.
             </p>
 
             {/* Product Callout Card */}
@@ -43,7 +43,7 @@ export default function HeroSection({ onOpenConsole }) {
                 <span>Grounded Intelligence & Executive Decisions</span>
               </div>
               <p className="text-xs font-sans text-[#4A505C] leading-relaxed">
-                Synthesizes fact-checked competitor data across 5 private AI specialists into confident executive strategy.
+                Choose one specialist for a task, compare two perspectives through triage, or request a five-specialist digest over the stored source corpus.
               </p>
             </div>
 
@@ -71,7 +71,7 @@ export default function HeroSection({ onOpenConsole }) {
 
           {/* Clean Human Context Line */}
           <div className="pt-4 border-t border-[#D4D1C7] text-xs font-sans text-[#6E7685] flex flex-wrap items-center justify-between gap-2">
-            <span>Live tracking across 12 AI & GPU cloud competitors</span>
+            <span>Source-linked GPU cloud competitor snapshot; not live monitoring</span>
             <span className="font-mono text-[10.5px] text-[#2563EB] font-medium">Scroll down to cascade dossiers ↓</span>
           </div>
         </div>
@@ -90,7 +90,7 @@ export default function HeroSection({ onOpenConsole }) {
             </div>
 
             <h3 className="font-display font-bold text-lg text-[#111315] tracking-tight">
-              Three Physical Separation Layers
+              Shared corpus, scoped memory and review
             </h3>
 
             {/* 3 Physical Isolation Blocks */}
@@ -101,7 +101,7 @@ export default function HeroSection({ onOpenConsole }) {
                   <span>01 / Grounded Competitor Base</span>
                 </div>
                 <p className="text-[11.5px] text-[#4A505C] leading-relaxed">
-                  Curated primary sources on 12 neo-cloud competitors. Read-only at runtime in SQLite WAL mode.
+                  Stored source-linked competitor records, shared by the specialists. Source linkage does not establish that every claim is correct or current.
                 </p>
               </div>
 
@@ -111,7 +111,7 @@ export default function HeroSection({ onOpenConsole }) {
                   <span>02 / 5 Isolated Domain Specialists</span>
                 </div>
                 <p className="text-[11.5px] text-[#4A505C] leading-relaxed">
-                  Dedicated reasoning lenses for Branding, PR, Social Sentiment, SKUs, and Field Events.
+                  Different specialist prompts and scoped memory share one execution core and source corpus.
                 </p>
               </div>
 
@@ -121,17 +121,17 @@ export default function HeroSection({ onOpenConsole }) {
                   <span>03 / Strategic Memory Gate</span>
                 </div>
                 <p className="text-[11.5px] text-[#4A505C] leading-relaxed">
-                  Blocks unverified AI prose from polluting permanent memory. Only ratified directives promoted.
+                  Admission rules select explicit user preferences, decisions and corrections. Generated assistant prose is not admitted as user memory; human review is a separate record.
                 </p>
               </div>
             </div>
           </div>
 
           <div className="pt-3 border-t border-[#D4D1C7] flex items-center justify-between text-[11px] font-mono text-[#6E7685]">
-            <span>Deterministic Attribution</span>
+            <span>Inspectable sources and limits</span>
             <span className="text-[#15803D] flex items-center gap-1 font-semibold">
               <CheckCircle2 size={12} />
-              <span>Zero Hallucination</span>
+              <span>Source-linked output</span>
             </span>
           </div>
         </div>

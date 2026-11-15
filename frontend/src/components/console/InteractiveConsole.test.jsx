@@ -72,3 +72,61 @@ it('discards a pending run when switching agents and allows the newly selected a
   expect(screen.queryByText(result.positioning.statement)).not.toBeInTheDocument();
   expect(signal.aborted).toBe(true);
 });
+
+it.each([
+  ['branding', 'Branding Agent'], ['pr', 'PR Agent'], ['social', 'Social Agent'],
+  ['product_marketing', 'Product Marketing Agent'], ['events', 'Field Events Agent'],
+])('submits the actual %s specialist without a pretend client-selected model', async (agent, name) => {
+  const fetch = vi.fn(async (url) => ({ ok: true, status: 200, json: async () =>
+    url === '/api/me' ? { authenticated: true, username: 'operator' }
+      : url === '/api/history' ? { history: [] }
+      : url === '/api/run' ? { ...result, metrics: { source: 'mock', model: 'mock-fallback', total_tokens: null } }
+      : { decision: { id: 'run-1', review_status: 'unreviewed', reviews: [] } },
+  }));
+  vi.stubGlobal('fetch', fetch);
+  render(<InteractiveConsole />);
+  fireEvent.click(await screen.findByRole('button', { name, exact: true }));
+  fireEvent.click(screen.getByRole('button', { name: 'Run Agent', exact: true }));
+  expect(await screen.findByText(result.positioning.statement)).toBeVisible();
+  const [, options] = fetch.mock.calls.find(([url]) => url === '/api/run');
+  expect(JSON.parse(options.body)).toEqual({ agent_type: agent, goal: expect.any(String) });
+  expect(screen.getByText('Execution: Mock response')).toBeVisible();
+  expect(screen.queryByText(/Gemini 3.8 Flash Active/)).not.toBeInTheDocument();
+  expect(screen.queryByTitle('Attach PDF or Image for Analysis')).not.toBeInTheDocument();
+});
+
+it('reports a rejected export instead of downloading an error document', async () => {
+  const row = { id: 'run-1', workflow_type: 'run', result_available: true, result };
+  vi.stubGlobal('fetch', vi.fn(async (url) => ({
+    ok: url !== '/api/export/markdown', status: url === '/api/export/markdown' ? 503 : 200,
+    json: async () => url === '/api/me' ? { authenticated: true }
+      : url === '/api/history' ? { history: [row] }
+      : url === '/api/export/markdown' ? { message: 'Export unavailable', error: 'unavailable' }
+      : { decision: { ...row, review_status: 'unreviewed', reviews: [] } },
+  })));
+  render(<InteractiveConsole />);
+  fireEvent.click(await screen.findByRole('button', { name: /Saved strategy title/ }));
+  fireEvent.click(screen.getByTitle('Download Markdown Report'));
+  expect(await screen.findByRole('alert')).toHaveTextContent('Export unavailable');
+});
+
+it('clears the previous operator result when logging out and authenticating again', async () => {
+  let historyRequests = 0;
+  const row = { id: 'run-1', workflow_type: 'run', result_available: true, result };
+  vi.stubGlobal('fetch', vi.fn(async (url) => ({ ok: true, status: 200, json: async () =>
+    url === '/api/me' || url === '/api/login' ? { authenticated: true, username: 'operator' }
+      : url === '/api/history' ? { history: historyRequests++ === 0 ? [row] : [] }
+      : url.startsWith('/api/decisions/') ? { decision: { ...row, review_status: 'unreviewed', reviews: [] } }
+      : { success: true },
+  })));
+  render(<InteractiveConsole />);
+  fireEvent.click(await screen.findByRole('button', { name: /Saved strategy title/ }));
+  fireEvent.click(screen.getByTitle('Sign out'));
+  await screen.findByRole('button', { name: 'Authenticate Operator' });
+  fireEvent.change(screen.getByLabelText('Operator Username'), { target: { value: 'other' } });
+  fireEvent.change(screen.getByLabelText('Access Password'), { target: { value: 'test-password' } });
+  fireEvent.click(screen.getByRole('button', { name: 'Authenticate Operator' }));
+  await screen.findByRole('button', { name: 'Run Agent', exact: true });
+  expect(screen.queryByText(result.positioning.statement)).not.toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: /Saved strategy title/ })).not.toBeInTheDocument();
+});

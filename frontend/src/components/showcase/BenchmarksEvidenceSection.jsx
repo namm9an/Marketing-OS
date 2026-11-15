@@ -286,10 +286,10 @@ export default function BenchmarksEvidenceSection({ onOpenConsole }) {
             <div className="p-4 border border-[#D4D1C7] bg-[#FFFFFF] space-y-2">
               <div className="flex items-center gap-2 text-xs font-mono font-bold text-[#111315]">
                 <Cpu size={14} className="text-[#16A34A]" />
-                <span>Immutable Decision Audit Log</span>
+                <span>Persistent decision and review records</span>
               </div>
               <p className="text-xs text-[#4A505C] leading-relaxed">
-                Strategic decisions are recorded with physical 128-bit UUIDs, linking the formulating specialist, rationale, identified risks, and CMO ratification timestamp in SQLite WAL mode.
+                Decisions and original results are saved in SQLite. Authenticated reviews record the operator, status, reason and time separately; this database is not tamper-proof.
               </p>
             </div>
 
@@ -299,7 +299,7 @@ export default function BenchmarksEvidenceSection({ onOpenConsole }) {
                 <span>Zero Live Model Costs on Showcase</span>
               </div>
               <p className="text-xs text-[#4A505C] leading-relaxed">
-                All showcase states on this page execute locally without external API latency or token cost, backed by verified repository test outputs.
+                The current illustrative showcase runs locally and makes no model calls. Hand-written examples are labelled separately from actual console responses; genuine public recordings are planned.
               </p>
             </div>
           </div>
@@ -313,13 +313,13 @@ export default function BenchmarksEvidenceSection({ onOpenConsole }) {
           <div className="inline-flex items-center gap-2 text-xs font-mono text-[#D4D1C7] uppercase tracking-wider">
             <span>Operational Console</span>
             <span>·</span>
-            <span>Live Interactive Workbench</span>
+            <span>Interactive Workbench</span>
           </div>
           <h3 className="font-display font-bold text-2xl sm:text-3xl text-[#FFFFFF] tracking-tight">
-            Ready to inspect the live multi-agent system?
+            Ready to try the working console?
           </h3>
           <p className="text-xs sm:text-sm text-[#A0A6B2] leading-relaxed">
-            Execute real-time autonomous runs, converse with isolated specialist agents, review dialectic tension resolutions, and inspect the weekly synthesized intelligence brief.
+            Run a specialist, continue a scoped conversation, compare two views through triage, or request a five-agent digest. Each response identifies its actual execution mode.
           </p>
         </div>
 

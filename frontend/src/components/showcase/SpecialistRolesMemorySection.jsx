@@ -32,7 +32,7 @@ export default function SpecialistRolesMemorySection() {
       type: 'Explicit Enterprise Constraint',
       input: '"Enterprise Contract Requirement: Dedicated 99.99% InfiniBand SLA and European sovereign data residency."',
       status: 'PROMOTED',
-      reason: 'Rule 2 Passed: Verified operator directive & commercial constraint. Admitted to L1 namespace with cryptographic audit log.',
+      reason: 'Rule 2 Passed: Verified operator directive & commercial constraint. Illustrative admission into a scoped memory record; no cryptographic audit log is implemented.',
       action: 'Promoted · Written to L1 SQLite Memory'
     },
     {
@@ -59,7 +59,7 @@ export default function SpecialistRolesMemorySection() {
         'Anchors on total-cost-of-downtime rather than per-GPU hourly discounts.',
         'Tracks enterprise AI team migration friction and spot instance reclamation risks.',
       ],
-      memoryScope: 'Private namespace (agent:branding) · Zero cross-specialist leakage',
+      memoryScope: 'Private namespace (agent:branding) · Reads its own and permitted joint memory',
     },
     {
       id: 'pr',
@@ -68,7 +68,7 @@ export default function SpecialistRolesMemorySection() {
       focus: 'Narrative & Policy',
       mandate: 'Corporate Communications & Governance',
       description:
-        'Protects enterprise brand reputation by enforcing regulatory compliance, avoiding defamatory comparative claims, and positioning through green energy certifications and European sovereign cloud sovereignty.',
+        'Helps review communication and policy risks against supplied context. Risk flags require inspection and do not establish legal clearance or regulatory compliance.',
       coreStrengths: [
         'Evaluates defamation and commercial disparagement exposure before public release.',
         'Pivots aggressive market challenges toward GDPR, ISO 27001, and carbon-neutral proofs.',
@@ -83,7 +83,7 @@ export default function SpecialistRolesMemorySection() {
       focus: 'Sentiment & Community',
       mandate: 'Developer Ecosystem & Sentiment',
       description:
-        'Gathers unstructured field signals from developer discussion forums, Discord servers, and GitHub communities to detect developer sentiment shifts before they reflect in quarterly earnings.',
+        'Uses supplied audience or community context to suggest content and engagement. It does not collect live forum, Discord or GitHub sentiment.',
       coreStrengths: [
         'Identifies developer frustration with competitor minimum commitment contracts.',
         'Tracks open-source model fine-tuning toolchain trends across Blackwell and Hopper nodes.',
@@ -139,13 +139,13 @@ export default function SpecialistRolesMemorySection() {
             Isolated Domain Specialists with Governed Memory Boundaries.
           </h2>
           <p className="text-sm text-[#4A505C] leading-relaxed">
-            Autonomous intelligence breaks down when agents share unstructured memory or self-contaminate with model prose. Marketing OS enforces strict physical namespace isolation across 5 specialized roles and a deterministic memory promotion gate.
+            Five specialist prompts use a shared source corpus, namespace access rules and user-memory admission rules. The examples below illustrate those roles and rules; they are not a live memory trace.
           </p>
         </div>
 
         <div className="shrink-0 flex items-center gap-2 px-3 py-1.5 bg-[#F6F5F1] border border-[#D4D1C7] text-xs font-mono text-[#4A505C]">
           <Lock size={13} className="text-[#2563EB]" />
-          <span>Zero Cross-Agent Memory Leakage</span>
+          <span>Namespace access rules</span>
         </div>
       </div>
 
@@ -226,7 +226,7 @@ export default function SpecialistRolesMemorySection() {
             </div>
             <div>
               <span className="text-[11px] font-mono uppercase text-[#2563EB] font-bold">L0 Grounding Layer</span>
-              <h4 className="font-sans font-bold text-sm text-[#111315]">Immutable FTS5 Database</h4>
+              <h4 className="font-sans font-bold text-sm text-[#111315]">Source-linked FTS5 corpus</h4>
             </div>
             <p className="text-xs text-[#4A505C] leading-relaxed">
               Curated primary-source competitor data stored in SQLite WAL mode. Fully accessible to all specialists via BM25 retrieval, but read-only at runtime to preserve grounding.

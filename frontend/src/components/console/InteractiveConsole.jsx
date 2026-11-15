@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
-  Sparkles, Copy, Check, FileText, ChevronDown, AlertCircle, LogOut,
-  History, Database, Settings, LayoutDashboard, User, Lock, ArrowRight,
+  Sparkles, Copy, Check, FileText, AlertCircle, LogOut,
+  History, Database, User, Lock, ArrowRight,
   Eye, EyeOff, Menu, X, ShieldCheck, Network, Printer, RefreshCw, MessageSquare
 } from 'lucide-react';
 import CompetitorNetwork from '../CompetitorNetwork';
@@ -10,190 +10,189 @@ import SavedConversation from './SavedConversation';
 import DecisionReview from './DecisionReview';
 import { restoreSavedDecision, newRunRecord } from '../../lib/savedDecisions';
 import { apiJson } from '../../lib/api';
+import { AGENTS } from '../../lib/agents';
+import ExecutionDetails from '../ExecutionDetails';
 import { useRequestScope } from '../../lib/useRequestScope';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 
 // The gradient background pulls in three + @react-three/fiber (~150kB gzipped) for
 // something purely decorative. Lazy so it never sits on the critical path — the app is
 // fully usable the moment it renders, and the background fades in behind it.
 const ShaderCanvas = React.lazy(() => import('../ShaderCanvas'));
-const Backdrop = (props) => (
+const Backdrop = React.memo((props) => (
   <React.Suspense fallback={null}><ShaderCanvas {...props} /></React.Suspense>
-);
-
-const PRESETS = [
-  {
-    label: "GPU Cloud Compute",
-    goal: "Establish credible market position in GPU cloud compute for AI training/inference within 2 quarters"
-  },
-  {
-    label: "Enterprise SaaS CRM",
-    goal: "Position our Enterprise SaaS CRM platform for Fortune 500 financial institutions requiring strict compliance"
-  },
-  {
-    label: "Developer API Infra",
-    goal: "Launch developer API infrastructure targeting autonomous AI agent developers with sub-50ms latencies"
-  },
-  {
-    label: "Fintech Fraud API",
-    goal: "Establish market leadership for real-time fraud detection API targeting high-volume e-commerce payment processors"
-  }
-];
+));
 
 export default function InteractiveConsole({ onBackToCaseStudy }) {
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [authenticated, setAuthenticated] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
-  const [username, setUsername] = useState('admin');
-  
-  // Login form state
+  const [authBusy, setAuthBusy] = useState(false);
+  const [username, setUsername] = useState('');
   const [loginUser, setLoginUser] = useState('');
   const [loginPwd, setLoginPwd] = useState('');
   const [loginError, setLoginError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  // Workspace state
-  const [activeTab, setActiveTab] = useState('workbench'); // 'workbench' | 'history' | 'knowledge'
+  const [activeTab, setActiveTab] = useState('workbench');
   const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [goal, setGoal] = useState("Establish credible market position in GPU cloud compute for AI training/inference within 2 quarters");
-  const [provider, setProvider] = useState("gemini-3.8-flash");
+  const [goal, setGoal] = useState('Position B200 against Nebius using available reliability evidence');
+  const [selectedAgent, setSelectedAgent] = useState('branding');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [currentData, setCurrentData] = useState(null);
   const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState(null);
+  const [historyVersion, setHistoryVersion] = useState(0);
   const [copied, setCopied] = useState(false);
-  const runRequest = useRequestScope();
-
-  // Weekly digest (M5). The network map is cheap (DB-only) so it loads with the tab;
-  // the digest itself fans out to 5 agents, so it runs on demand.
   const [network, setNetwork] = useState(null);
+  const [networkVersion, setNetworkVersion] = useState(0);
+  const [networkError, setNetworkError] = useState(null);
   const [digest, setDigest] = useState(null);
   const [digestLoading, setDigestLoading] = useState(false);
   const [digestError, setDigestError] = useState(null);
+  const authRequest = useRequestScope();
+  const runRequest = useRequestScope();
+  const digestRequest = useRequestScope();
+  const historyRequest = useRequestScope();
+  const networkRequest = useRequestScope();
+  const backdropAgents = useMemo(() => activeTab === 'workbench' ? [selectedAgent] : [], [activeTab, selectedAgent]);
 
   useEffect(() => {
-    if (authenticated && activeTab === 'digest' && !network) {
-      fetch('/api/digest/network')
-        .then((r) => r.json())
-        .then((d) => d.success && setNetwork(d))
-        .catch(() => setDigestError('Could not load the competitor network.'));
-    }
-  }, [authenticated, activeTab, network]);
+    const pending = authRequest.begin();
+    apiJson('/api/me', { signal: pending.signal })
+      .then((data) => {
+        if (!pending.isCurrent()) return;
+        setAuthenticated(Boolean(data.authenticated));
+        setUsername(data.username || '');
+      })
+      .catch((err) => { if (pending.isCurrent() && err.name !== 'AbortError') setLoginError(err.message); })
+      .finally(() => { if (pending.isCurrent()) setAuthChecking(false); });
+    return authRequest.cancel;
+  }, [authRequest]);
 
-  const runDigest = async () => {
-    setDigestLoading(true);
-    setDigestError(null);
-    try {
-      const res = await fetch('/api/digest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ provider }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Digest failed');
-      setDigest(data);
-      if (data.network) setNetwork(data.network);
-    } catch (e) {
-      setDigestError(e.message);
-    } finally {
-      setDigestLoading(false);
-    }
-  };
-
-  // Load persistent history from SQLite on login
   useEffect(() => {
-    if (authenticated) {
-      fetch('/api/history')
-        .then(res => res.json())
-        .then(data => {
-          if (data.history) {
-            const formatted = data.history.map(restoreSavedDecision);
-            setHistory(formatted);
-          }
-        })
-        .catch(err => console.error('Failed to load history', err));
-    }
-  }, [authenticated]);
+    if (!authenticated) return;
+    const pending = historyRequest.begin();
+    setHistoryLoading(true);
+    setHistoryError(null);
+    apiJson('/api/history', { signal: pending.signal })
+      .then((data) => {
+        if (pending.isCurrent()) setHistory(data.history.map(restoreSavedDecision));
+      })
+      .catch((err) => { if (pending.isCurrent() && err.name !== 'AbortError') setHistoryError(err.message); })
+      .finally(() => { if (pending.isCurrent()) setHistoryLoading(false); });
+    return historyRequest.cancel;
+  }, [authenticated, historyVersion, historyRequest]);
 
+  useEffect(() => {
+    if (!authenticated || activeTab !== 'digest' || network) return;
+    const pending = networkRequest.begin();
+    setNetworkError(null);
+    apiJson('/api/digest/network', { signal: pending.signal })
+      .then((data) => { if (pending.isCurrent()) setNetwork(data); })
+      .catch((err) => { if (pending.isCurrent() && err.name !== 'AbortError') setNetworkError(err.message); });
+    return networkRequest.cancel;
+  }, [authenticated, activeTab, network, networkVersion, networkRequest]);
+
+  const refreshHistory = () => setHistoryVersion((version) => version + 1);
   const updateReview = (row) => {
     const restored = restoreSavedDecision(row);
     setCurrentData((previous) => previous?.decision.id === row.id ? restored : previous);
     setHistory((previous) => previous.map((item) => item.decision.id === row.id ? restored : item));
   };
-
-  // Check auth on load
-  useEffect(() => {
-    fetch('/api/me')
-      .then(res => res.json())
-      .then(data => {
-        if (data.authenticated) {
-          setAuthenticated(true);
-          setUsername(data.username || 'admin');
-        } else {
-          setAuthenticated(false);
-        }
-      })
-      .catch(() => setAuthenticated(false))
-      .finally(() => setAuthChecking(false));
-  }, []);
-
-  const handleLogin = async (e) => {
-    e.preventDefault();
-    setLoginError(null);
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: loginUser, password: loginPwd })
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        throw new Error(data.error || 'Invalid credentials');
-      }
-      setAuthenticated(true);
-      setUsername(data.username || 'admin');
-    } catch (err) {
-      setLoginError(err.message);
-    }
-  };
-
-  const handleLogout = async () => {
-    runRequest.cancel();
-    await fetch('/api/logout', { method: 'POST' });
-    setAuthenticated(false);
-  };
-
-  const [selectedAgent, setSelectedAgent] = useState('branding'); // 'branding' | 'pr'
   const selectAgent = (id) => {
     runRequest.cancel();
     setSelectedAgent(id);
     setLoading(false);
     setCurrentData(null);
     setError(null);
+    setCopied(false);
+  };
+  const openSaved = (run) => {
+    runRequest.cancel();
+    setLoading(false);
+    setError(null);
+    setCopied(false);
+    setCurrentData(run);
+    setGoal(run.goalStatement);
+    setActiveTab('workbench');
   };
 
-  // Which agent(s) the background is tinted for. Only on tabs that are actually about one
-  // agent — the digest and knowledge base belong to no one, so they keep the neutral wash.
-  const backdropAgents = activeTab === 'workbench' ? [selectedAgent] : [];
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    if (authBusy) return;
+    const pending = authRequest.begin();
+    setLoginError(null);
+    setAuthBusy(true);
+    try {
+      const data = await apiJson('/api/login', { method: 'POST', signal: pending.signal,
+        body: JSON.stringify({ username: loginUser, password: loginPwd }) });
+      if (!pending.isCurrent()) return;
+      setAuthenticated(true);
+      setUsername(data.username || loginUser);
+      setLoginPwd('');
+    } catch (err) {
+      if (pending.isCurrent() && err.name !== 'AbortError') setLoginError(err.message);
+    } finally {
+      if (pending.isCurrent()) setAuthBusy(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    if (authBusy) return;
+    runRequest.cancel();
+    digestRequest.cancel();
+    historyRequest.cancel();
+    networkRequest.cancel();
+    setLoading(false);
+    setDigestLoading(false);
+    setAuthBusy(true);
+    setError(null);
+    const pending = authRequest.begin();
+    try {
+      await apiJson('/api/logout', { method: 'POST', signal: pending.signal });
+      if (!pending.isCurrent()) return;
+      setAuthenticated(false);
+      setCurrentData(null);
+      setHistory([]);
+      setHistoryError(null);
+      setNetwork(null);
+      setNetworkError(null);
+      setDigest(null);
+      setDigestError(null);
+      setSelectedAgent('branding');
+      setActiveTab('workbench');
+      setGoal('');
+      setLoginPwd('');
+      setLoginUser('');
+      setUsername('');
+      setShowPassword(false);
+      setCopied(false);
+    } catch (err) {
+      if (pending.isCurrent() && err.name !== 'AbortError') setError(`Sign out failed: ${err.message}`);
+    } finally {
+      if (pending.isCurrent()) setAuthBusy(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
-    if (e) e.preventDefault();
-    if (!goal.trim() || loading) return;
-
+    e?.preventDefault();
+    if (loading) return;
+    if (!goal.trim()) { setError('Enter a business goal.'); return; }
+    const submittedGoal = goal.trim();
+    const pending = runRequest.begin();
     setLoading(true);
     setError(null);
-    const pending = runRequest.begin();
-
+    setCopied(false);
     try {
-      const json = await apiJson('/api/run', {
-        method: 'POST',
-        signal: pending.signal,
-        body: JSON.stringify({ goal: goal.trim(), provider, agent_type: selectedAgent })
-      });
-
+      const json = await apiJson('/api/run', { method: 'POST', signal: pending.signal,
+        body: JSON.stringify({ goal: submittedGoal, agent_type: selectedAgent }) });
       if (!pending.isCurrent()) return;
-
-      const runRecord = newRunRecord(json, goal.trim());
+      const runRecord = newRunRecord(json, submittedGoal);
       setCurrentData(runRecord);
-      setHistory(prev => [runRecord, ...prev]);
+      setHistory((previous) => [runRecord, ...previous]);
+      refreshHistory();
     } catch (err) {
       if (pending.isCurrent() && err.name !== 'AbortError') setError(err.message);
     } finally {
@@ -201,39 +200,53 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
     }
   };
 
-  const handleKeyDown = (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
-      handleSubmit(e);
+  const runDigest = async () => {
+    if (digestLoading) return;
+    const pending = digestRequest.begin();
+    setDigestLoading(true);
+    setDigestError(null);
+    try {
+      const data = await apiJson('/api/digest', { method: 'POST', signal: pending.signal, body: '{}' });
+      if (!pending.isCurrent()) return;
+      setDigest(data);
+      if (data.network) setNetwork(data.network);
+    } catch (err) {
+      if (pending.isCurrent() && err.name !== 'AbortError') setDigestError(err.message);
+    } finally {
+      if (pending.isCurrent()) setDigestLoading(false);
     }
   };
 
-  const handleCopy = () => {
-    if (!currentData) return;
-    const md = `# Positioning Strategy Brief\n\n**Strategy:** ${currentData.decision.selected_option}\n**State:** ${currentData.positioning.state.toUpperCase()}\n**Confidence:** ${currentData.decision.confidence}\n\n## Business Goal\n${currentData.goalStatement}\n\n## Positioning Statement\n${currentData.positioning.statement}\n\n## Strategic Rationale\n${currentData.decision.rationale}\n\n## Identified Risks\n${currentData.decision.risks}\n`;
-    
-    navigator.clipboard.writeText(md).then(() => {
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    });
+  const handleKeyDown = (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') handleSubmit(e);
   };
-
-  const handleExportMd = async () => {
-    if (!currentData) return;
+  const handleCopy = async () => {
+    if (!currentData?.positioning) return;
+    const md = `# Positioning Strategy Brief\n\n**Strategy:** ${currentData.decision.selected_option}\n**State:** ${currentData.positioning.state || 'Unavailable'}\n**Confidence:** ${currentData.decision.confidence}\n\n## Business Goal\n${currentData.goalStatement}\n\n## Positioning Statement\n${currentData.positioning.statement}\n\n## Strategic Rationale\n${currentData.decision.rationale}\n\n## Identified Risks\n${currentData.decision.risks}\n`;
     try {
-      const res = await fetch('/api/export/markdown', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(currentData)
-      });
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
+      await navigator.clipboard.writeText(md);
+      setCopied(true);
+    } catch { setError('Could not copy the report. Use the Markdown download instead.'); }
+  };
+  const handleExportMd = async () => {
+    if (!currentData?.positioning) return;
+    setError(null);
+    try {
+      const res = await fetch('/api/export/markdown', { method: 'POST', credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(currentData) });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.message || data.error || `Export failed (${res.status})`);
+      }
+      const url = window.URL.createObjectURL(await res.blob());
       const a = document.createElement('a');
       a.href = url;
       a.download = `positioning-brief-${currentData.decision.id}.md`;
+      document.body.append(a);
       a.click();
-    } catch (err) {
-      console.error('Export failed', err);
-    }
+      a.remove();
+      setTimeout(() => window.URL.revokeObjectURL(url), 0);
+    } catch (err) { setError(err.message); }
   };
 
   if (authChecking) {
@@ -278,7 +291,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
             <div className="p-6 space-y-5">
               {loginError && (
-                <div className="p-3 bg-[#FEF2F2] border border-[#B91C1C]/30 text-[#991B1B] text-xs font-mono flex items-center gap-2">
+                <div role="alert" className="p-3 bg-[#FEF2F2] border border-[#B91C1C]/30 text-[#991B1B] text-xs font-mono flex items-center gap-2">
                   <AlertCircle className="w-4 h-4 text-[#B91C1C] shrink-0" />
                   <span>{loginError}</span>
                 </div>
@@ -286,12 +299,13 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-mono uppercase tracking-wider text-[#4A505C]">
+                  <label htmlFor="operator-username" className="block text-xs font-mono uppercase tracking-wider text-[#4A505C]">
                     Operator Username
                   </label>
                   <div className="relative">
                     <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6E7685]" />
                     <input
+                      id="operator-username" autoComplete="username"
                       type="text"
                       value={loginUser}
                       onChange={(e) => setLoginUser(e.target.value)}
@@ -304,12 +318,13 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="block text-xs font-mono uppercase tracking-wider text-[#4A505C]">
+                  <label htmlFor="operator-password" className="block text-xs font-mono uppercase tracking-wider text-[#4A505C]">
                     Access Password
                   </label>
                   <div className="relative">
                     <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6E7685]" />
                     <input
+                      id="operator-password" autoComplete="current-password"
                       type={showPassword ? 'text' : 'password'}
                       value={loginPwd}
                       onChange={(e) => setLoginPwd(e.target.value)}
@@ -319,6 +334,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     />
                     <button
                       type="button"
+                      aria-label={showPassword ? "Hide password" : "Show password"}
                       onClick={() => setShowPassword(!showPassword)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E7685] hover:text-[#111315] transition-colors p-0.5 cursor-pointer"
                     >
@@ -328,19 +344,16 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 </div>
 
                 <button
-                  type="submit"
+                  type="submit" disabled={authBusy}
                   className="w-full mt-2 py-2.5 px-4 bg-[#111315] hover:bg-[#2563EB] text-[#FFFFFF] font-mono font-medium text-xs transition-colors shadow-xs flex items-center justify-center gap-2 cursor-pointer active:scale-[0.98]"
                 >
                   <Lock size={12} strokeWidth={2} />
-                  <span>Authenticate Operator</span>
+                  <span>{authBusy ? "Authenticating…" : "Authenticate Operator"}</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </form>
 
-              <div className="pt-3 border-t border-[#D4D1C7] flex items-center justify-between text-[11px] font-mono text-[#6E7685]">
-                <span>Default credentials:</span>
-                <span className="text-[#111315] font-semibold">admin / admin</span>
-              </div>
+              <p className="text-xs text-[#4A505C]">Use the operator credentials configured for this server.</p>
             </div>
           </div>
 
@@ -354,7 +367,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
     <div className="bg-[#FBF9F5] text-[#1C1917] font-sans antialiased min-h-screen flex selection:bg-[#D97757]/20 selection:text-[#1C1917] relative overflow-hidden">
       
       {/* Ambient gradient background, tinted by whichever agent is in focus */}
-      <Backdrop agents={backdropAgents} />
+      {!reducedMotion && <Backdrop agents={backdropAgents} />}
 
       {/* Left Navigation Sidebar */}
       <aside 
@@ -436,7 +449,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               }`}
             >
               <Network className="w-4 h-4 shrink-0" />
-              {sidebarOpen && <span>Weekly Digest</span>}
+              {sidebarOpen && <span>On-demand Digest</span>}
             </button>
 
             <button
@@ -461,13 +474,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                   <button
                     key={idx}
                     aria-label={`Open ${run.decision.selected_option}, decision ${run.decision.id}`}
-                    onClick={() => {
-                      runRequest.cancel();
-                      setLoading(false);
-                      setCurrentData(run);
-                      setGoal(run.goalStatement);
-                      setActiveTab('workbench');
-                    }}
+                    onClick={() => openSaved(run)}
                     className="w-full text-left p-2 rounded-lg bg-white/60 hover:bg-white border border-[#E0DACE] text-[11px] text-[#44403C] hover:text-[#1C1917] transition-all truncate"
                   >
                     <div className="font-medium truncate">{run.decision.selected_option}</div>
@@ -493,7 +500,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             </div>
           ) : null}
           <button
-            onClick={handleLogout}
+            onClick={handleLogout} disabled={authBusy}
             className="p-1.5 rounded-lg text-[#A8A29E] hover:text-[#1C1917] hover:bg-[#F2EEE7] transition-colors"
             title="Sign out"
           >
@@ -514,16 +521,16 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               {activeTab === 'workbench' && 'Positioning Workbench'}
               {activeTab === 'chat' && 'Agent Chat & /triage Bridge'}
               {activeTab === 'history' && 'Decision History'}
-              {activeTab === 'digest' && 'CMO Weekly Executive Digest'}
-              {activeTab === 'knowledge' && 'Semantic Memory Knowledge Base'}
+              {activeTab === 'digest' && 'On-demand Executive Digest'}
+              {activeTab === 'knowledge' && 'Generated Knowledge Summary'}
               {activeTab === 'settings' && 'Runtime Settings'}
             </h2>
             <p className="text-[11px] text-[#78716C]">
-              {activeTab === 'workbench' && 'Formulate positioning strategies and execute autonomous governance loops'}
+              {activeTab === 'workbench' && 'Choose a specialist, submit a goal, and review the result and its risk flags'}
               {activeTab === 'chat' && 'Talk to one agent and its memory, or bridge two without their memories mixing'}
               {activeTab === 'history' && 'Audit trail of past strategy executions and CMO ratifications'}
               {activeTab === 'digest' && 'Cross-agent competitor intelligence, grounded in cited sources'}
-              {activeTab === 'knowledge' && 'Active knowledge units (facts, assumptions, patterns)'}
+              {activeTab === 'knowledge' && 'Generated summaries from the selected result; inspect chat for retrieved facts and admitted memory'}
               {activeTab === 'settings' && 'Model provider configuration and inference limits'}
             </p>
           </div>
@@ -537,12 +544,15 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 ← Return to Showcase
               </button>
             )}
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-medium border bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#059669] animate-pulse"></span>
-              Gemini 3.8 Flash Active
-            </span>
+            <p className="text-xs text-[#44403C]">Model configured by server</p>
           </div>
         </header>
+
+        {error && <p role="alert" className="px-6 py-3 text-xs text-red-700">{error}</p>}
+        {historyError && <div role="alert" className="px-6 py-3 text-xs text-red-700">
+          History unavailable: {historyError} <button onClick={refreshHistory}>Retry history</button>
+        </div>}
+        {historyLoading && <p role="status" className="px-6 py-2 text-xs">Loading saved decisions…</p>}
 
         {/* Tab 1: Workbench View */}
         {activeTab === 'workbench' && (
@@ -555,8 +565,8 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 className="bg-white/90 backdrop-blur-xl border border-[#E7E2D8] focus-within:border-[#D97757] focus-within:ring-2 focus-within:ring-[#D97757]/20 rounded-2xl transition-all shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden"
               >
                 <div className="p-4">
-                  <label className="sr-only">Business Goal</label>
-                  <textarea
+                  <label htmlFor="business-goal" className="sr-only">Business Goal</label>
+                  <textarea id="business-goal"
                     value={goal}
                     onChange={(e) => setGoal(e.target.value)}
                     onKeyDown={handleKeyDown}
@@ -569,28 +579,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
                 <div className="px-4 py-3 bg-[#F7F5F0]/90 border-t border-[#E7E2D8] flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2">
-                    <div className="relative max-w-xs">
-                      <select
-                        value={provider}
-                        onChange={(e) => setProvider(e.target.value)}
-                        className="appearance-none bg-white border border-[#E0DACE] rounded-xl px-3 py-1.5 text-[11px] font-medium text-[#44403C] focus:outline-none focus:border-[#D97757] transition-colors pr-8 cursor-pointer shadow-xs"
-                      >
-                        <option value="gemini-3.8-flash">Google Gemini 3.8 Flash (Server Model)</option>
-                        <option value="gemini-2.5-pro">Google Gemini 2.5 Pro (BYOK)</option>
-                      </select>
-                      <ChevronDown className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-[#A8A29E] pointer-events-none" />
-                    </div>
-
-                    {/* ChatGPT-Style File & Image Attachment Button */}
-                    <label className="p-2 rounded-xl bg-white hover:bg-[#F2EEE7] border border-[#E0DACE] text-[#78716C] hover:text-[#1C1917] cursor-pointer transition-colors flex items-center gap-1 shadow-xs" title="Attach PDF or Image for Analysis">
-                      <input type="file" accept="image/*,.pdf" className="hidden" onChange={(e) => {
-                        if (e.target.files[0]) {
-                          alert(`Attached file: ${e.target.files[0].name} for multi-modal analysis.`);
-                        }
-                      }} />
-                      <span className="text-xs">📎</span>
-                      <span className="text-[10px] font-medium text-[#44403C] hidden sm:inline">Attach PDF / Image</span>
-                    </label>
+                    <span className="text-xs text-[#44403C]">Model configured by server</span>
                   </div>
 
                   <div className="flex items-center gap-3">
@@ -613,90 +602,17 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 </div>
               </form>
 
-              {/* Agent Swarm Selector Box */}
-              <div className="flex items-center gap-2 overflow-x-auto pb-1 text-xs">
-                <span className="text-[11px] font-mono text-[#78716C] shrink-0 font-semibold uppercase">Active Agents:</span>
-                <button
-                  type="button"
-                  onClick={() => selectAgent('branding')}
-                  className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
-                    selectedAgent === 'branding' 
-                      ? 'bg-[#D97757] text-white border-[#D97757] shadow-xs' 
-                      : 'bg-white/80 hover:bg-white text-[#44403C] border-[#E0DACE]'
-                  }`}
-                >
-                  <Sparkles className="w-3.5 h-3.5" />
-                  <span>🎨 Branding Agent</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => selectAgent('pr')}
-                  className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
-                    selectedAgent === 'pr' 
-                      ? 'bg-[#D97757] text-white border-[#D97757] shadow-xs' 
-                      : 'bg-white/80 hover:bg-white text-[#44403C] border-[#E0DACE]'
-                  }`}
-                >
-                  <FileText className="w-3.5 h-3.5" />
-                  <span>📰 PR Agent</span>
-                </button>
-
-                {/* Coming Soon Agents */}
-                <div className="flex items-center gap-2 border-l border-[#E7E2D8] pl-2">
-                  <button type="button" disabled className="px-2.5 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[10px] font-medium shrink-0 cursor-not-allowed flex items-center gap-1">
-                    <span>🔮 Social Agent</span>
-                    <span className="text-[9px] bg-[#E0DACE] text-[#78716C] px-1 rounded font-semibold">Coming Soon</span>
+              <div role="group" aria-label="Select specialist" className="flex flex-wrap items-center gap-2 pb-1 text-xs">
+                {AGENTS.map(({ id, label, Icon }) => (
+                  <button key={id} type="button" onClick={() => selectAgent(id)} aria-pressed={selectedAgent === id}
+                    className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 ${selectedAgent === id ? 'bg-[#D97757] text-white border-[#D97757]' : 'bg-white text-[#44403C] border-[#E0DACE]'}`}>
+                    <Icon className="w-3.5 h-3.5" />{label} Agent
                   </button>
-
-                  <button type="button" disabled className="px-2.5 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[10px] font-medium shrink-0 cursor-not-allowed flex items-center gap-1">
-                    <span>🚀 Product Marketing</span>
-                    <span className="text-[9px] bg-[#E0DACE] text-[#78716C] px-1 rounded font-semibold">Coming Soon</span>
-                  </button>
-
-                  <button type="button" disabled className="px-2.5 py-1 rounded-xl border border-[#E7E2D8] bg-[#F7F5F0] text-[#A8A29E] text-[10px] font-medium shrink-0 cursor-not-allowed flex items-center gap-1">
-                    <span>🎪 Events Agent</span>
-                    <span className="text-[9px] bg-[#E0DACE] text-[#78716C] px-1 rounded font-semibold">Coming Soon</span>
-                  </button>
-                </div>
+                ))}
               </div>
             </div>
 
-            {/* Error Alert */}
-            {error && (
-              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-700 text-xs font-medium flex items-center gap-2.5 backdrop-blur-md">
-                <AlertCircle className="w-4 h-4 text-red-600 shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
-
-            {/* Live Pipeline Execution Progress Stream */}
-            {loading && (
-              <div className="p-6 rounded-2xl bg-white/90 backdrop-blur-xl border border-[#E7E2D8] space-y-4 shadow-[0_4px_20px_rgba(0,0,0,0.03)]">
-                <div className="flex items-center justify-between border-b border-[#E7E2D8] pb-3">
-                  <div className="flex items-center gap-3">
-                    <div className="w-4 h-4 border-2 border-[#D97757]/30 border-t-[#D97757] rounded-full animate-spin"></div>
-                    <span className="text-xs font-bold text-[#1C1917]">Executing Governed AI Agent Pipeline</span>
-                  </div>
-                  <span className="text-[10px] font-mono text-[#D97757] bg-[#D97757]/10 px-2 py-0.5 rounded-md font-semibold">Active Run</span>
-                </div>
-
-                <div className="space-y-2.5 text-xs font-mono text-[#44403C] bg-[#F7F5F0] p-4 rounded-xl border border-[#E0DACE]">
-                  <div className="flex items-center gap-2 text-[#059669]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#059669]"></span>
-                    <span>[01/03] 🔍 Analyzing Business Goal & Semantic Memory Units...</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[#D97757]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#D97757] animate-ping"></span>
-                    <span>[02/03] 💡 Formulating Strategic Positioning Options via {provider}...</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-[#78716C]">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#A8A29E]"></span>
-                    <span>[03/03] 🛡️ Evaluating Governance Escalation Policy (CMO Profile Gate)...</span>
-                  </div>
-                </div>
-              </div>
-            )}
+            {loading && <p role="status" className="p-4 text-xs text-[#44403C]">Waiting for the selected agent to return. Progress details are unavailable.</p>}
 
             {/* Empty Screen Purposely Built CMO Suggestions */}
             {!currentData && !loading && (
@@ -748,7 +664,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                       <Lock className="w-4 h-4 text-[#D97757]" />
                       <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#D97757] transition-colors">Fintech Fraud Prevention</h4>
                     </div>
-                    <p className="text-xs text-[#78716C] leading-relaxed">Demonstrate zero false-positive risk and instant transaction authorization for payment gateways.</p>
+                    <p className="text-xs text-[#78716C] leading-relaxed">Explore payment-fraud positioning while making unsupported performance claims explicit.</p>
                   </button>
                 </div>
               </div>
@@ -757,6 +673,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             {currentData && !loading && (currentData.workflow_type !== 'run' || !currentData.result_available || !currentData.positioning) && (
               <div className="space-y-3">
                 <SavedConversation data={currentData} />
+                <ExecutionDetails metrics={currentData.metrics} />
                 <DecisionReview decisionId={currentData.decision.id} onUpdated={updateReview} />
               </div>
             )}
@@ -765,6 +682,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             {currentData?.result_available && currentData.workflow_type === 'run' && currentData.positioning && !loading && (
               <div className="bg-white/90 backdrop-blur-xl border border-[#E7E2D8] rounded-2xl p-6 space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] print-artifact relative">
                 
+                <ExecutionDetails metrics={currentData.metrics} />
                 <DecisionReview decisionId={currentData.decision.id} onUpdated={updateReview} />
                 <button onClick={() => {
                   setGoal(`Revise positioning for: ${currentData.goalStatement}`);
@@ -777,7 +695,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono uppercase tracking-wider text-[#78716C]">Positioning Strategy Brief</span>
                       <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-semibold border bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]">
-                        STATE: {currentData.positioning.state.toUpperCase()}
+                        STATE: {(currentData.positioning.state || 'Unavailable').toUpperCase()}
                       </span>
                     </div>
                     <h3 className="text-lg font-bold text-[#1C1917] leading-snug">
@@ -876,7 +794,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
                 {/* Knowledge Stream */}
                 <div className="space-y-2.5 pt-3 border-t border-[#E7E2D8]">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Semantic Memory Knowledge Stream</div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Generated Knowledge Summary</div>
                   <div className="space-y-2">
                     {currentData.knowledge_units.map((ku, i) => (
                       <div key={i} className="p-3 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] flex items-center justify-between text-xs text-[#44403C] gap-3">
@@ -897,14 +815,14 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
         {/* Tab 2: Decision History View */}
         {activeTab === 'chat' && (
           <div className="max-w-6xl mx-auto px-6 py-6">
-            <ChatPanel provider={provider} />
+            <ChatPanel onResult={refreshHistory} />
           </div>
         )}
 
         {activeTab === 'history' && (
           <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 space-y-4">
             <h3 className="text-sm font-semibold text-[#1C1917]">Execution History ({history.length})</h3>
-            {history.length === 0 ? (
+            {history.length === 0 && !historyError && !historyLoading ? (
               <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">
                 No decision runs executed yet. Run a goal in the workbench to record history.
               </div>
@@ -916,6 +834,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                       <span className="text-xs font-bold text-[#1C1917]">{item.decision.selected_option}</span>
                       <span className="text-[10px] font-mono text-[#78716C]">{item.timestamp}</span>
                     </div>
+                    <button onClick={() => openSaved(item)} className="text-xs text-[#44403C] underline">Open saved result</button>
                     <p className="text-xs text-[#44403C] bg-[#F7F5F0] p-3 rounded-xl border border-[#E0DACE] leading-relaxed">
                       "{item.positioning?.statement || item.reply || item.answer || 'Original result unavailable for this record.'}"
                     </p>
@@ -926,7 +845,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
           </div>
         )}
 
-        {/* Tab 4: CMO Weekly Executive Digest (M5) */}
+        {/* Tab 4: On-demand Executive Digest (M5) */}
         {activeTab === 'digest' && (
           <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 space-y-6">
 
@@ -934,7 +853,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               <div>
                 <h3 className="text-sm font-semibold text-[#1C1917]">Competitor Intelligence Digest</h3>
                 <p className="text-[11px] text-[#78716C]">
-                  Fans out to all 5 agents in parallel over {network?.total_facts ?? '—'} grounded competitor facts.
+                  Fans out to all 5 agents in parallel over {network?.total_facts ?? '—'} source-linked records. This digest runs only when requested.
                 </p>
               </div>
               <div className="flex items-center gap-2">
@@ -959,15 +878,17 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             </div>
 
             {digestError && (
-              <div className="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#B91C1C] flex items-center gap-2 no-print">
+              <div role="alert" className="p-3.5 rounded-xl bg-[#FEF2F2] border border-[#FECACA] text-xs text-[#B91C1C] flex items-center gap-2 no-print">
                 <AlertCircle className="w-4 h-4 shrink-0" /> {digestError}
               </div>
             )}
 
             {/* Printable executive report */}
             <div id="digest-report" className="space-y-6">
+              {digestLoading && <p role="status" className="text-xs">Waiting for five agent briefs and the digest synthesis…</p>}
               {digest && (
                 <>
+                  <ExecutionDetails metrics={digest.metrics} />
                   <div className="p-5 rounded-2xl bg-white/80 border border-[#E7E2D8] space-y-3">
                     <div className="flex items-start justify-between gap-4">
                       <h4 className="text-base font-semibold text-[#1C1917] leading-snug">{digest.headline}</h4>
@@ -1025,9 +946,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               {/* Link network — grounded, renders with or without a synthesized digest */}
               <div className="space-y-2.5">
                 <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Competitor Link Network</div>
+                {networkError && <p role="alert" className="text-xs text-red-700">{networkError} <button onClick={() => setNetworkVersion((n) => n + 1)}>Retry network</button></p>}
                 {network
                   ? <CompetitorNetwork network={network} />
-                  : <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">Loading grounded competitor network…</div>}
+                  : !networkError && <div role="status" className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">Loading source-linked competitor network…</div>}
               </div>
 
               {digest && (
@@ -1065,7 +987,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
         {/* Tab 3: Knowledge Base View */}
         {activeTab === 'knowledge' && (
           <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 space-y-4">
-            <h3 className="text-sm font-semibold text-[#1C1917]">Semantic Knowledge Base</h3>
+            <h3 className="text-sm font-semibold text-[#1C1917]">Generated Knowledge Summary</h3>
             {currentData ? (
               <div className="space-y-2">
                 {currentData.knowledge_units.map((ku, i) => (
@@ -1079,7 +1001,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               </div>
             ) : (
               <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">
-                Execute a positioning workflow to inspect generated semantic memory units.
+                Run an agent to inspect its generated knowledge summary. This is not the original retrieved corpus or admitted memory.
               </div>
             )}
           </div>
