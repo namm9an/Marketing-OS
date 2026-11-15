@@ -17,6 +17,7 @@ from app.core.telemetry import provider_metrics
 from app.db.database import search_knowledge_units
 from app.core.schemas import AgentResponseSchema
 from app.core.exceptions import UpstreamProviderError
+from app.core.evidence_capture import observe_retrieval
 
 DEFAULT_PROVIDER = "gemini-3.8-flash"
 
@@ -179,6 +180,7 @@ def run_agent(
             query=goal_statement, limit=5, sourced_only=True,
             expand_taxonomy=settings.RETRIEVAL_EXPAND_TAXONOMY,
         )
+        observe_retrieval(agent_type, goal_statement, db_facts)
         facts_retrieved = len(db_facts)
         retrieved_facts_ids = {str(f["id"]) for f in db_facts if "id" in f}
         facts_context = ""
