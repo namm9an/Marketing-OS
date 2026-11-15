@@ -119,8 +119,9 @@ New escalated decisions start `pending`; other decisions start `unreviewed`. Rev
 do not transfer to another decision, alter the original output, erase its risk flag,
 or admit a memory. This records a human review; it does not execute or authorize an
 external marketing action. The application appends reviews, but the SQLite database
-is not tamper-proof storage. The existing frontend approval button still needs to be
-wired to this endpoint; its local state is not a server review.
+is not tamper-proof storage. The console loads review state from this endpoint and
+waits for a successful save before showing approval/rejection. Reopening a saved
+result restores its original payload and its current decision-specific review state.
 
 All four generation workflows expose `metrics`. `source` identifies `live`, `mock`,
 or an explicitly unknown/mixed execution. `requested_model` is the server-configured
@@ -193,11 +194,19 @@ python -m app.db.grounded_seed
 python -m app.main
 ```
 
-The application server binds to `http://localhost:5000`. You can verify it is healthy via:
+The application server defaults to `http://localhost:10000` (override with `PORT`). You can verify it is healthy via:
 
 ```bash
-curl http://localhost:5000/api/health
+curl http://localhost:10000/api/health
 ```
+
+For frontend development, run `npm ci` and `npm run dev` in `frontend/` while Flask
+is running. Vite proxies `/api` to `http://127.0.0.1:10000`, keeping API requests and
+session cookies on the browser's frontend origin. Set `MARKETING_OS_API_TARGET` in
+the Vite process environment if Flask uses another address. Build with
+`npm run build`; Flask serves `frontend/dist`, including direct `/console` routes.
+The console shows the execution mode reported by each response. The server owns
+model configuration; there is no client model switch or file-upload capability.
 
 ---
 
@@ -213,8 +222,37 @@ DB_PATH="$test_db_dir/tests.db" python -m pytest -q
 The backend repair regressions are in `tests/integration/test_backend_repairs.py`.
 They cover the eight repair groups and a ninth combined workflow. Provider responses
 are controlled fixtures; the suite makes no paid provider calls. Frontend browser
-integration is a separate check: history reconstruction and the local approval button
-are known client gaps, so a green backend suite does not establish a working full UI.
+integration is a separate required check; backend test-client success alone does
+not establish a working browser product.
+
+From `frontend/` (Node 24 was used for the F01 verification):
+
+```bash
+npm ci
+npm run test:unit
+npm run lint
+npm run build
+npm run test:integration
+npm run test:integration:built -- baseline.spec.js workflow.spec.js
+```
+
+The browser harness starts its own API with a temporary SQLite database, synthetic
+operator credentials and mock inference; it does not use production credentials or
+spend provider tokens. The development suite uses Vite on port 5179 and the API on
+5120. The built suite serves the compiled SPA directly through two Gunicorn workers
+on Linux; native Windows uses Flask for that local route check. Run the two suites
+sequentially because they share the test API port. Python dependencies must be
+installed first; the launcher finds `.venv` or falls back to `python`, or use
+`MARKETING_OS_TEST_PYTHON` to select the interpreter explicitly.
+
+Playwright uses `/usr/bin/chromium` when available, otherwise its managed browser.
+Use `npx playwright install chromium` when needed, or set
+`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` for another installed compatible browser.
+Screenshots, traces and accessibility attachments go to the ignored
+`frontend/test-results/` directory. These controlled tests do not establish genuine
+live-provider recordings, final visual acceptance, production deployment or a
+complete accessibility/performance audit; see the phase record in
+[the build plan](docs/MARKETING_OS_BLUEPRINT_PLAN.md).
 
 Run the retrieval benchmark suite:
 

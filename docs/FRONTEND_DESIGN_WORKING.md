@@ -1,10 +1,12 @@
 # Marketing OS — frontend research and design working record
 
-Updated: 13 November 2026 (Asia/Kolkata).
+Updated: 15 November 2026 (Asia/Calcutta).
 
 **Purpose:** retain project state, the owner's research, unresolved decisions, and the evidence behind design choices across conversations. This is an evolving working document, not a final design lock or an instruction to build every idea listed here.
 
-**Immediate priority:** review the completed eight backend repair groups and ninth API verification in [BACKEND_REPAIR_TRACKER.md](BACKEND_REPAIR_TRACKER.md). The owner explicitly limited this turn to reading the frontend: no frontend source was changed. Frontend integration, research, and visual decisions need their own discussion and plan. The current browser workflow still has history/approval defects despite the corrected backend contracts.
+**Current frontend documents:** [MARKETING_OS_BLUEPRINT_PLAN.md](MARKETING_OS_BLUEPRINT_PLAN.md), [DESIGN_AND_LAYOUT.md](DESIGN_AND_LAYOUT.md), and [ANIMATION.md](ANIMATION.md). The owner requested these three editable files after discussion. They now govern the frontend build sequence and current decisions. This working record retains the full earlier research and original Claude snapshots; older proposals below do not override the current three-file specification.
+
+**Current action:** F01 functional baseline PASS on `feat/frontend-foundation`, application revision `d6c9973`. Five atomic implementation commits restore full history, server-owned review, stale-response isolation, all five specialists, truthful controls, mobile navigation and reduced-motion/native-flow behaviour. Verification: 323 backend tests, 29 frontend tests, 10 development and 7 built-app browser checks; exact evidence/limits are in the blueprint's [F01 completion record](MARKETING_OS_BLUEPRINT_PLAN.md#13-f01-completion-record). F02 has not started. Confirmed direction remains genuine public recordings, two-agent/shared-stage comparison, PR & Policy first, light graphite-speckled paper, guided story camera and a shorter stack/simpler opening to review. Exact machine materials/stills and final visual geometry remain open; visitor rotation is not approved. Use the blueprint's architecture map and execution checklist before each phase. Historical observations below describe their named older revisions; the original Claude snapshots remain unchanged.
 
 ## 1. Whose intent governs
 
@@ -27,7 +29,7 @@ Distinguish **implemented and inspected**, **reported on desktop**, **proposed**
 | Original `codex handoff.md` and latest Anti Gravity pasted update | Desktop SHAs, reported work, local-only edits, earlier roadmap | Absolute completion/security claims, old palette, old in-card walkthrough or an agent-authored vision |
 | Cloud baseline review | Inspected implementation and reproduced defects at an exact SHA | That those defects remain unchanged on the uninspected redesign branch |
 
-The three Claude documents and Anti Gravity updates were supplied as attachments/pasted-file uploads. The three Claude documents are preserved in full, without editing their contents, in section 16 below. Their original names identify the snapshots; separate canonical files and reference assets have not been added. The earlier sections contain our working analysis and decisions, distinct from those original snapshots.
+The three Claude documents and Anti Gravity updates were supplied as attachments/pasted-file uploads. The three Claude documents are preserved in full, without editing their contents, in section 16 below. Their original names identify the snapshots. The three editable canonical specifications linked above now contain the current decisions and shared phase map; that does not mean reference assets or finished scenes have been added. The earlier sections retain our historical analysis, distinct from those original snapshots.
 
 ## 3. Where we stand
 
@@ -372,9 +374,16 @@ Affected requirements/components:
 | 2026-11-13 | Treat Anti Gravity's update/vision as background, not literal final direction | Owner's current request | No automatic adoption of old palette, claims or phase sequence |
 | 2026-11-13 | Create separate backend and frontend working records; preserve all research | Owner's current request | These two files are the ongoing context records |
 | 2026-11-13 | Proceed deliberately; prioritize backend correctness before full frontend implementation | Owner's current request | Backend repair stages precede visual build work; research can continue |
+| 2026-11-13 | Retain the paper/dossier identity | Owner confirmed in design discussion | Current design specification preserves the outer identity |
+| 2026-11-13 | Use clicked miniature physical 3D machines/scenes explaining each agent | Owner confirmed | Supersedes the old flat-SVG-only limitation |
+| 2026-11-13 | Let website visitors compare agents before choosing | Owner explicitly clarified | Comparison is a product feature, not our internal design comparison |
+| 2026-11-13 | Keep six-background and five-trend research shortlists separate, then narrow | Owner confirmed | Shortlists are candidates, not a requirement to combine every effect |
+| 2026-11-13 | Maintain three current editable documents and check every phase before proceeding | Owner requested | Blueprint contains common gates and per-phase acceptance |
 | Pending | Which research effects/styles to adopt | Not decided | Tables above remain recommendations |
 
 ### Change log
+
+- 2026-11-13: Created the three current specifications linked above, reflecting the owner's latest physical-3D, visitor-comparison, research, and phase-gating decisions. The earlier sections remain historical context and research; section 16 remains byte-for-byte unchanged. No frontend implementation was performed.
 
 - 2026-11-13: Created with inspected baseline, unverified desktop work, Claude plan summary, all owner research items with initial assessments, open questions, staged backlog and decision templates. No visual direction newly approved and no code repaired by this document.
 - 2026-11-13: At the owner's request, embedded all three supplied Claude documents verbatim in section 16. Original contents are preserved separately from our analysis above.
