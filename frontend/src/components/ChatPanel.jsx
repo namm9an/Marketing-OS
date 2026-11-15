@@ -51,7 +51,7 @@ const Pill = ({ tone = 'slate', children }) => {
     slate: 'bg-[#F2EEE7] text-[#44403C]',
     green: 'bg-emerald-50 text-emerald-700',
     amber: 'bg-amber-50 text-amber-700',
-    accent: 'bg-[#D97757]/10 text-[#D97757]',
+    accent: 'bg-[#1C1917]/10 text-[#44403C]',
   };
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium ${tones[tone]}`}>
@@ -72,7 +72,7 @@ function RecallDisclosure({ recall, defaultOpen = false }) {
     <div className="mt-2 border-t border-[#E7E2DA] pt-2">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-[11px] text-[#78716C] hover:text-[#1C1917] transition-colors"
+        className="flex items-center gap-1.5 text-[11px] text-[#44403C] hover:text-[#1C1917] transition-colors"
       >
         {open ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}
         built from {memories.length} note{memories.length === 1 ? '' : 's'} · {facts.length} sourced fact{facts.length === 1 ? '' : 's'}
@@ -83,7 +83,7 @@ function RecallDisclosure({ recall, defaultOpen = false }) {
         <div className="mt-2 space-y-2">
           {memories.length > 0 && (
             <div>
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#78716C] uppercase tracking-wide mb-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#44403C] uppercase tracking-wide mb-1">
                 <Brain className="w-3 h-3" /> Remembered
               </div>
               {memories.map((m) => (
@@ -98,7 +98,7 @@ function RecallDisclosure({ recall, defaultOpen = false }) {
 
           {facts.length > 0 && (
             <div>
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#78716C] uppercase tracking-wide mb-1">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold text-[#44403C] uppercase tracking-wide mb-1">
                 <Database className="w-3 h-3" /> Grounded facts
               </div>
               {facts.map((f, i) => (
@@ -110,7 +110,7 @@ function RecallDisclosure({ recall, defaultOpen = false }) {
                       href={f.source_url}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1 mt-1 text-[10px] text-[#D97757] hover:underline break-all"
+                      className="inline-flex items-center gap-1 mt-1 text-[10px] text-[#44403C] hover:underline break-all"
                     >
                       <Link2 className="w-2.5 h-2.5 shrink-0" />
                       {f.source_url}
@@ -123,7 +123,7 @@ function RecallDisclosure({ recall, defaultOpen = false }) {
 
           {graph.length > 0 && (
             <div>
-              <div className="text-[10px] font-semibold text-[#78716C] uppercase tracking-wide mb-1">
+              <div className="text-[10px] font-semibold text-[#44403C] uppercase tracking-wide mb-1">
                 Graph paths
               </div>
               {graph.map((p, i) => (
@@ -149,7 +149,7 @@ function MemoryVerdict({ verdict }) {
       <Pill tone="green">{verdict.tier}</Pill>
     </div>
   ) : (
-    <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#78716C]">
+    <div className="mt-2 flex items-center gap-1.5 text-[11px] text-[#44403C]">
       <X className="w-3 h-3 shrink-0" />
       not remembered — {verdict.reason}
     </div>
@@ -161,7 +161,7 @@ function TriageResult({ data }) {
   return (
     <div className="space-y-3">
       <ExecutionDetails metrics={data.metrics} />
-      <div className="flex items-center gap-2 text-[11px] text-[#78716C]">
+      <div className="flex items-center gap-2 text-[11px] text-[#44403C]">
         <Users className="w-3.5 h-3.5" />
         <span>bridged in</span>
         <Pill tone="accent">{data.namespace}</Pill>
@@ -179,8 +179,8 @@ function TriageResult({ data }) {
         ))}
       </div>
 
-      <div className="border border-[#D97757]/30 bg-[#D97757]/5 rounded-xl p-3">
-        <div className="text-[11px] font-semibold text-[#D97757] uppercase tracking-wide mb-1.5">Merged</div>
+      <div className="border border-[#D97757]/30 bg-[#1C1917]/5 rounded-xl p-3">
+        <div className="text-[11px] font-semibold text-[#44403C] uppercase tracking-wide mb-1.5">Merged</div>
         <div className="text-[14px] text-[#1C1917] leading-relaxed whitespace-pre-wrap">{data.answer}</div>
       </div>
 
@@ -199,7 +199,7 @@ function TriageResult({ data }) {
 
       {(data.agreements || []).length > 0 && (
         <div className="border border-[#E7E2DA] rounded-xl p-3 bg-white">
-          <div className="text-[11px] font-semibold text-[#78716C] uppercase tracking-wide mb-1.5">Both agree</div>
+          <div className="text-[11px] font-semibold text-[#44403C] uppercase tracking-wide mb-1.5">Both agree</div>
           <ul className="space-y-1">
             {data.agreements.map((a, i) => (
               <li key={i} className="text-[13px] text-[#44403C] leading-relaxed">• {a}</li>
@@ -248,7 +248,7 @@ function MemoryInspector({ agent }) {
         <Brain className="w-3.5 h-3.5" /> Memory
       </div>
 
-      <div className="flex gap-1 mb-2">
+      <div className="flex flex-wrap gap-1 mb-2">
         {[
           { id: 'own', text: `agent:${agent}` },
           { id: 'joint', text: `triage:${[agent, partner].sort().join('+')}` },
@@ -256,8 +256,9 @@ function MemoryInspector({ agent }) {
           <button
             key={t.id}
             onClick={() => setScope(t.id)}
+            aria-pressed={scope === t.id}
             className={`px-2 py-1 rounded-lg text-[10px] font-mono transition-all ${
-              scope === t.id ? 'bg-[#D97757] text-white' : 'bg-[#F2EEE7] text-[#44403C] hover:bg-[#E7E2DA]'
+              scope === t.id ? 'bg-[#1C1917] text-white' : 'bg-[#F2EEE7] text-[#44403C] hover:bg-[#E7E2DA]'
             }`}
           >
             {t.text}
@@ -265,16 +266,16 @@ function MemoryInspector({ agent }) {
         ))}
       </div>
 
-      {loading && <div role="status" className="text-[11px] text-[#78716C]">Loading memory…</div>}
+      {loading && <div role="status" className="text-[11px] text-[#44403C]">Loading memory…</div>}
       {error && <div role="alert" className="text-xs text-red-700">{error}</div>}
 
       {!loading && data?.query === query && (
         <>
-          <div className="text-[10px] text-[#78716C] mb-1.5">
+          <div className="text-[10px] text-[#44403C] mb-1.5">
             {(data.memories || []).length} memor{(data.memories || []).length === 1 ? 'y' : 'ies'} in this namespace
           </div>
           {(data.memories || []).length === 0 ? (
-            <div className="text-[11px] text-[#78716C] italic">
+            <div className="text-[11px] text-[#44403C] italic">
               empty — nothing has been promoted here
             </div>
           ) : (
@@ -365,8 +366,8 @@ export default function ChatPanel({ onResult }) {
   const draft = parseTriage(input);
 
   return (
-    <div className="grid lg:grid-cols-[1fr_280px] gap-4">
-      <div className="flex flex-col min-h-0">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_280px] min-w-0 gap-4">
+      <div className="flex flex-col min-w-0 min-h-0">
         {/* Agent rail */}
         <div className="flex flex-wrap gap-1.5 mb-3">
           {AGENTS.map(({ id, label: text, Icon }) => (
@@ -376,7 +377,7 @@ export default function ChatPanel({ onResult }) {
               aria-pressed={agent === id}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-medium transition-all ${
                 agent === id
-                  ? 'bg-[#D97757] text-white shadow-xs'
+                  ? 'bg-[#1C1917] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
             >
@@ -389,10 +390,10 @@ export default function ChatPanel({ onResult }) {
         {/* Transcript */}
         <div className="flex-1 min-h-[320px] max-h-[60vh] overflow-y-auto space-y-3 pr-1">
           {turns.length === 0 && (
-            <div className="text-[13px] text-[#78716C] border border-dashed border-[#E7E2DA] rounded-xl p-4">
+            <div className="text-[13px] text-[#44403C] border border-dashed border-[#E7E2DA] rounded-xl p-4">
               Talking to <span className="font-medium text-[#1C1917]">{label(agent)}</span>. It reads the shared
               corpus, its own memory, and any joint memory it belongs to — nothing else.
-              <div className="mt-2 font-mono text-[11px] text-[#D97757]">
+              <div className="mt-2 font-mono text-[11px] text-[#44403C]">
                 /triage branding pr How do we answer the Nebius price cut?
               </div>
               <div className="mt-1">bridges two agents onto one question without their memories mixing.</div>
@@ -405,7 +406,7 @@ export default function ChatPanel({ onResult }) {
                 <div key={i} className="flex justify-end">
                   <div className="max-w-[80%] bg-[#F2EEE7] rounded-xl px-3 py-2">
                     {t.bridge && (
-                      <div className="text-[10px] text-[#D97757] font-medium mb-0.5">
+                      <div className="text-[10px] text-[#44403C] font-medium mb-0.5">
                         /triage {t.bridge.join(' ')}
                       </div>
                     )}
@@ -427,7 +428,7 @@ export default function ChatPanel({ onResult }) {
           })}
 
           {busy && (
-            <div role="status" className="flex items-center gap-2 text-[12px] text-[#78716C]">
+            <div role="status" className="flex items-center gap-2 text-[12px] text-[#44403C]">
               <Loader2 className="w-3.5 h-3.5 animate-spin" />
               Waiting for the selected workflow to return…
             </div>
@@ -444,7 +445,7 @@ export default function ChatPanel({ onResult }) {
         {/* Composer */}
         <div className="mt-3">
           {draft && draft.agents.length === 2 && (
-            <div className="mb-1.5 text-[11px] text-[#D97757]">
+            <div className="mb-1.5 text-[11px] text-[#44403C]">
               bridging <span className="font-medium">{draft.agents.map(label).join(' + ')}</span> — they answer
               separately, then merge
             </div>
@@ -459,13 +460,13 @@ export default function ChatPanel({ onResult }) {
               }}
               rows={2}
               placeholder={`Ask ${label(agent)}, or type /triage to bridge two agents…`}
-              className="flex-1 resize-none border border-[#E7E2DA] rounded-xl px-3 py-2 text-[13px] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#D97757]/30"
+              className="flex-1 min-w-0 resize-none border border-[#E7E2DA] rounded-xl px-3 py-2 text-[13px] text-[#1C1917] placeholder:text-[#44403C] focus:outline-none focus:ring-2 focus:ring-[#D97757]/30"
             />
             <button
               aria-label="Send message"
               onClick={send}
               disabled={busy || !input.trim()}
-              className="px-4 rounded-xl bg-[#D97757] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
+              className="px-4 rounded-xl bg-[#1C1917] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
             >
               {busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </button>
@@ -475,7 +476,7 @@ export default function ChatPanel({ onResult }) {
 
       <div className="space-y-3">
         <MemoryInspector key={`${agent}-${memoryKey}`} agent={agent} />
-        <div className="text-[11px] text-[#78716C] leading-relaxed">
+        <div className="text-[11px] text-[#44403C] leading-relaxed">
           A joint namespace is readable by its two members and nobody else. A `/triage` turn is
           written there and to neither private side. Compare the namespace contents before and
           after the request; existing private notes remain separate.

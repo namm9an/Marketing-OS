@@ -69,7 +69,7 @@ export default function CompetitorNetwork({ network, onSelect }) {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl bg-white/80 border border-[#E7E2D8] p-2 overflow-x-auto">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px]" role="img"
+        <svg viewBox={`0 0 ${W} ${H}`} className="w-full min-w-[560px]" role="group"
              aria-label="Competitor link network">
           {positioned.map((n) => {
             const on = hovered === n.id || selected === n.id;
@@ -96,6 +96,10 @@ export default function CompetitorNetwork({ network, onSelect }) {
             const on = hovered === n.id || selected === n.id;
             return (
               <g key={n.id} onClick={() => pick(n.id)}
+                 role="button" tabIndex={0} aria-label={`Inspect ${n.id} source facts`} aria-pressed={selected === n.id}
+                 onKeyDown={(event) => {
+                   if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); pick(n.id); }
+                 }}
                  onMouseEnter={() => setHovered(n.id)} onMouseLeave={() => setHovered(null)}
                  style={{ cursor: 'pointer' }}>
                 <circle
@@ -107,7 +111,7 @@ export default function CompetitorNetwork({ network, onSelect }) {
                 />
                 <text x={n.x} y={n.y + 3} textAnchor="middle"
                       fontSize="10" fontWeight="700"
-                      fill={on ? '#FFFFFF' : '#44403C'}>{n.fact_count}</text>
+                      fill="#1C1917">{n.fact_count}</text>
                 <text x={n.x} y={n.y + n.r + 13} textAnchor="middle"
                       fontSize="10" fontWeight={on ? 700 : 500}
                       fill={on ? '#1C1917' : '#78716C'}

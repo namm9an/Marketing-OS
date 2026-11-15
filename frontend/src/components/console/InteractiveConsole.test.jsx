@@ -22,6 +22,14 @@ function installApi(rows) {
 }
 
 describe('persistent result history', () => {
+  it('selects the recorded specialist when reopening its result', async () => {
+    const recorded = { ...result, decision: { ...result.decision, reasoning_source: 'langgraph:events:mock-fallback' } };
+    installApi([{ id: 'run-1', workflow_type: 'run', result_available: true, result: recorded }]);
+    render(<InteractiveConsole />);
+    fireEvent.click(await screen.findByRole('button', { name: /Saved strategy title/ }));
+    expect(screen.getByRole('button', { name: 'Field Events Agent', exact: true })).toHaveAttribute('aria-pressed', 'true');
+    expect(screen.getByRole('button', { name: 'Branding Agent', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  });
   it('reopens the original response after login instead of reconstructing it from its title', async () => {
     installApi([{ id: 'run-1', selected_option: 'Saved strategy title', goal_statement: 'Original goal',
       workflow_type: 'run', result_available: true, result, created_at: '2026-11-15T10:00:00Z' }]);

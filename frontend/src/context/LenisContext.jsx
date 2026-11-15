@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, useCallback, useRef } from 'react';
 import Lenis from 'lenis';
+import { useMediaQuery } from '../lib/useMediaQuery';
 
 export const LenisContext = createContext(null);
 export const NavScrollContext = createContext({
@@ -19,6 +20,7 @@ export function useNavScroll() {
 }
 
 export function LenisProvider({ children, enabled = true }) {
+  const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
   const [lenis, setLenis] = useState(null);
   const [isNavCrossing, setIsNavCrossing] = useState(false);
   const [activeSection, setActiveSection] = useState('section-hero');
@@ -46,33 +48,8 @@ export function LenisProvider({ children, enabled = true }) {
     };
   }, []);
 
-  // Initialize Lenis instance
+  // Native and smooth scrolling share the same navigation tracking.
   useEffect(() => {
-    if (!enabled) {
-      if (lenis) {
-        lenis.destroy();
-        setLenis(null);
-      }
-      return;
-    }
-
-    const instance = new Lenis({
-      duration: 1.2,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      orientation: 'vertical',
-      smoothWheel: true,
-      touchMultiplier: 2,
-    });
-
-    setLenis(instance);
-
-    let rafId;
-    function raf(time) {
-      instance.raf(time);
-      rafId = requestAnimationFrame(raf);
-    }
-    rafId = requestAnimationFrame(raf);
-
     // Track active section on scroll to update nav link highlighting
     const updateActiveSection = () => {
       const sections = ['section-hero', 'section-workflows', 'section-specialists', 'section-benchmarks'];
@@ -100,18 +77,43 @@ export function LenisProvider({ children, enabled = true }) {
       setActiveSection(current);
     };
 
-    instance.on('scroll', updateActiveSection);
     window.addEventListener('scroll', updateActiveSection, { passive: true });
     updateActiveSection();
+    return () => window.removeEventListener('scroll', updateActiveSection);
+  }, []);
+
+  // Initialize Lenis instance
+  useEffect(() => {
+    if (!enabled || reducedMotion) {
+      setLenis(null);
+      setIsNavCrossing(false);
+      return;
+    }
+
+    const instance = new Lenis({
+      duration: 1.2,
+      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+      orientation: 'vertical',
+      smoothWheel: true,
+      touchMultiplier: 2,
+    });
+
+    setLenis(instance);
+
+    let rafId;
+    function raf(time) {
+      instance.raf(time);
+      rafId = requestAnimationFrame(raf);
+    }
+    rafId = requestAnimationFrame(raf);
+
 
     return () => {
       cancelAnimationFrame(rafId);
-      instance.off('scroll', updateActiveSection);
-      window.removeEventListener('scroll', updateActiveSection);
       instance.destroy();
       setLenis(null);
     };
-  }, [enabled]);
+  }, [enabled, reducedMotion]);
 
   // Programmatic Section Scroll with distance scaling and easeInOutCubic
   const scrollToSection = useCallback(
@@ -150,7 +152,7 @@ export function LenisProvider({ children, enabled = true }) {
 
       // Check prefers-reduced-motion
       const prefersReducedMotion =
-        window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
 
       // Duration formula: clamp(0.9, 0.9 + distanceInViewportHeights * 0.12, 2.2) seconds
       const computedDuration = prefersReducedMotion
@@ -178,18 +180,18 @@ export function LenisProvider({ children, enabled = true }) {
         }
       }
 
-      if (crossesDeck && !prefersReducedMotion) {
+      if (crossesDeck && !prefersReducedMotion && lenis) {
         setIsNavCrossing(true);
       }
 
       if (!lenis) {
+        setIsNavCrossing(false);
         window.scrollTo({
           top: targetY,
           behavior: prefersReducedMotion ? 'auto' : 'smooth',
         });
-        if (targetHash) {
-          history.replaceState(null, '', targetHash);
-        }
+        history.replaceState(null, '', targetHash || window.location.pathname);
+        options.onComplete?.();
         return;
       }
 

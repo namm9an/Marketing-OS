@@ -1,7 +1,8 @@
 import React, { useRef, useState } from 'react';
-import { motion, useScroll, useTransform, useSpring, useReducedMotion, useMotionValueEvent } from 'framer-motion';
+import { motion, useScroll, useTransform, useSpring, useMotionValueEvent } from 'framer-motion';
 import { ArrowRight, Lock, Database, ShieldCheck } from 'lucide-react';
 import { useLenis, useNavScroll } from '../../context/LenisContext';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 import {
   CONTAINER_HEIGHT,
   MORPH_KNOWLEDGE_START,
@@ -22,7 +23,9 @@ import {
 
 export default function PinnedDossierCascade({ onLaunchConsole }) {
   const containerRef = useRef(null);
-  const shouldReduceMotion = useReducedMotion();
+  const shouldReduceMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const narrowViewport = useMediaQuery('(max-width: 1023px)');
+  const staticLayout = Boolean(shouldReduceMotion) || narrowViewport;
   const lenis = useLenis();
   const { isNavCrossing } = useNavScroll();
   const [activeCardIndex, setActiveCardIndex] = useState(0);
@@ -230,13 +233,13 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
   return (
     <section
       ref={containerRef}
-      style={{ height: CONTAINER_HEIGHT }}
+      style={{ height: staticLayout ? 'auto' : CONTAINER_HEIGHT }}
       className="relative w-full bg-[#F6F5F1] overflow-x-clip"
     >
       {/* Sticky Viewport Stage: Pinned below navbar */}
       <div
-        style={{ visibility: isNavCrossing ? 'hidden' : 'visible' }}
-        className="sticky top-14 h-[calc(100vh-3.5rem)] w-full grid place-items-center px-4 sm:px-6 lg:px-8 overflow-x-clip select-none"
+        style={{ visibility: !staticLayout && isNavCrossing ? 'hidden' : 'visible' }}
+        className={staticLayout ? 'w-full' : 'sticky top-14 h-[calc(100vh-3.5rem)] w-full grid place-items-center px-4 sm:px-6 lg:px-8 overflow-x-clip select-none'}
       >
         
         {/* =================================================================== */}
@@ -248,7 +251,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
             scale: centralNodeScale,
             visibility: centralNodeVisibility,
           }}
-          className="col-start-1 row-start-1 z-20 max-w-xl w-full text-center pointer-events-none"
+          className={`col-start-1 row-start-1 z-20 max-w-xl w-full text-center pointer-events-none ${staticLayout ? 'hidden' : ''}`}
         >
           <motion.div
             style={{
@@ -285,7 +288,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
             width: 'clamp(900px, 70vw, 1100px)',
             maxWidth: '100%',
           }}
-          className="col-start-1 row-start-1 z-30 flex items-center justify-center gap-2 sm:gap-3 pointer-events-auto"
+          className={`col-start-1 row-start-1 z-30 flex items-center justify-center gap-2 sm:gap-3 pointer-events-auto ${staticLayout ? 'hidden' : ''}`}
         >
           {dossiers.map((d, i) => (
             <button
@@ -306,18 +309,19 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
         {/* PHASE 3: Stacking Dossier Deck (Two-Panel Layout)                   */}
         {/* =================================================================== */}
         <div
-          style={{ width: 'clamp(900px, 70vw, 1100px)', maxWidth: '100%' }}
-          className="col-start-1 row-start-1 grid place-items-center"
+          style={{ width: staticLayout ? '100%' : 'clamp(900px, 70vw, 1100px)', maxWidth: '100%' }}
+          className={staticLayout ? 'space-y-4' : 'col-start-1 row-start-1 grid place-items-center'}
         >
           {dossiers.map((dossier, idx) => {
             const transform = cardTransforms[idx];
             const isActive = idx === activeCardIndex;
             const isCard1 = idx === 0;
+            const HeaderTag = staticLayout ? 'h3' : 'button';
 
             return (
               <motion.div
                 key={dossier.num}
-                style={{
+                style={staticLayout ? { width: '100%' } : {
                   y: transform.y,
                   scale: transform.scale,
                   zIndex: transform.z,
@@ -334,10 +338,10 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                   - 1px hairline border #111315
                   - Fits inside 100vh - 56px navbar at 1366x768
                 */}
-                <div className="relative bg-[#FFFFFF] border border-[#111315] shadow-md flex flex-col max-h-[calc(100vh-4rem)] overflow-hidden">
+                <div className={`relative bg-[#FFFFFF] border border-[#111315] shadow-md flex flex-col ${staticLayout ? '' : 'max-h-[calc(100vh-4rem)] overflow-hidden'}`}>
                   
                   {/* Ink Overlay for Dimming Previous Cards */}
-                  {transform.tint !== 0 && (
+                  {!staticLayout && transform.tint !== 0 && (
                     <motion.div
                       style={{ opacity: transform.tint }}
                       className="absolute inset-0 bg-[#111315] pointer-events-none z-40 transition-opacity"
@@ -345,14 +349,14 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                   )}
 
                   {/* Top Header Strip with Protruding Tab & Real Monochromatic Telemetry */}
-                  <div className="relative z-50 flex items-center justify-between border-b border-[#111315] bg-[#ECEAE3] px-4 sm:px-6 py-2.5">
+                  <div className={`relative ${staticLayout ? 'z-20' : 'z-50'} flex flex-wrap items-center justify-between gap-2 border-b border-[#111315] bg-[#ECEAE3] px-4 sm:px-6 py-2.5`}>
                     
                     {/* Tab Protruding on Left - Clickable with Hover Ink Underline & Blue Active State */}
-                    <button
-                      type="button"
-                      onClick={() => handleTabClick(idx)}
+                    <HeaderTag
+                      type={staticLayout ? undefined : 'button'}
+                      onClick={staticLayout ? undefined : () => handleTabClick(idx)}
                       className="group flex items-center gap-2 text-left cursor-pointer focus:outline-none"
-                      aria-label={`Scroll to ${dossier.name}`}
+                      aria-label={staticLayout ? dossier.name : `Scroll to ${dossier.name}`}
                     >
                       <div
                         className={`font-mono text-xs font-semibold px-3 py-1 tracking-wider uppercase transition-colors ${
@@ -368,7 +372,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                       <span className="font-sans text-xs font-semibold text-[#111315] hidden sm:inline group-hover:underline decoration-[#111315] decoration-2 underline-offset-4">
                         {dossier.domain}
                       </span>
-                    </button>
+                    </HeaderTag>
 
                     {/* Illustrative examples; genuine provider captures are a later phase */}
                     <div className="font-mono text-[10.5px] text-[#4A505C] tracking-tight">
@@ -379,7 +383,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                   {/* Card Content Body: Expands from tab height via clip-path on Card 1 (0.13 -> 0.15) */}
                   <motion.div
                     style={{
-                      ...(isCard1 ? { clipPath: c0BodyClip } : {}),
+                      ...(isCard1 && !staticLayout ? { clipPath: c0BodyClip } : {}),
                       padding: 'clamp(0.85rem, 1.4vw, 1.25rem)',
                     }}
                     className="overflow-hidden"
@@ -444,7 +448,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                       </div>
 
                       {/* Right Panel (~45%): Empty Scene Stage */}
-                      <div
+                      {!staticLayout ? <div
                         style={{ minHeight: 'clamp(270px, 35vh, 320px)' }}
                         className="relative border border-[#D4D1C7] bg-[#FBF9F5] p-3 sm:p-3.5 flex flex-col justify-between overflow-hidden"
                       >
@@ -457,7 +461,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
                         <div className="flex-1 flex items-center justify-center">
                           {/* Empty scene stage */}
                         </div>
-                      </div>
+                      </div> : <p className="text-xs text-[#4A505C]">Physical agent scenes are planned. This card is an illustrative example.</p>}
 
                     </div>
                   </motion.div>
@@ -470,7 +474,7 @@ export default function PinnedDossierCascade({ onLaunchConsole }) {
         {/* Bottom Scroll Progress Tick (Monochrome) */}
         <div
           style={{ width: 'clamp(900px, 70vw, 1100px)', maxWidth: '100%' }}
-          className="col-start-1 row-start-1 flex justify-end items-end h-full pb-4 pr-2 font-mono text-[10.5px] text-[#6E7685] pointer-events-none"
+          className={`col-start-1 row-start-1 flex justify-end items-end h-full pb-4 pr-2 font-mono text-[10.5px] text-[#6E7685] pointer-events-none ${staticLayout ? 'hidden' : ''}`}
         >
           <span>Cascading 5 Specialist Dossiers · Scroll to advance</span>
         </div>

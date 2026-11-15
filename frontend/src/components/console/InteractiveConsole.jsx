@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Sparkles, Copy, Check, FileText, AlertCircle, LogOut,
   History, Database, User, Lock, ArrowRight,
@@ -25,6 +25,10 @@ const Backdrop = React.memo((props) => (
 
 export default function InteractiveConsole({ onBackToCaseStudy }) {
   const reducedMotion = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const narrowViewport = useMediaQuery('(max-width: 767px)');
+  const navToggle = useRef(null);
+  const navigation = useRef(null);
+  const restoreNavFocus = useRef(false);
   const [authenticated, setAuthenticated] = useState(false);
   const [authChecking, setAuthChecking] = useState(true);
   const [authBusy, setAuthBusy] = useState(false);
@@ -34,7 +38,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
   const [loginError, setLoginError] = useState(null);
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('workbench');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
   const [goal, setGoal] = useState('Position B200 against Nebius using available reliability evidence');
   const [selectedAgent, setSelectedAgent] = useState('branding');
   const [loading, setLoading] = useState(false);
@@ -57,6 +61,32 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
   const historyRequest = useRequestScope();
   const networkRequest = useRequestScope();
   const backdropAgents = useMemo(() => activeTab === 'workbench' ? [selectedAgent] : [], [activeTab, selectedAgent]);
+
+  useEffect(() => {
+    if (narrowViewport && sidebarOpen) navigation.current?.querySelector('button')?.focus();
+    if (!sidebarOpen && restoreNavFocus.current) {
+      navToggle.current?.focus();
+      restoreNavFocus.current = false;
+    }
+  }, [narrowViewport, sidebarOpen]);
+  const closeNavigation = () => {
+    restoreNavFocus.current = true;
+    setSidebarOpen(false);
+  };
+  const selectTab = (tab) => {
+    setActiveTab(tab);
+    if (narrowViewport) closeNavigation();
+  };
+  const navigationKeyDown = (event) => {
+    if (!narrowViewport || !sidebarOpen) return;
+    if (event.key === 'Escape') { closeNavigation(); return; }
+    if (event.key !== 'Tab') return;
+    const buttons = [...navigation.current.querySelectorAll('button:not(:disabled)')];
+    const first = buttons[0];
+    const last = buttons.at(-1);
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  };
 
   useEffect(() => {
     const pending = authRequest.begin();
@@ -115,8 +145,11 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
     setError(null);
     setCopied(false);
     setCurrentData(run);
+    const recordedAgent = AGENTS.find(({ id }) => run.decision.reasoning_source?.startsWith(`langgraph:${id}:`));
+    if (run.workflow_type === 'run' && recordedAgent) setSelectedAgent(recordedAgent.id);
     setGoal(run.goalStatement);
     setActiveTab('workbench');
+    if (narrowViewport) closeNavigation();
   };
 
   const handleLogin = async (e) => {
@@ -251,7 +284,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
   if (authChecking) {
     return (
-      <div className="bg-[#FBF9F5] min-h-screen flex items-center justify-center text-xs text-[#78716C]">
+      <div className="bg-[#FBF9F5] min-h-screen flex items-center justify-center text-xs text-[#44403C]">
         Loading Marketing OS...
       </div>
     );
@@ -262,10 +295,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
     return (
       <div className="bg-[#F6F5F1] text-[#111315] font-sans antialiased min-h-screen flex items-center justify-center p-4 relative select-none">
         <div className="w-full max-w-[400px] space-y-4 relative z-10">
-          
+
           <div className="flex items-center justify-between border-b border-[#D4D1C7] pb-3">
             <div className="space-y-0.5 text-left">
-              <span className="font-mono text-[10.5px] uppercase tracking-wider text-[#6E7685]">
+              <span className="font-mono text-[10.5px] uppercase tracking-wider text-[#4A505C]">
                 Governed Intelligence Workbench
               </span>
               <h1 className="text-xl font-display font-bold tracking-tight text-[#111315]">
@@ -286,7 +319,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             {/* Terminal Header Strip */}
             <div className="flex items-center justify-between border-b border-[#111315] bg-[#ECEAE3]/70 px-4 py-2 text-xs font-mono">
               <span className="font-semibold text-[#111315]">AUTH GATEWAY</span>
-              <span className="text-[10.5px] text-[#6E7685]">OPERATIONAL CONSOLE</span>
+              <span className="text-[10.5px] text-[#4A505C]">OPERATIONAL CONSOLE</span>
             </div>
 
             <div className="p-6 space-y-5">
@@ -303,7 +336,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     Operator Username
                   </label>
                   <div className="relative">
-                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6E7685]" />
+                    <User className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#4A505C]" />
                     <input
                       id="operator-username" autoComplete="username"
                       type="text"
@@ -322,7 +355,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     Access Password
                   </label>
                   <div className="relative">
-                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#6E7685]" />
+                    <Lock className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-[#4A505C]" />
                     <input
                       id="operator-password" autoComplete="current-password"
                       type={showPassword ? 'text' : 'password'}
@@ -336,7 +369,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                       type="button"
                       aria-label={showPassword ? "Hide password" : "Show password"}
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6E7685] hover:text-[#111315] transition-colors p-0.5 cursor-pointer"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-[#4A505C] hover:text-[#111315] transition-colors p-0.5 cursor-pointer"
                     >
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
@@ -364,16 +397,21 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
   // Render Full Workspace Application with Left Sidebar
   return (
-    <div className="bg-[#FBF9F5] text-[#1C1917] font-sans antialiased min-h-screen flex selection:bg-[#D97757]/20 selection:text-[#1C1917] relative overflow-hidden">
-      
+    <div className="bg-[#FBF9F5] text-[#1C1917] font-sans antialiased min-h-screen flex selection:bg-[#1C1917]/20 selection:text-[#1C1917] relative overflow-hidden">
+
       {/* Ambient gradient background, tinted by whichever agent is in focus */}
       {!reducedMotion && <Backdrop agents={backdropAgents} />}
 
       {/* Left Navigation Sidebar */}
-      <aside 
+      {narrowViewport && sidebarOpen && <button aria-label="Close navigation overlay" onClick={closeNavigation}
+        className="fixed inset-0 z-30 bg-black/30" />}
+      <aside id="console-navigation" ref={navigation} onKeyDown={navigationKeyDown}
+        role={narrowViewport && sidebarOpen ? 'dialog' : undefined}
+        aria-modal={narrowViewport && sidebarOpen ? true : undefined}
+        aria-label="Console navigation"
         className={`fixed inset-y-0 left-0 z-40 bg-[#FAF8F5]/95 backdrop-blur-xl border-r border-[#E7E2D8] transition-all duration-300 flex flex-col justify-between ${
           sidebarOpen ? 'w-64' : 'w-16'
-        }`}
+        } ${narrowViewport && !sidebarOpen ? 'hidden' : ''} overflow-y-auto`}
       >
         <div className="space-y-6 p-4">
           {/* Brand Header */}
@@ -381,14 +419,15 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             {sidebarOpen ? (
               <div className="flex items-center gap-2.5">
                 <span className="font-bold text-base tracking-tight text-[#1C1917]">Marketing OS</span>
-                <span className="text-[10px] font-mono text-[#78716C] border border-[#E0DACE] px-1.5 py-0.5 rounded bg-[#F2EEE7]">v1.0</span>
+                <span className="text-[10px] font-mono text-[#44403C] border border-[#E0DACE] px-1.5 py-0.5 rounded bg-[#F2EEE7]">v1.0</span>
               </div>
             ) : (
-              <span className="font-bold text-lg text-[#D97757] mx-auto">M</span>
+              <span className="font-bold text-lg text-[#44403C] mx-auto">M</span>
             )}
-            <button 
-              onClick={() => setSidebarOpen(!sidebarOpen)}
-              className="p-1 rounded-lg text-[#78716C] hover:text-[#1C1917] hover:bg-[#F2EEE7] transition-colors"
+            <button
+              aria-label={narrowViewport ? 'Close navigation' : 'Toggle sidebar'}
+              onClick={() => narrowViewport ? closeNavigation() : setSidebarOpen(!sidebarOpen)}
+              className="p-1 rounded-lg text-[#44403C] hover:text-[#1C1917] hover:bg-[#F2EEE7] transition-colors"
               title="Toggle Sidebar"
             >
               {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
@@ -398,10 +437,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
           {/* Navigation Menu Links */}
           <nav className="space-y-1">
             <button
-              onClick={() => setActiveTab('workbench')}
+              aria-label="Workbench" onClick={() => selectTab('workbench')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                activeTab === 'workbench' 
-                  ? 'bg-[#D97757] text-white shadow-xs' 
+                activeTab === 'workbench'
+                  ? 'bg-[#1C1917] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
             >
@@ -410,10 +449,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             </button>
 
             <button
-              onClick={() => setActiveTab('chat')}
+              aria-label="Agent Chat" onClick={() => selectTab('chat')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                 activeTab === 'chat'
-                  ? 'bg-[#D97757] text-white shadow-xs'
+                  ? 'bg-[#1C1917] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
             >
@@ -422,10 +461,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             </button>
 
             <button
-              onClick={() => setActiveTab('history')}
+              aria-label="Decision History" onClick={() => selectTab('history')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                activeTab === 'history' 
-                  ? 'bg-[#D97757] text-white shadow-xs' 
+                activeTab === 'history'
+                  ? 'bg-[#1C1917] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
             >
@@ -441,10 +480,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             </button>
 
             <button
-              onClick={() => setActiveTab('digest')}
+              aria-label="On-demand Digest" onClick={() => selectTab('digest')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                 activeTab === 'digest'
-                  ? 'bg-[#D97757] text-white shadow-xs'
+                  ? 'bg-[#1C1917] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
             >
@@ -453,10 +492,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             </button>
 
             <button
-              onClick={() => setActiveTab('knowledge')}
+              aria-label="Knowledge Base" onClick={() => selectTab('knowledge')}
               className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium transition-all ${
                 activeTab === 'knowledge'
-                  ? 'bg-[#D97757] text-white shadow-xs'
+                  ? 'bg-[#1C1917] text-white shadow-xs'
                   : 'text-[#44403C] hover:bg-[#F2EEE7] hover:text-[#1C1917]'
               }`}
             >
@@ -468,7 +507,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
           {/* Recent Runs Sublist */}
           {sidebarOpen && history.length > 0 && (
             <div className="pt-4 border-t border-[#E7E2D8] space-y-2">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-[#78716C]">Recent Runs</span>
+              <span className="text-[10px] font-mono uppercase tracking-wider text-[#44403C]">Recent Runs</span>
               <div className="space-y-1 max-h-48 overflow-y-auto">
                 {history.map((run, idx) => (
                   <button
@@ -478,7 +517,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     className="w-full text-left p-2 rounded-lg bg-white/60 hover:bg-white border border-[#E0DACE] text-[11px] text-[#44403C] hover:text-[#1C1917] transition-all truncate"
                   >
                     <div className="font-medium truncate">{run.decision.selected_option}</div>
-                    <div className="text-[10px] font-mono text-[#A8A29E]">{run.timestamp}</div>
+                    <div className="text-[10px] font-mono text-[#44403C]">{run.timestamp}</div>
                   </button>
                 ))}
               </div>
@@ -495,13 +534,13 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               </div>
               <div className="text-xs">
                 <div className="font-medium text-[#1C1917]">{username}</div>
-                <div className="text-[10px] text-[#78716C]">Executive Profile</div>
+                <div className="text-[10px] text-[#44403C]">Executive Profile</div>
               </div>
             </div>
           ) : null}
           <button
             onClick={handleLogout} disabled={authBusy}
-            className="p-1.5 rounded-lg text-[#A8A29E] hover:text-[#1C1917] hover:bg-[#F2EEE7] transition-colors"
+            className="p-1.5 rounded-lg text-[#44403C] hover:text-[#1C1917] hover:bg-[#F2EEE7] transition-colors"
             title="Sign out"
           >
             <LogOut className="w-4 h-4" />
@@ -510,12 +549,14 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
       </aside>
 
       {/* Main Workspace Area (Offset by Sidebar Width) */}
-      <main className={`flex-1 transition-all duration-300 min-h-screen flex flex-col relative z-10 ${
-        sidebarOpen ? 'pl-64' : 'pl-16'
+      <main inert={narrowViewport && sidebarOpen ? true : undefined} className={`flex-1 min-w-0 w-full break-words transition-all duration-300 min-h-screen flex flex-col relative z-10 ${
+        sidebarOpen ? 'md:pl-64' : 'md:pl-16'
       }`}>
-        
+
         {/* Workspace Top Header */}
-        <header className="sticky top-0 z-30 border-b border-[#E7E2D8] bg-[#FBF9F5]/90 backdrop-blur-md px-8 py-4 flex items-center justify-between">
+        <header className="sticky top-0 z-30 border-b border-[#E7E2D8] bg-[#FBF9F5]/90 backdrop-blur-md px-4 md:px-8 py-4 flex flex-wrap items-center justify-between gap-3">
+          <button ref={navToggle} aria-label="Open navigation" aria-controls="console-navigation" aria-expanded={sidebarOpen}
+            onClick={() => setSidebarOpen(true)} className="md:hidden p-3 border rounded"><Menu className="w-4 h-4" /></button>
           <div>
             <h2 className="text-sm font-semibold text-[#1C1917] capitalize">
               {activeTab === 'workbench' && 'Positioning Workbench'}
@@ -525,7 +566,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               {activeTab === 'knowledge' && 'Generated Knowledge Summary'}
               {activeTab === 'settings' && 'Runtime Settings'}
             </h2>
-            <p className="text-[11px] text-[#78716C]">
+            <p className="text-[11px] text-[#44403C]">
               {activeTab === 'workbench' && 'Choose a specialist, submit a goal, and review the result and its risk flags'}
               {activeTab === 'chat' && 'Talk to one agent and its memory, or bridge two without their memories mixing'}
               {activeTab === 'history' && 'Audit trail of past strategy executions and CMO ratifications'}
@@ -557,10 +598,10 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
         {/* Tab 1: Workbench View */}
         {activeTab === 'workbench' && (
           <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 space-y-6">
-            
+
             {/* Unified Prompt Input Box */}
             <div className="space-y-3">
-              <form 
+              <form
                 onSubmit={handleSubmit}
                 className="bg-white/90 backdrop-blur-xl border border-[#E7E2D8] focus-within:border-[#D97757] focus-within:ring-2 focus-within:ring-[#D97757]/20 rounded-2xl transition-all shadow-[0_4px_20px_rgba(0,0,0,0.03)] overflow-hidden"
               >
@@ -577,19 +618,15 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                   />
                 </div>
 
-                <div className="px-4 py-3 bg-[#F7F5F0]/90 border-t border-[#E7E2D8] flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-[#44403C]">Model configured by server</span>
-                  </div>
-
+                <div className="px-4 py-3 bg-[#F7F5F0]/90 border-t border-[#E7E2D8] flex flex-wrap items-center justify-end gap-3">
                   <div className="flex items-center gap-3">
-                    <span className="hidden sm:inline-block text-[10px] font-mono text-[#A8A29E]">
+                    <span className="hidden sm:inline-block text-[10px] font-mono text-[#44403C]">
                       Press <kbd className="px-1.5 py-0.5 border border-[#E0DACE] rounded bg-white font-sans text-[10px]">⌘</kbd> + <kbd className="px-1.5 py-0.5 border border-[#E0DACE] rounded bg-white font-sans text-[10px]">Enter</kbd>
                     </span>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="px-4 py-2 bg-[#D97757] hover:bg-[#C15C3D] text-white font-medium text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-60"
+                      className="px-4 py-2 bg-[#1C1917] hover:bg-[#44403C] text-white font-medium text-xs rounded-xl transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-60"
                     >
                       {loading ? (
                         <div className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -605,7 +642,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               <div role="group" aria-label="Select specialist" className="flex flex-wrap items-center gap-2 pb-1 text-xs">
                 {AGENTS.map(({ id, label, Icon }) => (
                   <button key={id} type="button" onClick={() => selectAgent(id)} aria-pressed={selectedAgent === id}
-                    className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 ${selectedAgent === id ? 'bg-[#D97757] text-white border-[#D97757]' : 'bg-white text-[#44403C] border-[#E0DACE]'}`}>
+                    className={`px-3 py-2 rounded-xl border text-xs font-semibold flex items-center gap-1.5 ${selectedAgent === id ? 'bg-[#1C1917] text-white border-[#D97757]' : 'bg-white text-[#44403C] border-[#E0DACE]'}`}>
                     <Icon className="w-3.5 h-3.5" />{label} Agent
                   </button>
                 ))}
@@ -618,53 +655,53 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             {!currentData && !loading && (
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase tracking-wider text-[#78716C]">Purposely Built CMO Executive Scenarios</span>
-                  <span className="text-[10px] text-[#A8A29E]">Click any scenario to load into prompt workbench</span>
+                  <span className="text-xs font-mono uppercase tracking-wider text-[#44403C]">Purposely Built CMO Executive Scenarios</span>
+                  <span className="text-[10px] text-[#44403C]">Click any scenario to load into prompt workbench</span>
                 </div>
-                
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <button 
+                  <button
                     onClick={() => setGoal("Position our GPU cloud compute infrastructure against AWS/Azure without engaging in destructive price wars")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#D97757]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#D97757] transition-colors">Hyperscaler Market Entry</h4>
+                      <Sparkles className="w-4 h-4 text-[#44403C]" />
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Hyperscaler Market Entry</h4>
                     </div>
-                    <p className="text-xs text-[#78716C] leading-relaxed">Position against AWS/Azure by focusing on AI training capacity without hyperscaler lock-in.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Position against AWS/Azure by focusing on AI training capacity without hyperscaler lock-in.</p>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => setGoal("Formulate brand positioning for enterprise SaaS CRM platform targeting Fortune 500 financial institutions requiring strict compliance")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
-                      <ShieldCheck className="w-4 h-4 text-[#D97757]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#D97757] transition-colors">Enterprise Compliance & SOC2</h4>
+                      <ShieldCheck className="w-4 h-4 text-[#44403C]" />
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Enterprise Compliance & SOC2</h4>
                     </div>
-                    <p className="text-xs text-[#78716C] leading-relaxed">Establish credibility for high-security CRM platforms targeting regulated financial enterprises.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Establish credibility for high-security CRM platforms targeting regulated financial enterprises.</p>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => setGoal("Position developer API infrastructure for autonomous AI agent developers demanding sub-50ms latencies")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
-                      <Database className="w-4 h-4 text-[#D97757]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#D97757] transition-colors">Sub-50ms Developer Speed</h4>
+                      <Database className="w-4 h-4 text-[#44403C]" />
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Sub-50ms Developer Speed</h4>
                     </div>
-                    <p className="text-xs text-[#78716C] leading-relaxed">Capture developer mindshare by emphasizing ultra-low latency execution for agentic loops.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Capture developer mindshare by emphasizing ultra-low latency execution for agentic loops.</p>
                   </button>
 
-                  <button 
+                  <button
                     onClick={() => setGoal("Establish market leadership for real-time payment fraud prevention API targeting high-volume e-commerce payment processors")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
-                      <Lock className="w-4 h-4 text-[#D97757]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#D97757] transition-colors">Fintech Fraud Prevention</h4>
+                      <Lock className="w-4 h-4 text-[#44403C]" />
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Fintech Fraud Prevention</h4>
                     </div>
-                    <p className="text-xs text-[#78716C] leading-relaxed">Explore payment-fraud positioning while making unsupported performance claims explicit.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Explore payment-fraud positioning while making unsupported performance claims explicit.</p>
                   </button>
                 </div>
               </div>
@@ -681,7 +718,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             {/* Document Artifact Brief Card */}
             {currentData?.result_available && currentData.workflow_type === 'run' && currentData.positioning && !loading && (
               <div className="bg-white/90 backdrop-blur-xl border border-[#E7E2D8] rounded-2xl p-6 space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] print-artifact relative">
-                
+
                 <ExecutionDetails metrics={currentData.metrics} />
                 <DecisionReview decisionId={currentData.decision.id} onUpdated={updateReview} />
                 <button onClick={() => {
@@ -693,7 +730,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#E7E2D8]">
                   <div className="space-y-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-xs font-mono uppercase tracking-wider text-[#78716C]">Positioning Strategy Brief</span>
+                      <span className="text-xs font-mono uppercase tracking-wider text-[#44403C]">Positioning Strategy Brief</span>
                       <span className="px-2.5 py-0.5 rounded-md text-[10px] font-mono font-semibold border bg-[#ECFDF5] text-[#047857] border-[#A7F3D0]">
                         STATE: {(currentData.positioning.state || 'Unavailable').toUpperCase()}
                       </span>
@@ -701,6 +738,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     <h3 className="text-lg font-bold text-[#1C1917] leading-snug">
                       {currentData.decision.selected_option}
                     </h3>
+                    <p className="text-xs text-[#44403C]">Submitted goal: {currentData.goalStatement}</p>
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0 no-print">
@@ -710,14 +748,14 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                       className="px-3 py-1.5 rounded-xl bg-white hover:bg-[#F7F5F0] border border-[#E0DACE] text-[#44403C] hover:text-[#1C1917] text-xs font-medium transition-all flex items-center gap-1.5 shadow-xs"
                       title="Copy Markdown"
                     >
-                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#78716C]" />}
+                      {copied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 text-[#44403C]" />}
                       <span>{copied ? 'Copied!' : 'Copy'}</span>
                     </button>
 
                     <button
                       type="button"
                       onClick={handleExportMd}
-                      className="px-3 py-1.5 rounded-xl bg-[#D97757] hover:bg-[#C15C3D] text-white text-xs font-medium transition-all flex items-center gap-1.5 shadow-sm"
+                      className="px-3 py-1.5 rounded-xl bg-[#1C1917] hover:bg-[#44403C] text-white text-xs font-medium transition-all flex items-center gap-1.5 shadow-sm"
                       title="Download Markdown Report"
                     >
                       <FileText className="w-3.5 h-3.5" />
@@ -728,7 +766,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     <button
                       type="button"
                       onClick={() => setCurrentData(null)}
-                      className="p-1.5 rounded-xl bg-white hover:bg-[#F7F5F0] border border-[#E0DACE] text-[#78716C] hover:text-[#1C1917] transition-all ml-1"
+                      className="p-1.5 rounded-xl bg-white hover:bg-[#F7F5F0] border border-[#E0DACE] text-[#44403C] hover:text-[#1C1917] transition-all ml-1"
                       title="Dismiss Result / Return to Empty Screen"
                     >
                       <X className="w-4 h-4" />
@@ -739,29 +777,29 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 {/* Metric Strip (Clean Wrapping Grid) */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <div className="bg-[#F7F5F0]/90 border border-[#E0DACE] rounded-xl p-3.5 space-y-1">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#78716C]">Selected Strategy</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#44403C]">Selected Strategy</div>
                     <div className="text-xs font-semibold text-[#1C1917] leading-snug break-words">
                       {currentData.decision.selected_option}
                     </div>
                   </div>
 
                   <div className="bg-[#F7F5F0]/90 border border-[#E0DACE] rounded-xl p-3.5 space-y-1">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#78716C]">Decision Confidence</div>
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#44403C]">Decision Confidence</div>
                     <div className="text-xs font-semibold text-[#1C1917]">
                       {currentData.decision.confidence}
                     </div>
                   </div>
 
                   <div className="bg-[#F7F5F0]/90 border border-[#E0DACE] rounded-xl p-3.5 space-y-1">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#78716C]">Decision ID</div>
-                    <div className="text-[11px] font-mono text-[#78716C] break-all">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#44403C]">Decision ID</div>
+                    <div className="text-[11px] font-mono text-[#44403C] break-all">
                       {currentData.decision.id}
                     </div>
                   </div>
 
                   <div className="bg-[#F7F5F0]/90 border border-[#E0DACE] rounded-xl p-3.5 space-y-1">
-                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#78716C]">Reasoning Source</div>
-                    <div className="text-[11px] font-mono text-[#D97757] font-medium break-all">
+                    <div className="text-[10px] font-semibold uppercase tracking-wider text-[#44403C]">Reasoning Source</div>
+                    <div className="text-[11px] font-mono text-[#44403C] font-medium break-all">
                       {currentData.decision.reasoning_source}
                     </div>
                   </div>
@@ -769,7 +807,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
                 {/* Positioning Statement */}
                 <div className="space-y-1.5">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Positioning Statement</div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Positioning Statement</div>
                   <div className="p-4 rounded-xl bg-[#FDFBF7] border-l-4 border-[#D97757] border border-[#E7E2D8] text-xs text-[#1C1917] font-medium leading-relaxed">
                     {currentData.positioning.statement}
                   </div>
@@ -778,14 +816,14 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 {/* Rationale & Risks */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5 flex flex-col">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Strategic Rationale</div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Strategic Rationale</div>
                     <div className="p-3.5 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] text-xs text-[#44403C] leading-relaxed flex-1">
                       {currentData.decision.rationale}
                     </div>
                   </div>
 
                   <div className="space-y-1.5 flex flex-col">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Identified Risks</div>
+                    <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Identified Risks</div>
                     <div className="p-3.5 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] text-xs text-[#44403C] leading-relaxed flex-1">
                       {currentData.decision.risks}
                     </div>
@@ -794,12 +832,12 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
                 {/* Knowledge Stream */}
                 <div className="space-y-2.5 pt-3 border-t border-[#E7E2D8]">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Generated Knowledge Summary</div>
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Generated Knowledge Summary</div>
                   <div className="space-y-2">
                     {currentData.knowledge_units.map((ku, i) => (
                       <div key={i} className="p-3 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] flex items-center justify-between text-xs text-[#44403C] gap-3">
                         <span className="font-normal text-[#1C1917] leading-relaxed flex-1">{ku.content}</span>
-                        <span className="font-mono text-[10px] uppercase text-[#78716C] border border-[#E0DACE] bg-white px-2 py-0.5 rounded-md shrink-0 font-semibold">
+                        <span className="font-mono text-[10px] uppercase text-[#44403C] border border-[#E0DACE] bg-white px-2 py-0.5 rounded-md shrink-0 font-semibold">
                           {ku.class} / {ku.confidence}
                         </span>
                       </div>
@@ -814,7 +852,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
         {/* Tab 2: Decision History View */}
         {activeTab === 'chat' && (
-          <div className="max-w-6xl mx-auto px-6 py-6">
+          <div className="max-w-6xl w-full min-w-0 mx-auto px-6 py-6">
             <ChatPanel onResult={refreshHistory} />
           </div>
         )}
@@ -823,7 +861,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
           <div className="flex-1 max-w-4xl w-full mx-auto px-6 py-8 space-y-4">
             <h3 className="text-sm font-semibold text-[#1C1917]">Execution History ({history.length})</h3>
             {history.length === 0 && !historyError && !historyLoading ? (
-              <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">
+              <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#44403C]">
                 No decision runs executed yet. Run a goal in the workbench to record history.
               </div>
             ) : (
@@ -832,7 +870,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                   <div key={idx} className="p-5 rounded-2xl bg-white/80 border border-[#E7E2D8] space-y-3 shadow-xs">
                     <div className="flex items-center justify-between">
                       <span className="text-xs font-bold text-[#1C1917]">{item.decision.selected_option}</span>
-                      <span className="text-[10px] font-mono text-[#78716C]">{item.timestamp}</span>
+                      <span className="text-[10px] font-mono text-[#44403C]">{item.timestamp}</span>
                     </div>
                     <button onClick={() => openSaved(item)} className="text-xs text-[#44403C] underline">Open saved result</button>
                     <p className="text-xs text-[#44403C] bg-[#F7F5F0] p-3 rounded-xl border border-[#E0DACE] leading-relaxed">
@@ -852,7 +890,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             <div className="flex items-center justify-between gap-3 no-print">
               <div>
                 <h3 className="text-sm font-semibold text-[#1C1917]">Competitor Intelligence Digest</h3>
-                <p className="text-[11px] text-[#78716C]">
+                <p className="text-[11px] text-[#44403C]">
                   Fans out to all 5 agents in parallel over {network?.total_facts ?? '—'} source-linked records. This digest runs only when requested.
                 </p>
               </div>
@@ -868,7 +906,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 <button
                   onClick={runDigest}
                   disabled={digestLoading}
-                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#D97757] text-white shadow-xs hover:bg-[#C56647] disabled:opacity-60 transition-all"
+                  className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-[#1C1917] text-white shadow-xs hover:bg-[#44403C] disabled:opacity-60 transition-all"
                 >
                   {digestLoading
                     ? <><RefreshCw className="w-3.5 h-3.5 animate-spin" /> Synthesizing…</>
@@ -892,7 +930,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                   <div className="p-5 rounded-2xl bg-white/80 border border-[#E7E2D8] space-y-3">
                     <div className="flex items-start justify-between gap-4">
                       <h4 className="text-base font-semibold text-[#1C1917] leading-snug">{digest.headline}</h4>
-                      <span className="text-[10px] font-mono text-[#78716C] shrink-0 mt-1">
+                      <span className="text-[10px] font-mono text-[#44403C] shrink-0 mt-1">
                         {new Date(digest.generated_at).toLocaleDateString()}
                       </span>
                     </div>
@@ -901,21 +939,21 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Competitor Movements</div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Competitor Movements</div>
                       <ul className="p-3.5 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] space-y-2">
                         {digest.competitor_movements.map((m, i) => (
                           <li key={i} className="text-xs text-[#44403C] leading-relaxed flex gap-2">
-                            <span className="text-[#D97757] font-bold">›</span>{m}
+                            <span className="text-[#44403C] font-bold">›</span>{m}
                           </li>
                         ))}
                       </ul>
                     </div>
                     <div className="space-y-1.5">
-                      <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Recommended Actions</div>
+                      <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Recommended Actions</div>
                       <ul className="p-3.5 rounded-xl bg-[#F7F5F0]/90 border border-[#E0DACE] space-y-2">
                         {digest.recommended_actions.map((a, i) => (
                           <li key={i} className="text-xs text-[#44403C] leading-relaxed flex gap-2">
-                            <span className="text-[#D97757] font-bold">›</span>{a}
+                            <span className="text-[#44403C] font-bold">›</span>{a}
                           </li>
                         ))}
                       </ul>
@@ -923,7 +961,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                   </div>
 
                   <div className="space-y-2.5">
-                    <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+                    <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">
                       Specialist Agent Briefs ({digest.agent_briefs.length})
                     </div>
                     <div className="space-y-2">
@@ -931,7 +969,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                         <div key={b.agent} className="p-4 rounded-xl bg-white/80 border border-[#E7E2D8] space-y-1.5">
                           <div className="flex items-center justify-between gap-3">
                             <span className="text-xs font-bold text-[#1C1917]">{b.headline}</span>
-                            <span className="font-mono text-[10px] uppercase text-[#78716C] border border-[#E0DACE] bg-[#F7F5F0] px-2 py-0.5 rounded-md shrink-0">
+                            <span className="font-mono text-[10px] uppercase text-[#44403C] border border-[#E0DACE] bg-[#F7F5F0] px-2 py-0.5 rounded-md shrink-0">
                               {b.agent.replace('_', ' ')} / {b.confidence}
                             </span>
                           </div>
@@ -945,28 +983,28 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
               {/* Link network — grounded, renders with or without a synthesized digest */}
               <div className="space-y-2.5">
-                <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">Competitor Link Network</div>
+                <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">Competitor Link Network</div>
                 {networkError && <p role="alert" className="text-xs text-red-700">{networkError} <button onClick={() => setNetworkVersion((n) => n + 1)}>Retry network</button></p>}
                 {network
                   ? <CompetitorNetwork network={network} />
-                  : !networkError && <div role="status" className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">Loading source-linked competitor network…</div>}
+                  : !networkError && <div role="status" className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#44403C]">Loading source-linked competitor network…</div>}
               </div>
 
               {digest && (
                 <div className="space-y-2.5 pt-3 border-t border-[#E7E2D8]">
-                  <div className="text-xs font-semibold uppercase tracking-wider text-[#78716C]">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-[#44403C]">
                     Grounded Sources ({digest.citations.length})
                   </div>
-                  <p className="text-[11px] text-[#78716C]">
+                  <p className="text-[11px] text-[#44403C]">
                     Every citation below is a stored knowledge unit with its scraped source URL — never model output.
                   </p>
                   <div className="space-y-1 max-h-72 overflow-y-auto print-expand">
                     {digest.citations.map((c, i) => (
                       <div key={i} className="p-2.5 rounded-lg bg-[#F7F5F0]/90 border border-[#E0DACE] flex items-center justify-between gap-3 text-[11px]">
                         <span className="font-medium text-[#1C1917] shrink-0">{c.organization}</span>
-                        <span className="font-mono text-[10px] uppercase text-[#78716C] shrink-0">{c.knowledge_class}</span>
+                        <span className="font-mono text-[10px] uppercase text-[#44403C] shrink-0">{c.knowledge_class}</span>
                         <a href={c.source_url} target="_blank" rel="noopener noreferrer"
-                           className="font-mono text-[10px] text-[#D97757] hover:underline truncate text-right flex-1">
+                           className="font-mono text-[10px] text-[#44403C] hover:underline truncate text-right flex-1">
                           {c.source_url}
                         </a>
                       </div>
@@ -977,7 +1015,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
             </div>
 
             {!digest && !digestLoading && (
-              <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C] no-print">
+              <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#44403C] no-print">
                 Generate the digest to fan out across all 5 agents and synthesize the executive brief.
               </div>
             )}
@@ -993,14 +1031,14 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 {currentData.knowledge_units.map((ku, i) => (
                   <div key={i} className="p-4 rounded-2xl bg-white/80 border border-[#E7E2D8] flex items-center justify-between text-xs text-[#1C1917]">
                     <span className="flex-1 leading-relaxed">{ku.content}</span>
-                    <span className="font-mono text-[10px] font-semibold text-[#78716C] border border-[#E0DACE] bg-[#F7F5F0] px-2 py-0.5 rounded-md ml-4 shrink-0 uppercase">
+                    <span className="font-mono text-[10px] font-semibold text-[#44403C] border border-[#E0DACE] bg-[#F7F5F0] px-2 py-0.5 rounded-md ml-4 shrink-0 uppercase">
                       {ku.class} ({ku.confidence})
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#78716C]">
+              <div className="p-8 text-center bg-white/80 rounded-2xl border border-[#E7E2D8] text-xs text-[#44403C]">
                 Run an agent to inspect its generated knowledge summary. This is not the original retrieved corpus or admitted memory.
               </div>
             )}

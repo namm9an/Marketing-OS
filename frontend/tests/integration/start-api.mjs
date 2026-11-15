@@ -5,11 +5,18 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('../../../', import.meta.url));
+const built = process.argv.includes('--built');
+if (built && !existsSync(join(root, 'frontend/dist/index.html'))) {
+  throw new Error('Build the frontend with npm run build before testing the built SPA.');
+}
 const python = process.env.MARKETING_OS_TEST_PYTHON
   || [join(root, '.venv/bin/python'), join(root, '.venv/Scripts/python.exe')].find(existsSync)
   || 'python';
 const temporary = mkdtempSync(join(tmpdir(), 'marketing-os-browser-'));
-const child = spawn(python, ['-m', 'app.main'], {
+const server = built && process.platform !== 'win32'
+  ? ['-m', 'gunicorn', '--workers', '2', '--bind', '127.0.0.1:5120', 'app.main:app']
+  : ['-m', 'app.main'];
+const child = spawn(python, server, {
   cwd: root, stdio: 'inherit', env: {
     ...process.env,
     DB_PATH: join(temporary, 'browser.db'),

@@ -42,13 +42,14 @@ export default function StickySystemHeader({ onOpenConsole }) {
         </div>
 
         {/* Section Navigation Links */}
-        <nav className="hidden md:flex items-center gap-1 lg:gap-2">
+        <nav className="hidden xl:flex items-center gap-1 lg:gap-2">
           {navItems.map((item) => {
             const isActive = activeSection === item.id;
             return (
               <a
                 key={item.href}
                 href={item.href}
+                aria-current={isActive ? 'location' : undefined}
                 onClick={(e) => handleNavClick(e, item.href)}
                 className={`relative text-xs font-mono px-3 py-1.5 transition-all duration-150 whitespace-nowrap active:scale-[0.98] border-b-2 ${
                   isActive
@@ -68,7 +69,7 @@ export default function StickySystemHeader({ onOpenConsole }) {
             href="https://github.com/namm9an/Marketing-OS"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-mono text-[#4A505C] hover:text-[#111315] border border-[#D4D1C7] bg-[#FFFFFF] hover:bg-[#ECEAE3] px-3 py-1.5 transition-all duration-150 active:scale-[0.98]"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs font-mono text-[#4A505C] hover:text-[#111315] border border-[#D4D1C7] bg-[#FFFFFF] hover:bg-[#ECEAE3] px-3 py-1.5 transition-all duration-150 active:scale-[0.98]"
           >
             <span>GitHub</span>
             <ArrowUpRight size={13} strokeWidth={2} />

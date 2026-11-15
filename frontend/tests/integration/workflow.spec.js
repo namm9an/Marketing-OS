@@ -1,10 +1,11 @@
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { login, runAgent } from './helpers';
+import AxeBuilder from '@axe-core/playwright';
 
 test.use({ reducedMotion: 'reduce' });
 
-test('all five specialists, chat memory, triage, digest, saved reviews, export and logout work together', async ({ page }) => {
+test('all five specialists, chat memory, triage, digest, saved reviews, export and logout work together', async ({ page }, testInfo) => {
   test.setTimeout(150_000);
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -24,6 +25,9 @@ test('all five specialists, chat memory, triage, digest, saved reviews, export a
   }
   await page.getByRole('button', { name: 'Approve decision', exact: true }).click();
   await expect(page.getByText('Review status: approved', { exact: true })).toBeVisible();
+  const resultAudit = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+  await testInfo.attach('result-accessibility', { body: JSON.stringify(resultAudit.violations, null, 2), contentType: 'application/json' });
+  expect(resultAudit.violations).toEqual([]);
   const downloading = page.waitForEvent('download');
   await page.getByTitle('Download Markdown Report').click();
   const download = await downloading;
@@ -53,7 +57,9 @@ test('all five specialists, chat memory, triage, digest, saved reviews, export a
   expect(triage.views.map((v) => v.agent).sort()).toEqual(['branding', 'pr']);
   await expect(page.getByText(triage.answer, { exact: true })).toBeVisible();
 
+  const pendingNetwork = page.waitForResponse((r) => r.url().endsWith('/api/digest/network'));
   await page.getByRole('button', { name: 'On-demand Digest', exact: true }).click();
+  const network = await (await pendingNetwork).json();
   const pendingDigest = page.waitForResponse((r) => r.url().endsWith('/api/digest') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Generate Digest', exact: true }).click();
   const digestResponse = await pendingDigest;
@@ -63,6 +69,12 @@ test('all five specialists, chat memory, triage, digest, saved reviews, export a
   expect(digest.metrics.calls).toHaveLength(6);
   for (const brief of digest.agent_briefs) await expect(page.getByText(brief.finding, { exact: true }).first()).toBeVisible();
   expect(digest.citations.length).toBeGreaterThan(0);
+  const competitor = network.nodes.find((node) => node.group === 'competitor');
+  const node = page.getByRole('button', { name: `Inspect ${competitor.id} source facts`, exact: true });
+  await node.focus();
+  await page.keyboard.press('Enter');
+  await expect(node).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByText(competitor.citations[0].content, { exact: true }).first()).toBeVisible();
 
   await page.reload();
   await page.getByRole('button', { name: new RegExp(`decision ${runs[4].decision.id}$`) }).click();
