@@ -1,0 +1,53 @@
+import React from 'react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
+import InteractiveConsole from './InteractiveConsole';
+
+vi.mock('../ShaderCanvas', () => ({ default: () => null }));
+
+const result = {
+  success: true, goalStatement: 'Original goal',
+  positioning: { statement: 'The complete original positioning statement.', state: 'ACTIVE' },
+  decision: { id: 'run-1', selected_option: 'Saved strategy title', confidence: 'Medium',
+    rationale: 'Original reasoning', risks: 'Original risks', reasoning_source: 'langgraph:branding:mock-fallback' },
+  knowledge_units: [{ content: 'Original generated summary', class: 'fact', confidence: 'medium' }],
+};
+
+function installApi(rows) {
+  vi.stubGlobal('fetch', vi.fn(async (url) => {
+    const data = url === '/api/me' ? { authenticated: true, username: 'operator' }
+      : url === '/api/history' ? { success: true, history: rows } : {};
+    return { ok: true, status: 200, json: async () => data };
+  }));
+}
+
+describe('persistent result history', () => {
+  it('reopens the original response after login instead of reconstructing it from its title', async () => {
+    installApi([{ id: 'run-1', selected_option: 'Saved strategy title', goal_statement: 'Original goal',
+      workflow_type: 'run', result_available: true, result, created_at: '2026-11-15T10:00:00Z' }]);
+    render(<InteractiveConsole />);
+    fireEvent.click(await screen.findByRole('button', { name: /Saved strategy title/ }));
+    expect(await screen.findByText(result.positioning.statement)).toBeVisible();
+    expect(screen.getByText('Original generated summary')).toBeVisible();
+  });
+
+  it('shows an honest unavailable state for a legacy record', async () => {
+    installApi([{ id: 'old', selected_option: 'Legacy title', goal_statement: 'Old goal',
+      workflow_type: 'legacy', result_available: false, result: null }]);
+    render(<InteractiveConsole />);
+    fireEvent.click(await screen.findByRole('button', { name: /Legacy title/ }));
+    expect(await screen.findByText(/Original result unavailable/)).toBeVisible();
+    expect(screen.queryByTitle('Download Markdown Report')).not.toBeInTheDocument();
+  });
+
+  it.each([
+    ['chat', { reply: 'Original chat reply', recall: { memories: [], facts: [], graph: [] } }, 'Original chat reply'],
+    ['triage', { answer: 'Original pair answer', views: [], recommended_action: 'Review both views' }, 'Original pair answer'],
+  ])('reopens a saved %s without treating it as a positioning brief', async (kind, snapshot, text) => {
+    installApi([{ id: kind, selected_option: `Saved ${kind} turn`, goal_statement: 'Original question',
+      workflow_type: kind, result_available: true, result: snapshot }]);
+    render(<InteractiveConsole />);
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(`Saved ${kind} turn`) }));
+    expect(await screen.findByText(text)).toBeVisible();
+  });
+});

@@ -6,6 +6,8 @@ import {
 } from 'lucide-react';
 import CompetitorNetwork from '../CompetitorNetwork';
 import ChatPanel from '../ChatPanel';
+import SavedConversation from './SavedConversation';
+import { restoreSavedDecision, newRunRecord } from '../../lib/savedDecisions';
 
 // The gradient background pulls in three + @react-three/fiber (~150kB gzipped) for
 // something purely decorative. Lazy so it never sits on the critical path — the app is
@@ -100,19 +102,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
         .then(res => res.json())
         .then(data => {
           if (data.history) {
-            const formatted = data.history.map(item => ({
-              goalStatement: item.goal_statement,
-              timestamp: item.created_at,
-              positioning: { statement: item.selected_option, state: 'ACTIVE' },
-              decision: {
-                id: item.id,
-                selected_option: item.selected_option,
-                confidence: item.confidence,
-                reasoning_source: item.reasoning_source,
-                rationale: item.rationale,
-                risks: item.risks
-              }
-            }));
+            const formatted = data.history.map(restoreSavedDecision);
             setHistory(formatted);
           }
         })
@@ -187,7 +177,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
         throw new Error(json.error || 'Workflow execution failed');
       }
 
-      const runRecord = { ...json, goalStatement: goal, timestamp: new Date().toLocaleTimeString() };
+      const runRecord = newRunRecord(json, goal.trim());
       setCurrentData(runRecord);
       setHistory(prev => [runRecord, ...prev]);
     } catch (err) {
@@ -747,8 +737,12 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
               </div>
             )}
 
+            {currentData && !loading && (currentData.workflow_type !== 'run' || !currentData.result_available || !currentData.positioning) && (
+              <SavedConversation data={currentData} />
+            )}
+
             {/* Document Artifact Brief Card */}
-            {currentData && !loading && (
+            {currentData?.result_available && currentData.workflow_type === 'run' && currentData.positioning && !loading && (
               <div className="bg-white/90 backdrop-blur-xl border border-[#E7E2D8] rounded-2xl p-6 space-y-6 shadow-[0_8px_30px_rgba(0,0,0,0.04)] print-artifact relative">
                 
                 {/* Human-in-the-Loop Executive Ratification Banner */}
@@ -932,7 +926,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                       <span className="text-[10px] font-mono text-[#78716C]">{item.timestamp}</span>
                     </div>
                     <p className="text-xs text-[#44403C] bg-[#F7F5F0] p-3 rounded-xl border border-[#E0DACE] leading-relaxed">
-                      "{item.positioning.statement}"
+                      "{item.positioning?.statement || item.reply || item.answer || 'Original result unavailable for this record.'}"
                     </p>
                   </div>
                 ))}
