@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "status": "blocked",
+  "mode": "live-recordings",
+  "scenario_id": "fictional-vanguard-b200-launch-v1",
+  "fictional_client": "Vanguard Cloud",
+  "examples": [],
+  "failure": "capture-http-502"
+}

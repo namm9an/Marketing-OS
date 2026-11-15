@@ -1,0 +1,2 @@
+# Public recording checksums cover exact UTF-8 bytes, including LF line endings.
+/frontend/public/examples/*.json text eol=lf

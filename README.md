@@ -233,7 +233,7 @@ npm run test:unit
 npm run lint
 npm run build
 npm run test:integration
-npm run test:integration:built -- baseline.spec.js workflow.spec.js
+npm run test:integration:built -- baseline.spec.js workflow.spec.js examples.spec.js
 ```
 
 The browser harness starts its own API with a temporary SQLite database, synthetic
@@ -253,6 +253,41 @@ Screenshots, traces and accessibility attachments go to the ignored
 live-provider recordings, final visual acceptance, production deployment or a
 complete accessibility/performance audit; see the phase record in
 [the build plan](docs/MARKETING_OS_BLUEPRINT_PLAN.md).
+
+### Saved public agent examples
+
+F02 separates controlled test fixtures from genuine public recordings. The static
+catalog in `frontend/public/examples/manifest.json` stays blocked until all five
+specialists have captured live responses. The public-recording browser test
+requires that complete catalog; it deliberately fails while capture is blocked.
+The other browser tests use controlled inference and do not require paid access.
+
+When the configured provider has generation access, capture from the repository
+root using the project Python environment:
+
+```bash
+python -m app.recordings.capture --output frontend/public/examples --mode live --resume
+```
+
+This deliberate preparation step makes provider calls. Keep `GEMINI_API_KEY` in
+secure environment settings and retain the configured `DEFAULT_MODEL`. Capture
+uses a temporary, seeded database and the authenticated Flask handler. Each bundle
+keeps the original response, supplied fictional scenario, observed metrics and
+source rows collected during that same request. It does not search again after
+generation. Resume reuses checksum-validated successes instead of generating them
+again. A provider or evidence-validation failure leaves the catalog blocked.
+
+For offline capture-tool checks, use `--mode controlled` with a separate temporary
+output directory. Its `controlled-only` catalog is rejected by the public loader;
+do not copy those fixtures into the public recording directory.
+
+The optional recorded-example viewer appears only for a complete live catalog.
+Selecting an example performs anonymous static-file reads, with no generation,
+review or memory request. It verifies exact-file SHA-256 checksums, agent/mode
+metadata and citation membership in the captured rows. Checksums detect changed
+bytes; they do not independently authenticate provider origin or prove every
+generated claim. Scene bindings are data only; comparison and physical animation
+remain later phases.
 
 Run the retrieval benchmark suite:
 

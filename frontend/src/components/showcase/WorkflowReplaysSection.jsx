@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import RecordedAgentExamples from './RecordedAgentExamples';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
@@ -353,6 +354,7 @@ export default function WorkflowReplaysSection() {
           </div>
         )}
       </div>
+      <RecordedAgentExamples />
     </section>
   );
 }
