@@ -57,3 +57,41 @@ test('operator approval persists after reload and does not transfer to the next 
 });
 
 export { login };
+
+test('switching agents during a delayed chat never reuses the old response or thread', async ({ page }) => {
+  await login(page);
+  await page.getByRole('button', { name: 'Agent Chat', exact: true }).click();
+  let release;
+  let ready;
+  const held = new Promise((resolve) => { release = resolve; });
+  const oldReady = new Promise((resolve) => { ready = resolve; });
+  const submitted = [];
+  await page.route('**/api/chat', async (route) => {
+    const body = route.request().postDataJSON();
+    submitted.push(body);
+    const response = await route.fetch();
+    if (body.agent === 'branding') {
+      ready();
+      await held;
+    }
+    await route.fulfill({ response });
+  });
+  const send = async (text) => {
+    await page.getByRole('textbox', { name: 'Message to agent or triage command' }).fill(text);
+    await page.getByRole('button', { name: 'Send message' }).click();
+  };
+  await send('Always lead branding with reliability');
+  await oldReady;
+  await page.getByRole('button', { name: 'PR', exact: true }).click();
+  const firstResponse = page.waitForResponse((r) => r.url().endsWith('/api/chat') && r.request().postDataJSON().agent === 'pr');
+  await send('What should our PR response be about B200?');
+  const first = await (await firstResponse).json();
+  await expect(page.getByText(first.reply, { exact: true })).toBeVisible();
+  release();
+  const nextResponse = page.waitForResponse((r) => r.url().endsWith('/api/chat') && r.request().postDataJSON().message === 'Continue this PR conversation');
+  await send('Continue this PR conversation');
+  expect((await nextResponse).status()).toBe(200);
+  expect(submitted[1]).toMatchObject({ agent: 'pr', thread_id: null });
+  expect(submitted[2]).toMatchObject({ agent: 'pr', thread_id: first.thread_id });
+  await expect(page.getByText('Always lead branding with reliability', { exact: true })).toHaveCount(0);
+});

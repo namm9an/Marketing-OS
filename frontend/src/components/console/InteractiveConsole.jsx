@@ -9,6 +9,8 @@ import ChatPanel from '../ChatPanel';
 import SavedConversation from './SavedConversation';
 import DecisionReview from './DecisionReview';
 import { restoreSavedDecision, newRunRecord } from '../../lib/savedDecisions';
+import { apiJson } from '../../lib/api';
+import { useRequestScope } from '../../lib/useRequestScope';
 
 // The gradient background pulls in three + @react-three/fiber (~150kB gzipped) for
 // something purely decorative. Lazy so it never sits on the critical path — the app is
@@ -58,6 +60,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
   const [currentData, setCurrentData] = useState(null);
   const [history, setHistory] = useState([]);
   const [copied, setCopied] = useState(false);
+  const runRequest = useRequestScope();
 
   // Weekly digest (M5). The network map is cheap (DB-only) so it loads with the tab;
   // the digest itself fans out to 5 agents, so it runs on demand.
@@ -153,11 +156,19 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
   };
 
   const handleLogout = async () => {
+    runRequest.cancel();
     await fetch('/api/logout', { method: 'POST' });
     setAuthenticated(false);
   };
 
   const [selectedAgent, setSelectedAgent] = useState('branding'); // 'branding' | 'pr'
+  const selectAgent = (id) => {
+    runRequest.cancel();
+    setSelectedAgent(id);
+    setLoading(false);
+    setCurrentData(null);
+    setError(null);
+  };
 
   // Which agent(s) the background is tinted for. Only on tabs that are actually about one
   // agent — the digest and knowledge base belong to no one, so they keep the neutral wash.
@@ -165,31 +176,28 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
   const handleSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!goal.trim()) return;
+    if (!goal.trim() || loading) return;
 
     setLoading(true);
     setError(null);
+    const pending = runRequest.begin();
 
     try {
-      const response = await fetch('/api/run', {
+      const json = await apiJson('/api/run', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        signal: pending.signal,
         body: JSON.stringify({ goal: goal.trim(), provider, agent_type: selectedAgent })
       });
 
-      const json = await response.json();
-
-      if (!response.ok || json.error) {
-        throw new Error(json.error || 'Workflow execution failed');
-      }
+      if (!pending.isCurrent()) return;
 
       const runRecord = newRunRecord(json, goal.trim());
       setCurrentData(runRecord);
       setHistory(prev => [runRecord, ...prev]);
     } catch (err) {
-      setError(err.message);
+      if (pending.isCurrent() && err.name !== 'AbortError') setError(err.message);
     } finally {
-      setLoading(false);
+      if (pending.isCurrent()) setLoading(false);
     }
   };
 
@@ -454,6 +462,8 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                     key={idx}
                     aria-label={`Open ${run.decision.selected_option}, decision ${run.decision.id}`}
                     onClick={() => {
+                      runRequest.cancel();
+                      setLoading(false);
                       setCurrentData(run);
                       setGoal(run.goalStatement);
                       setActiveTab('workbench');
@@ -608,7 +618,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 <span className="text-[11px] font-mono text-[#78716C] shrink-0 font-semibold uppercase">Active Agents:</span>
                 <button
                   type="button"
-                  onClick={() => setSelectedAgent('branding')}
+                  onClick={() => selectAgent('branding')}
                   className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                     selectedAgent === 'branding' 
                       ? 'bg-[#D97757] text-white border-[#D97757] shadow-xs' 
@@ -621,7 +631,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
                 <button
                   type="button"
-                  onClick={() => setSelectedAgent('pr')}
+                  onClick={() => selectAgent('pr')}
                   className={`px-3 py-1.5 rounded-xl border text-[11px] font-semibold transition-all flex items-center gap-1.5 shrink-0 ${
                     selectedAgent === 'pr' 
                       ? 'bg-[#D97757] text-white border-[#D97757] shadow-xs' 

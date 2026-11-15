@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import InteractiveConsole from './InteractiveConsole';
 
@@ -50,4 +50,25 @@ describe('persistent result history', () => {
     fireEvent.click(await screen.findByRole('button', { name: new RegExp(`Saved ${kind} turn`) }));
     expect(await screen.findByText(text)).toBeVisible();
   });
+});
+
+it('discards a pending run when switching agents and allows the newly selected agent to run', async () => {
+  let finish;
+  let signal;
+  vi.stubGlobal('fetch', vi.fn((url, options) => {
+    if (url === '/api/run') {
+      signal = options.signal;
+      return new Promise((resolve) => { finish = resolve; });
+    }
+    const data = url === '/api/me' ? { authenticated: true, username: 'operator' } : { history: [] };
+    return Promise.resolve({ ok: true, json: async () => data });
+  }));
+  render(<InteractiveConsole />);
+  fireEvent.click(await screen.findByRole('button', { name: 'Run Agent', exact: true }));
+  await waitFor(() => expect(finish).toBeTypeOf('function'));
+  fireEvent.click(screen.getByRole('button', { name: /PR.*Agent/ }));
+  expect(screen.getByRole('button', { name: 'Run Agent', exact: true })).toBeEnabled();
+  await act(async () => finish({ ok: true, json: async () => result }));
+  expect(screen.queryByText(result.positioning.statement)).not.toBeInTheDocument();
+  expect(signal.aborted).toBe(true);
 });

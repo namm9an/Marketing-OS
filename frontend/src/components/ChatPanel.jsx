@@ -1,4 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiJson } from '../lib/api';
+import { useRequestScope } from '../lib/useRequestScope';
 import {
   Send, Loader2, Brain, Database, Link2, ChevronDown, ChevronRight,
   Users, AlertTriangle, Check, X, Sparkles, Megaphone, Radio, Rocket, Tent,
@@ -36,7 +38,7 @@ const label = (id) => AGENTS.find((a) => a.id === id)?.label ?? id;
 /** `/triage branding pr How do we answer X` -> { agents, message }. Null if not a bridge. */
 export function parseTriage(raw) {
   const text = (raw || '').trim();
-  if (!text.toLowerCase().startsWith('/triage')) return null;
+  if (!/^\/triage(?:\s|$)/i.test(text)) return null;
   const rest = text.slice('/triage'.length).trim();
   const parts = rest.split(/\s+/);
   const ids = new Set(AGENTS.map((a) => a.id));
@@ -227,18 +229,23 @@ function MemoryInspector({ agent }) {
   const [scope, setScope] = useState('own');
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const request = useRequestScope();
 
   const partner = agent === 'branding' ? 'pr' : 'branding';
   const query = scope === 'own' ? `agent=${agent}` : `agents=${agent},${partner}`;
 
   useEffect(() => {
+    const pending = request.begin();
     setLoading(true);
-    fetch(`/api/memory?${query}`)
-      .then((r) => r.json())
-      .then(setData)
-      .catch(() => setData({ error: 'failed to load' }))
-      .finally(() => setLoading(false));
-  }, [query]);
+    setData(null);
+    setError(null);
+    apiJson(`/api/memory?${query}`, { signal: pending.signal })
+      .then((result) => { if (pending.isCurrent()) setData({ ...result, query }); })
+      .catch((err) => { if (pending.isCurrent() && err.name !== 'AbortError') setError(err.message); })
+      .finally(() => { if (pending.isCurrent()) setLoading(false); });
+    return request.cancel;
+  }, [query, request]);
 
   return (
     <div className="border border-[#E7E2DA] rounded-xl bg-white p-3">
@@ -263,9 +270,10 @@ function MemoryInspector({ agent }) {
         ))}
       </div>
 
-      {loading && <div className="text-[11px] text-[#78716C]">loading…</div>}
+      {loading && <div role="status" className="text-[11px] text-[#78716C]">Loading memory…</div>}
+      {error && <div role="alert" className="text-xs text-red-700">{error}</div>}
 
-      {!loading && data && (
+      {!loading && data?.query === query && (
         <>
           <div className="text-[10px] text-[#78716C] mb-1.5">
             {(data.memories || []).length} memor{(data.memories || []).length === 1 ? 'y' : 'ies'} in this namespace
@@ -300,13 +308,17 @@ export default function ChatPanel({ provider }) {
   const [error, setError] = useState(null);
   const [memoryKey, setMemoryKey] = useState(0);
   const endRef = useRef(null);
+  const request = useRequestScope();
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [turns, busy]);
+  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'auto', block: 'nearest' }); }, [turns, busy]);
 
   // Switching agent starts a new conversation: a thread is pinned to one namespace,
   // so carrying thread_id across would file one agent's history under another's.
   const switchAgent = (id) => {
+    request.cancel();
+    setBusy(false);
     setAgent(id);
+    setInput('');
     setTurns([]);
     setThreadId(null);
     setError(null);
@@ -317,7 +329,7 @@ export default function ChatPanel({ provider }) {
     if (!raw || busy) return;
 
     const bridge = parseTriage(raw);
-    if (bridge && (bridge.agents.length !== 2 || !bridge.message)) {
+    if (bridge && (bridge.agents.length !== 2 || new Set(bridge.agents).size !== 2 || !bridge.message)) {
       setError('usage: /triage <agent> <agent> <question> — two different agents, then the question');
       return;
     }
@@ -326,19 +338,19 @@ export default function ChatPanel({ provider }) {
     setBusy(true);
     setInput('');
     setTurns((t) => [...t, { role: 'user', text: bridge ? bridge.message : raw, bridge: bridge?.agents }]);
+    const pending = request.begin();
 
     try {
-      const res = await fetch(bridge ? '/api/triage' : '/api/chat', {
+      const data = await apiJson(bridge ? '/api/triage' : '/api/chat', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        signal: pending.signal,
         body: JSON.stringify(
           bridge
             ? { agents: bridge.agents, message: bridge.message, thread_id: null, provider }
             : { agent, message: raw, thread_id: threadId, provider },
         ),
       });
-      const data = await res.json();
-      if (!res.ok || data.error) throw new Error(data.error || `HTTP ${res.status}`);
+      if (!pending.isCurrent()) return;
 
       if (bridge) {
         setTurns((t) => [...t, { role: 'triage', data }]);
@@ -348,9 +360,9 @@ export default function ChatPanel({ provider }) {
       }
       setMemoryKey((k) => k + 1);   // memory may have changed; re-read it
     } catch (e) {
-      setError(e.message);
+      if (pending.isCurrent() && e.name !== 'AbortError') setError(e.message);
     } finally {
-      setBusy(false);
+      if (pending.isCurrent()) setBusy(false);
     }
   };
 
@@ -428,7 +440,7 @@ export default function ChatPanel({ provider }) {
         </div>
 
         {error && (
-          <div className="mt-2 text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+          <div role="alert" className="mt-2 text-[12px] text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
             {error}
           </div>
         )}
@@ -443,6 +455,7 @@ export default function ChatPanel({ provider }) {
           )}
           <div className="flex gap-2">
             <textarea
+              aria-label="Message to agent or triage command"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
@@ -453,6 +466,7 @@ export default function ChatPanel({ provider }) {
               className="flex-1 resize-none border border-[#E7E2DA] rounded-xl px-3 py-2 text-[13px] text-[#1C1917] placeholder:text-[#A8A29E] focus:outline-none focus:ring-2 focus:ring-[#D97757]/30"
             />
             <button
+              aria-label="Send message"
               onClick={send}
               disabled={busy || !input.trim()}
               className="px-4 rounded-xl bg-[#D97757] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:opacity-90 transition-all"
