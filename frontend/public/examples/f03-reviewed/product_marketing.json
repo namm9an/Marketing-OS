@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "recording": {
+    "kind": "live-recording",
+    "captured_at": "2026-11-16T19:53:00.171774+00:00",
+    "repository_revision": "2bd3c6a760f441c2985ca591cde53eb1dd5b37b4",
+    "transport": "flask-test-client",
+    "fictional_client": "Vanguard Cloud",
+    "signal_kind": "supplied-simulated"
+  },
+  "request": {
+    "workflow": "run",
+    "agent_type": "product_marketing",
+    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Write a concise product-messaging recommendation for an engineering buyer: a proposed angle, its audience benefit and a question the buyer should investigate before choosing hardware. This is a planned upcoming launch: do not promise current or immediate access, deployment readiness, delivery timing or absence of waitlists."
+  },
+  "response": {
+    "decision": {
+      "attempts": 1,
+      "completion_tokens": 345,
+      "confidence": "Medium",
+      "escalated": false,
+      "escalation_reason": null,
+      "evidence_ids": [
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+        "040adfe30be7414b37bce51e137c23c86576cb50d840fb5310b5abd25db138b5"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "id": "d815ce34785b4d38ac826cdda2d7d8e4",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 2676.05,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1199,
+      "rationale": "Positioning Vanguard Cloud's upcoming B200 offering against competitors like Nebius requires focusing engineering buyers on core architectural capabilities rather than generalized positioning claims. By directing ML engineers to interrogate interconnect and cluster scaling specifics, the messaging addresses the primary operational bottlenecks of large-scale model training.",
+      "reasoning_source": "langgraph:product_marketing:gemini-3.5-flash-lite",
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.54,
+      "risks": "Engineering buyers may demand immediate access or concrete availability timelines for B200 hardware, which cannot be guaranteed given that this is a planned upcoming launch with potential waitlists.",
+      "selected_option": "B200 Launch Messaging for Engineering Buyers against Nebius",
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1544,
+      "total_wall_ms": 2678.72
+    },
+    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Write a concise product-messaging recommendation for an engineering buyer: a proposed angle, its audience benefit and a question the buyer should investigate before choosing hardware. This is a planned upcoming launch: do not promise current or immediate access, deployment readiness, delivery timing or absence of waitlists.",
+    "knowledge_units": [
+      {
+        "class": "fact",
+        "confidence": "medium",
+        "content": "product_marketing agent decision: B200 Launch Messaging for Engineering Buyers against Nebius"
+      }
+    ],
+    "metrics": {
+      "attempts": 1,
+      "completion_tokens": 345,
+      "evidence_ids": [
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+        "040adfe30be7414b37bce51e137c23c86576cb50d840fb5310b5abd25db138b5"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 2676.05,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1199,
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.54,
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1544,
+      "total_wall_ms": 2678.72
+    },
+    "positioning": {
+      "differentiation_basis": "Sovereign Neo-Cloud Platform",
+      "state": "ACTIVE",
+      "statement": "Proposed Angle: High-performance infrastructure built for next-generation frontier workloads. Audience Benefit: Access to cutting-edge NVIDIA B200 hardware architecture designed to handle massive parameter scaling and complex training pipelines efficiently. Investigation Question: What are the specific interconnect topologies, networking latencies, and cluster scalability parameters guaranteed for your distributed training jobs under peak load?"
+    },
+    "success": true
+  },
+  "evidence": {
+    "retrievals": [
+      {
+        "agent": "product_marketing",
+        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Write a concise product-messaging recommendation for an engineering buyer: a proposed angle, its audience benefit and a question the buyer should investigate before choosing hardware. This is a planned upcoming launch: do not promise current or immediate access, deployment readiness, delivery timing or absence of waitlists.",
+        "facts": [
+          {
+            "id": "6fd335b96172509919bf1ad5fad213985696a62826178fc477313fd93ff0aed1",
+            "organization": "Together AI",
+            "knowledge_class": "positioning",
+            "confidence": "high",
+            "content": "Official Website Positioning: \"Leading open models, ready for production\".",
+            "source_url": "https://www.together.ai/models",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:52:56",
+            "rank": -8.65629359996664
+          },
+          {
+            "id": "3b50d1b9d66e152812ea52197104972d22f79f536a3a63fd3e802a3796667b72",
+            "organization": "Neysa AI",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Source page excerpt: Neysa - AI Acceleration Cloud System Manage Consent We use cookies on neysa.ai to deliver a reliable and personalised experience. Some cookies are essential for the site to function; others help us understand how visitors use our platform. You can manage your preferences at any time. For full detail",
+            "source_url": "https://neysa.ai/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:52:56",
+            "rank": -7.057147894597632
+          },
+          {
+            "id": "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+            "organization": "Nebius",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Hardware mentioned in a source snapshot for Nebius: H100. This is not a complete fleet inventory.",
+            "source_url": "https://nebius.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:52:56",
+            "rank": -6.246107780991789
+          },
+          {
+            "id": "09ef87c38d6fb18f4c9d8792a8fdde4d9dc15223a2400215aa8298db7dc55e14",
+            "organization": "VAST Data",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Source page excerpt: VAST Data Platform Services: AI-Powered Discovery Engine - VAST Data Product Solutions Customers Resources Company Contact Sales Join a Live Demo The Data Platform Built for the AI Era and Beyond Unlock 90% of your untapped data with a breakthrough data architecture built to harness limitless data, ",
+            "source_url": "https://www.vastdata.com/platform",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:52:56",
+            "rank": -6.239906187576816
+          },
+          {
+            "id": "040adfe30be7414b37bce51e137c23c86576cb50d840fb5310b5abd25db138b5",
+            "organization": "Nebius",
+            "knowledge_class": "positioning",
+            "confidence": "high",
+            "content": "Official Website Positioning: \"The Ultimate AI Cloud\".",
+            "source_url": "https://nebius.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:52:56",
+            "rank": -5.230159914235854
+          }
+        ]
+      }
+    ]
+  }
+}

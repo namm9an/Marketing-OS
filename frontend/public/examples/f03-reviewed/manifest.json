@@ -1,0 +1,34 @@
+{
+  "schema_version": 1,
+  "status": "ready",
+  "mode": "live-recordings",
+  "scenario_id": "fictional-vanguard-b200-launch-v2",
+  "fictional_client": "Vanguard Cloud",
+  "examples": [
+    {
+      "agent": "branding",
+      "path": "branding.json",
+      "sha256": "4a810c34a9ae00498a2e783c32eae6f5c3834b37ef2ba1dbfada47ddf2520586"
+    },
+    {
+      "agent": "pr",
+      "path": "pr.json",
+      "sha256": "6f436e8e7f7aa4c7604db7722ea51e5f0c70ff50af622ecdaf3e46d9c7edd32a"
+    },
+    {
+      "agent": "social",
+      "path": "social.json",
+      "sha256": "f5ea5fa1f78ef9a4fa5df4545d064afbbb46b5b92252211faf4f3f3be5d1821a"
+    },
+    {
+      "agent": "events",
+      "path": "events.json",
+      "sha256": "066e466e41351a9410b48db063903111e37b01b097553ec25e9121a9c9ee61ed"
+    },
+    {
+      "agent": "product_marketing",
+      "path": "product_marketing.json",
+      "sha256": "7db1ae6dae8e6e73fa723c1966ae8553273299641ed68bf1ac5817783661bdde"
+    }
+  ]
+}

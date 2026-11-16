@@ -1,0 +1,153 @@
+{
+  "schema_version": 1,
+  "recording": {
+    "kind": "live-recording",
+    "captured_at": "2026-11-16T19:48:51.899556+00:00",
+    "repository_revision": "465441d625d216d0b7adcd1d264f00f9ebcf4d9c",
+    "transport": "flask-test-client",
+    "fictional_client": "Vanguard Cloud",
+    "signal_kind": "supplied-simulated"
+  },
+  "request": {
+    "workflow": "run",
+    "agent_type": "pr",
+    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. A price war narrative has been proposed. Recommend an alternative launch message: include the suggested message itself and the communication risk that needs human review."
+  },
+  "response": {
+    "decision": {
+      "attempts": 1,
+      "completion_tokens": 444,
+      "confidence": "Medium",
+      "escalated": true,
+      "escalation_reason": "High-risk factor detected ('price war') — requires CMO ratification.",
+      "evidence_ids": [
+        "f039929e96fa00b9180e4bd9e142dd164f0ff968c9065740803f1299d7c2ba1e",
+        "00bdae7bfe986bd57fae592a165897fe7c2c3a380c30b1a9d81d5edbe6dc2ca9",
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+        "f1d58456e270cf1f85529963c8d3fed11c58d1a2f14e0e5f496045b0cf234b3f"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "id": "862b0f954ee6489e875b78e23989cc04",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 1999.58,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1167,
+      "rationale": "Given the observed price strings in our source snapshots and Nebius's known hardware mentions, engaging in a direct price war risks margin compression without capitalizing on our established brand positioning. Grounding the B200 launch message in our existing simplicity and scaling narrative avoids unverified price-to-performance claims while differentiating our go-to-market approach.",
+      "reasoning_source": "langgraph:pr:gemini-3.5-flash-lite",
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.4,
+      "risks": "Risk of lower initial market capture if competitors aggressively undercut on headline pricing, requiring close human review of competitive deal responses.",
+      "selected_option": "Value-Aligned Scale Positioning",
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1611,
+      "total_wall_ms": 2001.62
+    },
+    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. A price war narrative has been proposed. Recommend an alternative launch message: include the suggested message itself and the communication risk that needs human review.",
+    "knowledge_units": [
+      {
+        "class": "fact",
+        "confidence": "medium",
+        "content": "pr agent decision: Value-Aligned Scale Positioning"
+      }
+    ],
+    "metrics": {
+      "attempts": 1,
+      "completion_tokens": 444,
+      "evidence_ids": [
+        "f039929e96fa00b9180e4bd9e142dd164f0ff968c9065740803f1299d7c2ba1e",
+        "00bdae7bfe986bd57fae592a165897fe7c2c3a380c30b1a9d81d5edbe6dc2ca9",
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+        "f1d58456e270cf1f85529963c8d3fed11c58d1a2f14e0e5f496045b0cf234b3f"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 1999.58,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1167,
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.4,
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1611,
+      "total_wall_ms": 2001.62
+    },
+    "positioning": {
+      "differentiation_basis": "Sovereign Neo-Cloud Platform",
+      "state": "ACTIVE",
+      "statement": "Instead of entering a destructive price war against Nebius during our B200 launch, Vanguard Cloud will position its offering around the official platform message: 'Simple GPU pricing that scales with your AI ambitions.'"
+    },
+    "success": true
+  },
+  "evidence": {
+    "retrievals": [
+      {
+        "agent": "pr",
+        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. A price war narrative has been proposed. Recommend an alternative launch message: include the suggested message itself and the communication risk that needs human review.",
+        "facts": [
+          {
+            "id": "f039929e96fa00b9180e4bd9e142dd164f0ff968c9065740803f1299d7c2ba1e",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "pricing",
+            "confidence": "high",
+            "content": "Price strings observed in a source snapshot (SKU/region mapping not recorded): ₹436.00 /hr, ₹671.00 /hr, ₹362.00 /hr.",
+            "source_url": "https://www.e2enetworks.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -6.851514547857624
+          },
+          {
+            "id": "00bdae7bfe986bd57fae592a165897fe7c2c3a380c30b1a9d81d5edbe6dc2ca9",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "pricing",
+            "confidence": "high",
+            "content": "Price strings observed in a source snapshot (SKU/region mapping not recorded): ₹200.40/hr, ₹0.70/hr, ₹49/hr, ₹54.80/hr.",
+            "source_url": "https://www.e2enetworks.com/pricing",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -6.677773033509107
+          },
+          {
+            "id": "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+            "organization": "Nebius",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Hardware mentioned in a source snapshot for Nebius: H100. This is not a complete fleet inventory.",
+            "source_url": "https://nebius.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -6.246107780991789
+          },
+          {
+            "id": "f1d58456e270cf1f85529963c8d3fed11c58d1a2f14e0e5f496045b0cf234b3f",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "positioning",
+            "confidence": "high",
+            "content": "Official Website Positioning: \"Simple GPU pricing that scales with your AI ambitions\".",
+            "source_url": "https://www.e2enetworks.com/pricing",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -6.036978570713501
+          },
+          {
+            "id": "10105201ebd3af28084efc2485a3244fd3429f1fec814d048b2eec5ee7165d90",
+            "organization": "Voltage Park",
+            "knowledge_class": "pricing",
+            "confidence": "high",
+            "content": "Price strings observed in a source snapshot (SKU/region mapping not recorded): $1.99/hr.",
+            "source_url": "https://www.voltagepark.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -5.6649282646286405
+          }
+        ]
+      }
+    ]
+  }
+}

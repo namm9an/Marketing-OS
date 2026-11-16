@@ -51,13 +51,14 @@ async function checksum(bytes) {
 }
 
 /** Static, read-only data access. No API generation, review or memory endpoint is used. */
-export function createExampleCatalog({ fetcher = globalThis.fetch } = {}) {
+export function createExampleCatalog({ fetcher = globalThis.fetch, basePath = '/examples' } = {}) {
+  if (!/^\/examples(?:\/[a-z0-9-]+)?$/.test(basePath)) throw new Error('invalid-catalog-path');
   let manifestPromise;
   const bundles = new Map();
   const manifest = () => {
     if (!manifestPromise) {
       manifestPromise = (async () => {
-        const response = await fetcher('/examples/manifest.json', { credentials: 'omit', cache: 'no-cache' });
+        const response = await fetcher(`${basePath}/manifest.json`, { credentials: 'omit', cache: 'no-cache' });
         if (!response.ok) fail('manifest-unavailable');
         const value = await response.json();
         return { value, ready: validateManifest(value) };
@@ -80,7 +81,7 @@ export function createExampleCatalog({ fetcher = globalThis.fetch } = {}) {
         const entry = result.value.examples.find((item) => item.agent === agent);
         if (!bundles.has(agent)) {
           bundles.set(agent, (async () => {
-            const response = await fetcher(`/examples/${entry.path}`, { credentials: 'omit' });
+            const response = await fetcher(`${basePath}/${entry.path}`, { credentials: 'omit' });
             if (!response.ok) fail('recording-file-unavailable');
             const bytes = await response.arrayBuffer();
             if (await checksum(bytes) !== entry.sha256) fail('recording-checksum-mismatch');

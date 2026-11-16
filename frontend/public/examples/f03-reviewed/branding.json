@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "recording": {
+    "kind": "live-recording",
+    "captured_at": "2026-11-16T19:48:49.876321+00:00",
+    "repository_revision": "465441d625d216d0b7adcd1d264f00f9ebcf4d9c",
+    "transport": "flask-test-client",
+    "fictional_client": "Vanguard Cloud",
+    "signal_kind": "supplied-simulated"
+  },
+  "request": {
+    "workflow": "run",
+    "agent_type": "branding",
+    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Write a concise two-sentence positioning recommendation for ML teams considering this launch. Give the audience a clear proposed value and next step."
+  },
+  "response": {
+    "decision": {
+      "attempts": 1,
+      "completion_tokens": 292,
+      "confidence": "High",
+      "escalated": false,
+      "escalation_reason": null,
+      "evidence_ids": [
+        "cffcbe9a64bf44248cb6ded7a2324a59714acb4823441887a1af0d49398d1ac6",
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "id": "3506fb5cfadc48569a0663c742f3c228",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 2781.48,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1166,
+      "rationale": "Grounded in the provided evidence showing Vanguard Cloud's hardware availability includes B200 alongside other architectures, the positioning focuses directly on presenting this capability to ML teams considering the launch compared against available snapshot data for Nebius.",
+      "reasoning_source": "langgraph:branding:gemini-3.5-flash-lite",
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.31,
+      "risks": "Source snapshots are partial and do not represent complete competitor inventory or deployment guarantees.",
+      "selected_option": "B200 Launch Positioning vs. Nebius",
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1458,
+      "total_wall_ms": 2783.63
+    },
+    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Write a concise two-sentence positioning recommendation for ML teams considering this launch. Give the audience a clear proposed value and next step.",
+    "knowledge_units": [
+      {
+        "class": "fact",
+        "confidence": "high",
+        "content": "branding agent decision: B200 Launch Positioning vs. Nebius"
+      }
+    ],
+    "metrics": {
+      "attempts": 1,
+      "completion_tokens": 292,
+      "evidence_ids": [
+        "cffcbe9a64bf44248cb6ded7a2324a59714acb4823441887a1af0d49398d1ac6",
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 2781.48,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1166,
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.31,
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1458,
+      "total_wall_ms": 2783.63
+    },
+    "positioning": {
+      "differentiation_basis": "Sovereign Neo-Cloud Platform",
+      "state": "ACTIVE",
+      "statement": "Machine learning teams evaluating our B200 infrastructure can leverage next-generation hardware capabilities designed to accelerate heavy model training and inference workloads. Explore our platform specifications and connect with our team to plan your cluster deployment for upcoming workloads."
+    },
+    "success": true
+  },
+  "evidence": {
+    "retrievals": [
+      {
+        "agent": "branding",
+        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Write a concise two-sentence positioning recommendation for ML teams considering this launch. Give the audience a clear proposed value and next step.",
+        "facts": [
+          {
+            "id": "13f8a99d8a7dbc5ca91ca191578cfb3434a51acd3d9ff0d24dec7235aaab41bb",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "positioning",
+            "confidence": "high",
+            "content": "Official Website Positioning: \"TIR: AI/ML Platform\".",
+            "source_url": "https://www.e2enetworks.com/tir",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -7.0093375124165895
+          },
+          {
+            "id": "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+            "organization": "Nebius",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Hardware mentioned in a source snapshot for Nebius: H100. This is not a complete fleet inventory.",
+            "source_url": "https://nebius.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -6.246107780991789
+          },
+          {
+            "id": "cffcbe9a64bf44248cb6ded7a2324a59714acb4823441887a1af0d49398d1ac6",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Hardware mentioned in a source snapshot for Vanguard Cloud: A100, B200, H100, H200. This is not a complete fleet inventory.",
+            "source_url": "https://www.e2enetworks.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -4.75878789932355
+          },
+          {
+            "id": "618f5cae27d3364929fd81baa7f31e17db820704436dc6853c5968fd29098955",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Hardware mentioned in a source snapshot for Vanguard Cloud: A100, B200, H100, H200. This is not a complete fleet inventory.",
+            "source_url": "https://www.e2enetworks.com/tir",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -4.75878789932355
+          },
+          {
+            "id": "e13ea061ee1e6d864515ae27c8b94928bcc75e3f742f5bdad65abefab3064269",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Hardware mentioned in a source snapshot for Vanguard Cloud: A100, B200, H100, H200. This is not a complete fleet inventory.",
+            "source_url": "https://www.e2enetworks.com/company",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -4.75878789932355
+          }
+        ]
+      }
+    ]
+  }
+}

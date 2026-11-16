@@ -48,6 +48,18 @@ it('leaves missing/partial recordings unavailable without substituting controlle
   expect(fetcher).toHaveBeenCalledTimes(1);
 });
 
+it('can load a separate reviewed set without replacing the original recordings', async () => {
+  vi.stubGlobal('crypto', webcrypto);
+  const { fetcher } = files();
+  const scopedFetch = vi.fn((url, options) => fetcher(url.replace('/examples/f03-reviewed', '/examples'), options));
+  const result = await createExampleCatalog({ fetcher: scopedFetch, basePath: '/examples/f03-reviewed' }).load('pr');
+  expect(result.state).toBe('available');
+  expect(scopedFetch.mock.calls.map(([url]) => url)).toEqual([
+    '/examples/f03-reviewed/manifest.json', '/examples/f03-reviewed/pr.json',
+  ]);
+  expect(() => createExampleCatalog({ basePath: 'https://other.example/records' })).toThrow('invalid-catalog-path');
+});
+
 it.each([
   ['controlled fixture', (bundle) => { bundle.recording.kind = 'controlled-fixture'; }],
   ['mock response', (bundle) => { bundle.response.metrics.source = 'mock'; }],

@@ -1,0 +1,147 @@
+{
+  "schema_version": 1,
+  "recording": {
+    "kind": "live-recording",
+    "captured_at": "2026-11-16T19:49:00.709709+00:00",
+    "repository_revision": "465441d625d216d0b7adcd1d264f00f9ebcf4d9c",
+    "transport": "flask-test-client",
+    "fictional_client": "Vanguard Cloud",
+    "signal_kind": "supplied-simulated"
+  },
+  "request": {
+    "workflow": "run",
+    "agent_type": "social",
+    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend one specific developer-community post idea: give its opening hook and a useful invitation or question for ML engineers. This is a content recommendation, not publishing."
+  },
+  "response": {
+    "decision": {
+      "attempts": 1,
+      "completion_tokens": 228,
+      "confidence": "High",
+      "escalated": false,
+      "escalation_reason": null,
+      "evidence_ids": [
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "id": "d30b6d18b5e9439eb422c2933357748d",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 8788.51,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1241,
+      "rationale": "Targeting ML engineers and OSS developers on developer-focused channels with a technical opening hook and an engaging engineering question drives high-value community interaction during a hardware launch.",
+      "reasoning_source": "langgraph:social:gemini-3.5-flash-lite",
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.44,
+      "risks": "Technical audience may demand specific cluster metrics or benchmarks that must be carefully managed without making unsupported performance guarantees.",
+      "selected_option": "B200 Developer Community Launch Post",
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1469,
+      "total_wall_ms": 8790.76
+    },
+    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend one specific developer-community post idea: give its opening hook and a useful invitation or question for ML engineers. This is a content recommendation, not publishing.",
+    "knowledge_units": [
+      {
+        "class": "fact",
+        "confidence": "high",
+        "content": "social agent decision: B200 Developer Community Launch Post"
+      }
+    ],
+    "metrics": {
+      "attempts": 1,
+      "completion_tokens": 228,
+      "evidence_ids": [
+        "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 8788.51,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1241,
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.44,
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1469,
+      "total_wall_ms": 8790.76
+    },
+    "positioning": {
+      "differentiation_basis": "Sovereign Neo-Cloud Platform",
+      "state": "ACTIVE",
+      "statement": "Deploying the NVIDIA B200 for your next heavy LLM training run? Let's talk cluster topology. What's your biggest bottleneck when scaling multi-node B200 workloads—interconnect latency or memory bandwidth? Drop your architecture configuration below."
+    },
+    "success": true
+  },
+  "evidence": {
+    "retrievals": [
+      {
+        "agent": "social",
+        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend one specific developer-community post idea: give its opening hook and a useful invitation or question for ML engineers. This is a content recommendation, not publishing.",
+        "facts": [
+          {
+            "id": "3b50d1b9d66e152812ea52197104972d22f79f536a3a63fd3e802a3796667b72",
+            "organization": "Neysa AI",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Source page excerpt: Neysa - AI Acceleration Cloud System Manage Consent We use cookies on neysa.ai to deliver a reliable and personalised experience. Some cookies are essential for the site to function; others help us understand how visitors use our platform. You can manage your preferences at any time. For full detail",
+            "source_url": "https://neysa.ai/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -8.627887850732215
+          },
+          {
+            "id": "b708935340fb473efe1cb9f68c4a1841200a37ca81cb4faf481b48f6b8dc4f1e",
+            "organization": "Neysa AI",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Source page excerpt: AI Platform-as-a-Service: Streamlining the Entire AI Lifecycle Manage Consent We use cookies on neysa.ai to deliver a reliable and personalised experience. Some cookies are essential for the site to function; others help us understand how visitors use our platform. You can manage your preferences at",
+            "source_url": "https://neysa.ai/platform/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -8.523599813456752
+          },
+          {
+            "id": "13f8a99d8a7dbc5ca91ca191578cfb3434a51acd3d9ff0d24dec7235aaab41bb",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "positioning",
+            "confidence": "high",
+            "content": "Official Website Positioning: \"TIR: AI/ML Platform\".",
+            "source_url": "https://www.e2enetworks.com/tir",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -7.0093375124165895
+          },
+          {
+            "id": "80c67cbf3c02f78f1bcd75b81963978a658507bc19bb145e623cd8c5032c4380",
+            "organization": "Nebius",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Hardware mentioned in a source snapshot for Nebius: H100. This is not a complete fleet inventory.",
+            "source_url": "https://nebius.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -6.246107780991789
+          },
+          {
+            "id": "2d20c725d0e50f3dc9f1496019323a4fefe04d5872762c4d8d8b1608dfa312e1",
+            "organization": "Together AI",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Source page excerpt: Pricing | Together AI We use essential cookies to make our site work. With your consent, we may also use non-essential cookies to improve user experience and analyze website traffic. By clicking “Accept,” you agree to our website's cookie use as described in our Cookie Policy . You can change your c",
+            "source_url": "https://www.together.ai/pricing",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 19:48:46",
+            "rank": -5.702596847761018
+          }
+        ]
+      }
+    ]
+  }
+}
