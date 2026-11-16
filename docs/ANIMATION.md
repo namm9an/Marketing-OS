@@ -218,6 +218,18 @@ materials and full rendering remain F05/F06 work. Compare outer scroll reveal
 with the earlier click-to-play inner-scene proposal before changing that control
 contract. No automatic five-machine playback or paid inference on scroll.
 
+Implemented review candidate: `/preview/f03/motion` through `9f0a3e7` uses native
+scroll and existing Motion `useScroll`/`useTransform` for a direct, reversible CSS
+paper reveal. No spring or Lenis controls that timeline. The experimental 320vh
+track is review geometry, not an approved scroll distance or change to the
+inherited 600vh deck. Widths ≤900px and reduced motion use readable native flow;
+the complete genuine PR result remains available below the staged preview.
+Selection and scroll make no generation/review/memory calls. The page foundation
+offers static subtle graphite versus plain paper; no animated grain, dithering,
+pixel loader, new engine/dependency or completed 3D machine is introduced.
+Review the clip/stills linked in blueprint §17 before accepting pacing, material
+or the relation between outer scroll and future inner playback.
+
 The radio-tuner reference demonstrates pinning, responsive scroll ownership,
 selection continuity and coordinated content changes. Its semicircle, glass and
 blue chromatic fringe are not adopted styling. React Bits/Codrops components are
@@ -282,6 +294,8 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 - [ ] Both design checklists and all common phase-gate lanes pass before the next phase.
 
 ## 13. Open decisions and revision log
+
+2026-11-17 F03 review candidate: page foundation and isolated scroll study implemented through `9f0a3e7`. Full backend (349), frontend unit (55), development browser (18) and compiled browser (18) gates pass. Direct progress holds/reverses without inference; native reduced-motion/mobile fallback is tested. A 9.8-second actual browser clip and desktop/mobile/still artifacts are recorded in blueprint §17. Owner visual acceptance and promotion remain open; neither final scroll geometry nor inner-scene controls/materials are settled. The inherited homepage deck is preserved. F03 is not PASS and F04 has not started.
 
 2026-11-16 subsequent owner approval: public agent views use purpose → short brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Capture/test dates and operational bottleneck explanations are rejected. Correct weak examples internally rather than substituting public caveats for a quality fix. This is a documentation-only update: existing UI, scene code and original recording bytes are unchanged; F03 and the physical-scene phases have not started.
 

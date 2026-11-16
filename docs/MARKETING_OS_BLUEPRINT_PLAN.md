@@ -1,7 +1,7 @@
 # Marketing OS — blueprint and phased build plan
 
 Updated: 17 November 2026 (Asia/Calcutta).
-Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03 is IN PROGRESS on `feat/frontend-page-foundation`, based on that complete F02 history. See section 15 for F02 evidence/limits and section 17 for the active work. F00 visual reviews remain open.
+Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03's review candidate is implemented and technically verified through `9f0a3e7` on `feat/frontend-page-foundation`; owner visual review and promotion remain OPEN. See section 15 for F02 evidence/limits and section 17 for the current F03 record. F00 visual reviews remain open.
 
 Subsequent owner approval: public agent views follow purpose → short example brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Section 16 records this presentation correction. Public timestamps/operational notes in the existing F02 inspector still need removal; this documentation update does not claim the UI has changed.
 
@@ -297,7 +297,7 @@ For each reference capture its URL/source/license, the specific useful property,
 | F00 | PARTIAL; Q01–Q06 owner direction recorded, references/details still open | Exact machine material/modelling/stills and camera framing; graphite comparison, shorter-opening geometry and responsive comparison details. Optional visitor rotation is not approved |
 | F01 | PASS — functional baseline, 15 November | Application revision `d6c9973`; five atomic implementation commits; all six gate lanes have evidence in section 13. Final art direction and complete visual/performance acceptance remain later work |
 | F02 | PASS — data/capture foundation, 16 November; section 15 | Five genuine recordings at `0dc18d6`, all current gates pass. Generated claims remain unverified; later content/quality review is still required |
-| F03 | IN PROGRESS — section 17 | Page foundation, public-example cleanup/quality and an isolated motion study; owner visual review is required before phase closure |
+| F03 | IN PROGRESS — section 17 | Page foundation, corrected genuine examples and isolated motion study implemented; technical gates pass. Owner visual review and promotion remain required before closure |
 | F04–F14, including every F07 subphase | NOT STARTED | Implement sequentially after the preceding phase passes |
 
 Update these three documents when a decision changes: record the decision, source/date, affected phases, superseded choice, and required retesting. Keep the original Claude archive unchanged.
@@ -916,17 +916,17 @@ opening/first PR dossier. Preserve existing branch history, backend contracts an
 original genuine captures. Keep the inherited public deck until its replacement
 composition has been reviewed; use a review preview for the new foundation.
 
-Planned acceptance mapping:
+Acceptance mapping at application revision `9f0a3e7`:
 
 | ID | Requirement | Implementation/check required | Status |
 |---|---|---|---|
-| F03-01 | F02 predecessor and all mapped D/A requirements | Recheck source/recording integrity; preserve owner decisions and original Claude archive | IN PROGRESS |
-| F03-02 | Correct known example weaknesses before presentation | Bounded grounding/source-quality repair, meaningful regressions, genuine corrected examples where needed; keep original captures | IN PROGRESS |
-| F03-03 | Static design system and useful information hierarchy | Exact palette, typography, spacing, role/brief/result, optional support, separate engineering section and usable console route | IN PROGRESS |
-| F03-04 | Remove public capture/operational exposition | Preview shows no capture/test dates, provider quota/debug notes or warnings used as a substitute for fixing weak output | IN PROGRESS |
-| F03-05 | Concrete scroll-motion study | Calm start, small anticipation, larger reveal; direct progress/reverse; readable reduced-motion/mobile fallback; no model calls | IN PROGRESS |
-| F03-06 | Common functional gate | Backend/frontend units, both browser modes, all five agents/chat/triage/digest/history/review/export/logout; build/lint | IN PROGRESS |
-| F03-07 | Responsive/accessibility/static fallback | Desktop/mobile screenshots, keyboard, contrast/axe, overflow, loading/error and renderer-independent content | IN PROGRESS |
+| F03-01 | F02 predecessor and all mapped D/A requirements | Original F02 catalog retained byte-for-byte; original Claude archive retained; mapped criteria/dispositions below | PASS for preservation; visual choices still open |
+| F03-02 | Correct known example weaknesses before presentation | Qualified source snapshots, no inferred SKU/price mapping or competitor absence, task-shaped prompts, genuine corrected catalog and regressions | PASS for identified defects; not a claim of universal model accuracy |
+| F03-03 | Static design system and useful information hierarchy | `foundation/PageFoundation.jsx`, `agentCopy.js`, `foundation.css`; exact palette, existing sans family, role/brief/result, optional support and separate engineering section; working console entry | IMPLEMENTED in preview; owner acceptance/promotion pending |
+| F03-04 | Remove public capture/operational exposition | All five preview examples show no capture/test dates, provider quota/debug notes or unverified-output caveats used instead of a quality fix | PASS in preview; legacy homepage promotion pending |
+| F03-05 | Concrete scroll-motion study | `foundation/MotionStudy.jsx`: calm start, small anticipation, larger reveal, direct hold/reverse and readable native fallback; zero API calls on scrolling | IMPLEMENTED / technically verified; pacing/composition approval pending |
+| F03-06 | Common functional gate | 349 backend, 55 frontend unit tests; 18 browser tests in each mode including all five agents/chat/triage/digest/history/review/export/logout; build/lint pass | PASS; exact evidence below |
+| F03-07 | Responsive/accessibility/static fallback | 360/390/768px overflow checks, keyboard selection, scoped WCAG axe check, loading/retry/stale-response tests and renderer-independent content | PASS for tested scope; visual acceptance pending |
 | F03-08 | Owner visual acceptance | Review the concrete page and motion study, including paper/grain comparison, before promoting the new composition or marking PASS | REQUIRED / PENDING |
 
 The motion study resolves visual questions; it does not authorise five completed
@@ -935,3 +935,157 @@ include React Bits ScrollStack/ScrollReveal and Codrops ScrollPanels,
 OneElementScroll and OnScrollLayoutFormations. Choose behaviour against our
 content and test it before adopting a component. F04 remains ineligible until
 F03's full exit, including the required owner visual review, passes.
+
+### Implemented candidate and preserved boundaries
+
+- `/preview/f03`: calm opening, CSS paper dossier, five discoverable roles,
+  short editorial briefs, untouched genuine result statements, business risks and
+  human-review flags where present, optional sources/rationale and a separate
+  “How it’s built” section. The brief summaries are editorial presentation, not
+  fabricated additional model output. Console entry uses the existing real API
+  and authentication flow.
+- `/preview/f03/motion`: isolated native-scroll study with direct
+  `useScroll`/`useTransform` progress, no spring or Lenis owner on this route.
+  Its experimental 320vh track is not a replacement for the inherited 600vh
+  homepage deck. At widths ≤900px or with reduced motion it becomes native,
+  readable static content. The CSS paper opening is not the PR checkpoint machine.
+- Plain paper and static subtle graphite can be compared in a review-only toolbar.
+  No new colour, typeface, dependency, 3D renderer, visitor-controlled camera or
+  dither/loader effect was added. The toolbar and final placement need resolution
+  when promoting the reviewed composition.
+- The existing homepage stays available during review. Its old inspector is not
+  claimed to meet the new presentation direction. F04 comparison, F05/F06 physical
+  scenes and F09 final page choreography have not been implemented by this preview.
+- Both preview paths now work on direct navigation through Flask's compiled SPA
+  server as well as Vite. A real compiled-only 404 was found, fixed and regression
+  tested; a Vite-only pass was not treated as sufficient.
+
+### Source/output correction and genuine recording provenance
+
+Known navigation/cookie chrome is filtered without rejecting genuine privacy
+content simply because it mentions cookies. Seeded hardware/pricing text is
+explicitly a partial source snapshot; unassociated page prices no longer create
+fabricated SKU-price graph edges. Agent instructions avoid invented rates, SLAs,
+availability promises and claims that an absent observation proves a competitor
+lacks a capability. Output JSON contracts remain unchanged.
+
+Cleaning the seed initially reduced hardware-query relevance. Qualified labels
+retain useful retrieval vocabulary, and explicit SKU/family queries prioritise
+matching hardware rows before BM25 tie ordering. Existing evaluation thresholds
+were kept intact. Tests cover actual privacy text, page chrome, price mapping,
+persona assumptions and hardware relevance; broader retrieval/quality evaluation
+still belongs to F10.
+
+The five original F02 files and manifest are unchanged. Corrected, genuine
+`gemini-3.5-flash-lite` results live separately in
+`frontend/public/examples/f03-reviewed/`, with their own checksums and original
+request/response/source evidence. The first corrected set is retained in
+`docs/recordings/f03-first-correction/`; one later PMM response suggesting
+unsupported immediate availability/waitlist implications is retained with a
+rejection record in `docs/recordings/f03-rejected-product-marketing/`. It was
+genuinely recaptured after tightening the goal, not rewritten by hand.
+
+F03 used eleven deliberate provider attempts: five first-pass corrections,
+five second-pass captures including the rejected PMM record, and one PMM
+replacement. These are F03 attempt counts, not an assertion about account-wide
+daily usage or quota. The first four accepted records identify capture revision
+`465441d`; PMM identifies `2bd3c6a`. Routine verification used controlled inference.
+No new website crawl, universal factual-accuracy claim or held-out model quality
+benchmark is implied. No environment provider/default was changed.
+
+Capture resumption now validates complete historical scenarios against their
+saved request goals and preserves their original scenario IDs. Incomplete unknown
+historical profiles block instead of silently mixing new goals. Both complete
+F02 and F03 catalogs resume with zero model calls and unchanged files.
+
+### Atomic implementation history
+
+All commits below have only `namm9an <naman.moudgill77@gmail.com>` as author and
+committer, with no AI co-author trailer. No merge or environment publication is
+part of this phase.
+
+| Revision | Change |
+|---|---|
+| `150409b` | `fix: ground agent examples in partial source evidence` — grounding regressions and synchronised scroll direction in all three specifications |
+| `465441d` | `fix: produce task-focused recommendations from clean snapshots` — source cleanup and agent-specific task output |
+| `2bd3c6a` | `fix: keep launch messaging clear of availability promises` — PMM capture goal correction |
+| `afd17cb` | `fix: retain hardware relevance after source cleanup` — retrieval regression repair without relaxing evaluation thresholds |
+| `794ddb3` | `fix: resume original captures without regenerating examples` — historical request/profile preservation |
+| `59f997f` | `feat: add reviewed examples alongside original captures` — genuine catalogs and rejected/first-pass provenance |
+| `41b75c1` | `feat: build a reviewable page foundation and scroll study` — isolated review UI, motion study and browser/unit coverage |
+| `9f0a3e7` | `fix: serve review routes from the compiled application` — direct-navigation SPA fix with failing-before/passing-after tests |
+
+### Complete technical gate and review evidence
+
+Logs are local artifacts under `/workspace/reviews/`. The frontend source tested
+at `41b75c1` is unchanged at `9f0a3e7`; the latter adds only Flask preview routing
+and its integration regressions. Backend and compiled-browser suites were rerun
+after that fix. Final documentation-only changes do not invalidate those results.
+
+| Lane | Result | Evidence |
+|---|---|---|
+| Backend unit/integration | Temporary `DB_PATH`, blank provider key; `.venv/bin/python -m pytest -q tests/unit tests/integration`: **349 passed** at `9f0a3e7` | `f03-backend-complete.log` |
+| Frontend unit | `npm run test:unit`: **55 passed / 12 files** | `f03-final-unit.log` |
+| Lint | `npm run lint`: exit 0; 27 existing warnings, no errors | `f03-final-lint.log` |
+| Build | `npm run build`: exit 0; initial landing JS 136.00kB gzip, lazy page foundation 2.79kB and study 1.51kB; existing lazy shader warning retained | `f03-final-build.log`; not a final performance-budget pass |
+| Development browser/API | `npm run test:integration`: **18 passed** | `f03-final-browser-dev.log` |
+| Compiled browser/API | `npm run test:integration:built`: **18 passed**, two Gunicorn workers | `f03-built-verified.log` |
+| Recording resume/integrity | Both genuine catalogs ready, five files each, no byte changes or model calls | `f03-both-capture-resume.log`; manifest/hash and original-F02 comparison |
+| Responsive/accessibility/motion | Five new browser cases: 360/390/768px, keyboard, scoped axe, zero API requests on selection/scroll, direct progress hold/reverse, reduced-motion/native fallback | `frontend/tests/integration/foundation.spec.js`; unit coverage for retry and stale fetch |
+
+Both browser modes include all five runs, two-turn chat memory, two-agent triage
+and merge, five-agent digest and synthesis, history reopen/reload, server-owned
+review, a new unreviewed decision, export and logout/401. No paid inference was
+used for these suites. The earlier stopped compiled run and failing routing/
+source-quality experiments are diagnostic artifacts, not current passing evidence.
+
+Concrete owner review artifacts, captured from the compiled review application:
+
+- [Desktop with subtle graphite](/workspace/reviews/f03-review/desktop.png)
+  and [plain paper](/workspace/reviews/f03-review/desktop-plain.png).
+- [Mobile page](/workspace/reviews/f03-review/mobile.png).
+- [Scroll study clip](/workspace/reviews/f03-review/scroll-study.mp4), 9.8 seconds,
+  plus [opening](/workspace/reviews/f03-review/motion-start.png) and
+  [open dossier](/workspace/reviews/f03-review/motion-open.png) stills.
+
+These are a technical/visual review candidate, not an approved final animation.
+The clip was recorded with zero API requests, and an extracted playback frame
+was inspected. Captures contain no credentials. A loopback review server uses
+temporary state on port 5000; this is not deployment or environment publication.
+
+### Scoped D/A and design checklist disposition
+
+The master checkboxes stay open for the eventual full site. These findings apply
+only to the F03 preview and bounded backend changes:
+
+| Criteria | Disposition |
+|---|---|
+| U01–U04; S01–S04, S11–S17, S19 | No filler badges, arbitrary italics/serif/mono/kerning, fake breadcrumbs, section numbers, decorative ASCII/squircles or all-caps subtitles added. Example and human-review labels have actual meaning. Final owner typography/label review pending |
+| U05 | Exact five-token foundation and existing type family implemented in preview; global showcase/login/console unification remains F11 and promotion work |
+| U06–U13; S05–S10, S18 | Genuine output, prominent brief/result, spacing, scoped accent and consistent icons; no glass/gradient/new colour treatment. Containers/dividers serve dossier/content groups. Composition, borders, grain, headline and copy await owner review, not declared aesthetically PASS |
+| U14 | N/A: square corners; no nested rounded surfaces introduced |
+| U15–U17 | Tested overflow, keyboard/focus and scoped WCAG axe checks pass. Actual desktop/mobile captures available; optical alignment, texture and headline wrapping still require owner visual review. No exhaustive zoom/device/accessibility certification claimed |
+| U18 | N/A: preview has no changing/aligned numerical metrics needing tabular numerals |
+| U19 | Loading, failed-load retry and stale-response isolation tested; real console API/error flows retained |
+| U20 | Direct scroll feedback and static fallback tested. Final interaction timing/material motion remains F05/F06/F09; no ambient filler added |
+| D §3–§6, §9–§10, §12–§13, §16 | Required hierarchy, palette, read-only evidence and responsive candidate implemented; no new background/trend adopted as final without comparison |
+| A §1, §3, §6, §9–§10, §16 | Agent examples remain readable without a renderer; optional supporting details, no inference on playback, direct hold/reverse and native fallback tested. Machine semantics/stills/resources/performance stay with mapped later phases |
+| Physical-motion principles / final render budgets | N/A to this CSS paper study: squash/stretch, mechanical arcs, secondary machine action, three key poses, camera/material/asset budgets are not implicitly approved or completed |
+
+### Closure checklist and next action
+
+- [x] Re-read architecture, phase mapping and common gates; preserve F02 and Claude evidence.
+- [x] Record scroll vision in all three working specifications without approving final materials or inner controls.
+- [x] Correct known source/output defects and capture genuine replacements; retain rejected/historical records.
+- [x] Build a concrete desktop/mobile foundation and isolated scroll study; keep existing public composition during review.
+- [x] Make more than two coherent atomic implementation/test commits with owner-only authorship.
+- [x] Pass full backend, unit, lint, build and both complete browser/API gates; repair compiled routing before claiming success.
+- [x] Record scoped checklist findings, artifacts, provenance, limitations and remaining owner decisions.
+- [ ] Owner reviews page hierarchy, plain/grain surface and motion pacing/composition.
+- [ ] Promote the reviewed foundation, resolve/remove review-only controls and public legacy inspector, then rerun affected gates.
+- [ ] Recheck every F03 acceptance item and mark PASS only after visual and functional exit are complete.
+
+**F03 remains OPEN; F04 is not eligible.** The next action is review of this
+concrete candidate, followed by any requested corrections and deliberate
+promotion. No unreviewed machine, final scroll geometry or next-phase build is
+authorised by the technical pass alone.
