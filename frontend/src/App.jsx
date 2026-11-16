@@ -5,20 +5,20 @@ import PublicCaseStudyPage from './components/showcase/PublicCaseStudyPage';
 
 // Lazy load the full interactive workbench so the public case study bundle stays micro-lightweight
 const InteractiveConsole = React.lazy(() => import('./components/console/InteractiveConsole'));
+const PageFoundation = React.lazy(() => import('./components/foundation/PageFoundation'));
+const MotionStudy = React.lazy(() => import('./components/foundation/MotionStudy'));
+
+const routeFor = () => window.location.pathname.startsWith('/console') ? 'console'
+  : window.location.pathname.startsWith('/preview/f03/motion') ? 'motion-study'
+    : window.location.pathname.startsWith('/preview/f03') ? 'foundation' : 'case-study';
 
 export default function App() {
-  const [currentRoute, setCurrentRoute] = useState(() => {
-    return window.location.pathname.startsWith('/console') ? 'console' : 'case-study';
-  });
+  const [currentRoute, setCurrentRoute] = useState(routeFor);
 
   // Handle browser back/forward buttons
   useEffect(() => {
     const handlePopState = () => {
-      if (window.location.pathname.startsWith('/console')) {
-        setCurrentRoute('console');
-      } else {
-        setCurrentRoute('case-study');
-      }
+      setCurrentRoute(routeFor());
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -35,6 +35,14 @@ export default function App() {
     setCurrentRoute('case-study');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
+
+  if (currentRoute === 'foundation' || currentRoute === 'motion-study') {
+    return <Suspense fallback={<p role="status">Loading preview…</p>}>
+      {currentRoute === 'foundation'
+        ? <LenisProvider><PageFoundation onOpenConsole={navigateToConsole} /></LenisProvider>
+        : <MotionStudy />}
+    </Suspense>;
+  }
 
   if (currentRoute === 'console') {
     return (
