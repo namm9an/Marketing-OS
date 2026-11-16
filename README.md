@@ -233,7 +233,7 @@ npm run test:unit
 npm run lint
 npm run build
 npm run test:integration
-npm run test:integration:built -- baseline.spec.js workflow.spec.js examples.spec.js
+npm run test:integration:built
 ```
 
 The browser harness starts its own API with a temporary SQLite database, synthetic

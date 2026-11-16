@@ -39,7 +39,7 @@ Anti Gravity established the scrollable deck, opaque stacked cards, tab jumps, n
 
 F01's functional baseline passed at application revision `d6c9973`: original saved results, server-owned reviews, stale-request isolation, all five selectable specialists, actual execution mode and useful error states, development/built API integration, mobile navigation, native readable dossiers and reduced-motion support. See the blueprint's [F01 completion record](MARKETING_OS_BLUEPRINT_PLAN.md#13-f01-completion-record) for all six gate lanes, exact tests and scoped checklist findings. These repairs do not apply the final palette/graphite/dither style or complete the visual overhaul. The master design checkboxes below remain open for their full intended scope.
 
-F02 adds normalized workflow/history/scene data and a plain, optional saved-example inspector, without applying a new visual direction. Capture keeps original responses and same-request source rows separately. The inspector appears only when all five genuine recordings are ready, verifies file checksums and attribution, and makes no generation/review/memory requests on selection. At this revision there are **zero accepted genuine recordings**: credentials and model listing work, but generation returns upstream HTTP 402. Existing hand-written examples remain explicitly illustrative; the capture blocker and phase evidence are recorded in blueprint section 14. F03 is not eligible.
+F02's data/capture foundation passes at `0dc18d6`: normalized workflow/history/scene data, five genuine `gemini-3.5-flash-lite` recordings and an optional plain inspector. Original responses and same-request source rows are separate; checksums, model/citation attribution and read-only selection are verified. Existing hand-written examples stay explicitly illustrative. The inspector visibly marks unsupported competitor hardware-limit claims as unverified; genuine model output is not a verified competitive assessment. Blueprint section 15 records the complete gate and limits. F03 is next, not started; no final visual direction has been applied.
 
 Do not interpret backend test results as proof of a finished browser product. Do not spend a redesign phase making a nonfunctional control more attractive.
 
@@ -277,6 +277,8 @@ The original heading said 20, but its list contains 19 entries. Preserve those e
 
 F02 implementation: `presentation.js` normalizes run/chat/triage/digest/history and supplies six-station scene bindings without mutating raw snapshots. One-shot generated summaries, request-captured full rows, chat fact excerpts, per-specialist triage scopes and digest corpus links stay distinct. Missing IDs, measurements, flagged phrases and review events stay unavailable. `exampleCatalog.js` accepts only complete live catalogs and matching-file checksums; checksums establish consistency, not independent provider authentication or claim entailment. Physical comparison/scene UI and the final design system remain later work.
 
+The five saved examples use the seeded local source corpus, not a fresh web crawl. Inspection found some navigation/cookie text in retrieved rows and unsupported inferences that H100 evidence establishes a competitor's full hardware limits. Keep the original outputs/rows unchanged and their visible caveat. F10's content/proof review must revisit corpus quality, freshness and capability claims before presenting polished marketing assertions; F02 PASS does not certify model quality or source entailment.
+
 ## 13. Accessibility and comparison acceptance
 
 - Preserve readable text and a coherent result when animation, WebGL, touch hover, or a texture is unavailable.
@@ -289,6 +291,7 @@ F02 implementation: `presentation.js` normalizes run/chat/triage/digest/history 
 
 | Date | Decision | Source / status |
 |---|---|---|
+| 2026-11-16 | F02 data/capture foundation PASS; five genuine Flash-Lite recordings | `0dc18d6`, full backend/frontend/browser gates recorded in blueprint section 15. Capture model explicitly selected under owner's lower-tier authorisation; final art direction and generated-claim quality remain separate |
 | 2026-11-16 | F02 data/capture implementation; retain genuine-public-example requirement | Implementation status, not a new owner design choice: upstream generation HTTP 402 blocks capture. No final palette, background, material or camera treatment implemented |
 | 2026-11-13 | Paper/dossier identity is retained | Owner confirmed |
 | 2026-11-13 | Clicked agents use miniature physical 3D scenes explaining their work | Owner confirmed; supersedes old flat-SVG-only constraint |

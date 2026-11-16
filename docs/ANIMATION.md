@@ -23,7 +23,7 @@ The miniature machine is a visual metaphor. It does not reproduce hidden model t
 | Paper/dossier identity around the scenes | CONFIRMED by owner |
 | Visitors compare agents before choosing one to explore | CONFIRMED by owner |
 | Compare two agents side by side, then open one shared animation stage | CONFIRMED by owner, 15 November; all five remain discoverable |
-| Genuine saved model responses for public examples; controlled/mock responses for routine tests | CONFIRMED by owner, 15 November. F02: credential/model listing available, genuine capture BLOCKED by upstream generation HTTP 402; do not substitute test fixtures |
+| Genuine saved model responses for public examples; controlled/mock responses for routine tests | CONFIRMED. F02 PASS: five genuine `gemini-3.5-flash-lite` responses captured with same-request evidence; public selection tests make zero API calls. Generated claims remain unverified |
 | Physical-scene material, scale, modelling style, lighting, exact camera framing | OPEN DETAILS; collect and compare references/stills before full modelling/animation |
 | Guided camera that shows the machine's story | CONFIRMED by owner, 15 November; visitor-controlled rotation is not approved |
 | PR & Policy as the first pilot | CONFIRMED by owner, 15 November; risk checkpoint and separate human-review route |
@@ -139,7 +139,7 @@ Claude proposed six stations: Input, Retrieve, Model call, Validate, Govern, Out
 
 Missing evidence leaves a station incomplete/unavailable with a plain explanation, not a fabricated success. The scene can still communicate the supported high-level story.
 
-F02 provides these six station bindings through `adaptAgentScene`, for each attributable one-shot specialist. They are data projections, not an implemented renderer, animation timeline or hidden-reasoning trace. Captured source rows support Retrieve; a generated summary alone leaves it partial. Successful one-shot schema acceptance does not establish claim entailment. Risk escalation stays separate from absent human-review events. The static example inspector reads files only; future scene playback must retain that boundary. Five genuine captures remain blocked by provider generation HTTP 402, so this does not close F02 or approve any scene/material choice.
+F02 provides these six station bindings through `adaptAgentScene`, for each attributable one-shot specialist. They are data projections, not an implemented renderer, animation timeline or hidden-reasoning trace. Captured source rows support Retrieve; a generated summary alone leaves it partial. Successful one-shot schema acceptance does not establish claim entailment. Risk escalation stays separate from absent human-review events. All five genuine Flash-Lite captures now pass the F02 gate at `0dc18d6`; the static inspector reads saved files only. Future scenes must retain the unverified-output/source-coverage boundary and may not turn a limited corpus into proof that a competitor lacks hardware. This pass approves no scene material or physical motion.
 
 ## 7. Timing and all 21 supplied motion notes
 
@@ -248,7 +248,9 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 
 ## 13. Open decisions and revision log
 
-2026-11-16 F02 in progress / blocked: added workflow and scene data bindings, same-request retrieval capture, live-only static catalog validation and optional plain inspection. No miniature renderer, physical motion, comparison layout, camera behaviour, new timing, texture or dependency has been introduced. Controlled selection tests prove no API generation/review/memory request; public recording acceptance remains blocked, not passed. See blueprint section 14 for current evidence and the resume gate.
+2026-11-16 F02 PASS at `0dc18d6`: five genuine `gemini-3.5-flash-lite` captures, seven provider attempts including two temporary-503 retries, original output/source bytes preserved. Full development and compiled browser suites pass 13/13 each, including read-only actual-recording selection. Scoped mobile/keyboard/accessibility checks and current unit/API gates pass; blueprint section 15 has the evidence. No miniature renderer, comparison layout, camera behaviour, new timing, texture or dependency has been introduced. Preserve the visible source-quality limitation in future scenes; no final motion acceptance is inferred.
+
+Earlier 2026-11-16 snapshot: capture was blocked before the successful provider configuration/key checks. Blueprint section 14 preserves those initial failures; it is no longer the current phase status.
 
 Resolve exact material/modelling references, guided camera framing, detailed responsive comparison, opening/scroll geometry and rendering/asset budgets before their dependent phases. The owner answered Q01–Q06 on 15 November: PR & Policy first, two-agent/shared-stage comparison, genuine public recordings, light paper with subtle graphite, guided story camera and a shorter stack/simpler opening. Exact machine quality needs reference/still review; visitor rotation is not approved. “Tabular notes,” “Pretext,” “spring balance,” and “handheld animation” have interpretations recorded in the design/motion documents but are not silently turned into package requirements.
 
