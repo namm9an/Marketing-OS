@@ -27,7 +27,7 @@ GOALS = {
     "branding": BRIEF + "Write a concise two-sentence positioning recommendation for ML teams considering this launch. Give the audience a clear proposed value and next step.",
     "pr": BRIEF + "A price war narrative has been proposed. Recommend an alternative launch message: include the suggested message itself and the communication risk that needs human review.",
     "social": BRIEF + "Recommend one specific developer-community post idea: give its opening hook and a useful invitation or question for ML engineers. This is a content recommendation, not publishing.",
-    "product_marketing": BRIEF + "Write a concise product-messaging recommendation for an engineering buyer: a proposed angle, its audience benefit and a question the buyer should investigate before choosing hardware.",
+    "product_marketing": BRIEF + "Write a concise product-messaging recommendation for an engineering buyer: a proposed angle, its audience benefit and a question the buyer should investigate before choosing hardware. This is a planned upcoming launch: do not promise current or immediate access, deployment readiness, delivery timing or absence of waitlists.",
     "events": BRIEF + "Recommend a named field-event theme, one session format and a useful attendee takeaway for ML engineers. This is an event concept, not a booking or scheduled event.",
 }
 
