@@ -104,9 +104,12 @@ class LLMService:
             ]}],
             "generationConfig": {
                 "temperature": temperature, "maxOutputTokens": max(max_tokens, 2500),
-                "thinkingConfig": {"thinkingBudget": 0},
             },
         }
+        # A legacy thinkingBudget override is not portable to Gemini 3 models.
+        # Let those models use provider defaults; retain the older request contract.
+        if not model_name.startswith(("gemini-3-", "gemini-3.")):
+            payload["generationConfig"]["thinkingConfig"] = {"thinkingBudget": 0}
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model_name}:generateContent"
         for attempt in range(3):
             # Every outbound attempt, including retries, consumes one unit atomically.

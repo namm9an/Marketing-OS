@@ -103,6 +103,31 @@ def test_gemini_3_8_flash_remains_configured_default():
     assert settings.DEFAULT_MODEL == "gemini-3.8-flash"
 
 
+@pytest.mark.parametrize("model", ["gemini-3.5-flash-lite", "gemini-3.8-flash"])
+def test_newer_models_do_not_receive_a_legacy_zero_thinking_budget(monkeypatch, model):
+    monkeypatch.setattr(settings, "DEFAULT_MODEL", model)
+    observed = []
+
+    def upstream(request, timeout):
+        payload = json.loads(request.data)
+        # Thinking budgets are model-specific; use provider defaults for newer models.
+        assert "thinkingConfig" not in payload["generationConfig"]
+        observed.append(request.full_url)
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps({
+            "modelVersion": model,
+            "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": "OK"}]}}],
+        }).encode()
+        return response
+
+    monkeypatch.setattr("urllib.request.urlopen", upstream)
+    result = LLMService.generate("system", "goal", api_key="synthetic-test-key")
+    assert observed == [f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"]
+    assert result["requested_model"] == model and result["model"] == model
+    assert result["attempts"] == 1 and result["fallback_used"] is False
+
+
 def test_quota_reached_raises_error_no_mock_answer(monkeypatch):
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-server-key")
     rate_limiter.reset()
