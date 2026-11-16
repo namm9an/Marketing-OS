@@ -1,7 +1,7 @@
 # Marketing OS — blueprint and phased build plan
 
-Updated: 16 November 2026 (Asia/Calcutta).
-Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6` on `feat/frontend-data-contracts`. All five genuine recordings use `gemini-3.5-flash-lite`; current full suites pass. See section 15 for evidence and source-quality limits. F03 is next and has not started; F00 visual reviews remain open.
+Updated: 17 November 2026 (Asia/Calcutta).
+Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03 is IN PROGRESS on `feat/frontend-page-foundation`, based on that complete F02 history. See section 15 for F02 evidence/limits and section 17 for the active work. F00 visual reviews remain open.
 
 Subsequent owner approval: public agent views follow purpose → short example brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Section 16 records this presentation correction. Public timestamps/operational notes in the existing F02 inspector still need removal; this documentation update does not claim the UI has changed.
 
@@ -168,6 +168,8 @@ Every implementation phase F01 onward inherits all six gate lanes. Phase-specifi
 
 ### F03 — static design system and page foundation
 
+- Record the 17 November scroll direction: calm opening → a small initial movement → a larger scroll-driven reveal → agent dossiers within the same visual story. Treat “1.5 scrolls” as a pacing description, not a wheel-event count.
+- Build an isolated opening-to-PR-dossier motion study with simple temporary visuals for review before locking composition/choreography. Direct scroll progress holds/reverses the main sequence; exact distances and inner scene scroll-versus-click behaviour remain review choices. This is a research preview, not F05's finished physical machine or an early implementation of all F09 choreography.
 - Apply the reviewed tokens, typography, spacing, surfaces, and selected background treatment across the shell.
 - Establish a clear opening explanation, agent discovery, comparison entry, engineering evidence, and console entry using real or explicitly labelled example data.
 - Apply the owner-approved presentation correction in section 16: clear agent purpose, short example brief and useful result; optional sources/rationale; a separate “How it’s built” section. Remove public capture/test timestamps, quota explanations and debugging notes from the F02 inspector. Later scene phases add the visual explanation without making result reading depend on playback.
@@ -295,7 +297,8 @@ For each reference capture its URL/source/license, the specific useful property,
 | F00 | PARTIAL; Q01–Q06 owner direction recorded, references/details still open | Exact machine material/modelling/stills and camera framing; graphite comparison, shorter-opening geometry and responsive comparison details. Optional visitor rotation is not approved |
 | F01 | PASS — functional baseline, 15 November | Application revision `d6c9973`; five atomic implementation commits; all six gate lanes have evidence in section 13. Final art direction and complete visual/performance acceptance remain later work |
 | F02 | PASS — data/capture foundation, 16 November; section 15 | Five genuine recordings at `0dc18d6`, all current gates pass. Generated claims remain unverified; later content/quality review is still required |
-| F03–F14, including every F07 subphase | NOT STARTED | F03 is next after F02 PASS; review its static composition/surface details and implement sequentially |
+| F03 | IN PROGRESS — section 17 | Page foundation, public-example cleanup/quality and an isolated motion study; owner visual review is required before phase closure |
+| F04–F14, including every F07 subphase | NOT STARTED | Implement sequentially after the preceding phase passes |
 
 Update these three documents when a decision changes: record the decision, source/date, affected phases, superseded choice, and required retesting. Keep the original Claude archive unchanged.
 
@@ -539,6 +542,7 @@ Ask the owner when a choice is unclear or changes their intended experience. Mak
 | Q06 | Opening composition and shorter stacked-card scroll | Static composition in F03; choreography in F09 | DIRECTION CONFIRMED by owner, 15 November: preserve the stacked-card idea, review a shorter scroll and simpler opening. Exact layout/boundaries remain for review; existing 600vh stays until a tested deliberate change |
 | Q07 | Hosting, runtime mode, persistent storage and release timing | F14 only | DEFERRED: ask when deployment is requested; do not infer a provider, paid runtime, or publication from the frontend plan |
 | Q08 | Public agent content and engineering-detail placement | F03 and subsequent scene/content work | CONFIRMED by owner, 16 November: purpose → short brief → visual explanation → useful result; optional sources/rationale; separate “How it’s built” section. Capture/test timestamps, quota explanations and debug notes stay out of public presentation. Exact layout/copy/stills still need their phase reviews |
+| Q09 | Landing-page scroll pacing and relation to agent scenes | Motion study in F03; final scene/choreography phases | Owner's 17 November direction: calm opening, small first movement, then a larger continuous scroll reveal connected to the dossiers. Compare a concrete motion study before choosing exact distances or whether scroll controls the inner miniature. The radio-dial reference supplies motion qualities, not an adopted dial/glass/blue-fringe design |
 
 Q01–Q06 were answered and recorded in all three specifications during this documentation turn. Q05 intentionally retains a material/modelling review: the owner has not seen a concrete proposal and should not have to approve an unseen style or camera interaction. Bring references and the F05 brief/stills before asking for that decision. Scene stills, pilot motion approval, exact texture/scroll geometry and measured budgets remain later review checkpoints. F01 can continue independently. Ask any new product/visual questions before dependent implementation; do not make the owner settle an unused package or animation technique.
 
@@ -894,3 +898,40 @@ presentation or of generated-claim quality. F03 has not started. Its first publi
 presentation work must address these requirements and run the full common gate.
 No source code, recording bytes, original Claude archive, environment setting,
 merge or publication is changed by this update.
+
+## 17. F03 active work record
+
+Started 17 November 2026 (Asia/Calcutta), branch `feat/frontend-page-foundation`
+from `827ed61`. F02's defined data/capture exit is complete: five genuine examples,
+336 backend tests, 51 frontend unit tests and 13 browser tests in each mode at
+its recorded application revision. Semantic claim/source quality and the rejected
+public metadata presentation are explicitly F03 dependencies, not hidden F02
+failures or evidence of a finished public product.
+
+The owner authorised recording the scroll vision and proceeding with F03. Scope:
+the existing palette/typography foundation, light paper versus subtle graphite
+comparison, clear agent role/brief/result, optional sources/rationale, separate
+engineering section, working console entry and a standalone motion study of the
+opening/first PR dossier. Preserve existing branch history, backend contracts and
+original genuine captures. Keep the inherited public deck until its replacement
+composition has been reviewed; use a review preview for the new foundation.
+
+Planned acceptance mapping:
+
+| ID | Requirement | Implementation/check required | Status |
+|---|---|---|---|
+| F03-01 | F02 predecessor and all mapped D/A requirements | Recheck source/recording integrity; preserve owner decisions and original Claude archive | IN PROGRESS |
+| F03-02 | Correct known example weaknesses before presentation | Bounded grounding/source-quality repair, meaningful regressions, genuine corrected examples where needed; keep original captures | IN PROGRESS |
+| F03-03 | Static design system and useful information hierarchy | Exact palette, typography, spacing, role/brief/result, optional support, separate engineering section and usable console route | IN PROGRESS |
+| F03-04 | Remove public capture/operational exposition | Preview shows no capture/test dates, provider quota/debug notes or warnings used as a substitute for fixing weak output | IN PROGRESS |
+| F03-05 | Concrete scroll-motion study | Calm start, small anticipation, larger reveal; direct progress/reverse; readable reduced-motion/mobile fallback; no model calls | IN PROGRESS |
+| F03-06 | Common functional gate | Backend/frontend units, both browser modes, all five agents/chat/triage/digest/history/review/export/logout; build/lint | IN PROGRESS |
+| F03-07 | Responsive/accessibility/static fallback | Desktop/mobile screenshots, keyboard, contrast/axe, overflow, loading/error and renderer-independent content | IN PROGRESS |
+| F03-08 | Owner visual acceptance | Review the concrete page and motion study, including paper/grain comparison, before promoting the new composition or marking PASS | REQUIRED / PENDING |
+
+The motion study resolves visual questions; it does not authorise five completed
+machines, arbitrary effects or library additions. Current research references
+include React Bits ScrollStack/ScrollReveal and Codrops ScrollPanels,
+OneElementScroll and OnScrollLayoutFormations. Choose behaviour against our
+content and test it before adopting a component. F04 remains ineligible until
+F03's full exit, including the required owner visual review, passes.

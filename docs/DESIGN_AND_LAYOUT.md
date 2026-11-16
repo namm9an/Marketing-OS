@@ -1,6 +1,6 @@
 # Marketing OS — design and layout
 
-Updated: 16 November 2026 (Asia/Calcutta).
+Updated: 17 November 2026 (Asia/Calcutta).
 Status: current editable design specification. Confirmed decisions are separated from research candidates.
 
 Read with [the blueprint](MARKETING_OS_BLUEPRINT_PLAN.md) and [animation specification](ANIMATION.md). The owner's latest instructions govern. Historical Claude originals remain unchanged in section 16 of [the working record](FRONTEND_DESIGN_WORKING.md).
@@ -46,6 +46,14 @@ Subsequent owner-approved presentation direction supersedes that inspector's pub
 Do not interpret backend test results as proof of a finished browser product. Do not spend a redesign phase making a nonfunctional control more attractive.
 
 ## 3. Two audiences, one understandable journey
+
+17 November direction: the entire landing page should unfold as a connected
+scroll story, beginning calmly, responding subtly to the first small scroll and
+revealing the larger composition after further travel. The dossiers belong to
+that same visual world. F03 first provides a reviewable static foundation and
+an isolated motion study with simple temporary visuals. Exact scroll distances,
+inner scene behaviour, materials and final composition are not approved merely
+by this direction; compare actual movement with the owner before committing.
 
 | Layer | Visitor question | Content |
 |---|---|---|
@@ -326,6 +334,7 @@ The five saved examples use the seeded local source corpus, not a fresh web craw
 
 | Date | Decision | Source / status |
 |---|---|---|
+| 2026-11-17 | Record connected landing-page scroll story and proceed with F03 | Owner authorised a focused opening-to-PR-dossier motion prototype and page foundation. Small first movement precedes the larger reveal; no literal dial/glass/blue-fringe adoption. Concrete visual review remains required |
 | 2026-11-16 | Purpose → short brief → visual explanation → useful result; optional sources/rationale; separate “How it’s built” section | Owner approved the researched recommendation. Public capture/test dates and quota/debug explanations are rejected. Documentation recorded; UI cleanup and example-quality correction remain pending implementation |
 | 2026-11-16 | F02 data/capture foundation PASS; five genuine Flash-Lite recordings | `0dc18d6`, full backend/frontend/browser gates recorded in blueprint section 15. Capture model explicitly selected under owner's lower-tier authorisation; final art direction and generated-claim quality remain separate |
 | 2026-11-16 | F02 data/capture implementation; retain genuine-public-example requirement | Implementation status, not a new owner design choice: upstream generation HTTP 402 blocks capture. No final palette, background, material or camera treatment implemented |

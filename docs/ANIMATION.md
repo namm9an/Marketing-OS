@@ -1,6 +1,6 @@
 # Marketing OS — animation and miniature 3D scenes
 
-Updated: 16 November 2026 (Asia/Calcutta).
+Updated: 17 November 2026 (Asia/Calcutta).
 Status: current working motion specification; no new scenes have been implemented by this document.
 
 Read with [the blueprint](MARKETING_OS_BLUEPRINT_PLAN.md) and [design/layout specification](DESIGN_AND_LAYOUT.md). The owner has chosen click-to-play miniature physical 3D machines/scenes that explain the agents, and visitor-facing agent comparison. These decisions supersede the original flat-SVG-only restriction. The original Claude animation file remains unchanged in the [historical archive](FRONTEND_DESIGN_WORKING.md#16-original-claude-documents--verbatim-snapshots).
@@ -202,6 +202,26 @@ For each implemented interaction record which notes apply, which are N/A, and wh
 - A routine transition may use a simple fade when it is the clearest accessible option. Claude's blanket ban on cuts/fades is not a reason to build convoluted motion. Final scene continuity is reviewed visually.
 
 ## 9. Existing deck and optional opening transition
+
+Owner's 17 November direction is a whole-page scroll story: calm arrival → a
+small initial movement → a larger scroll-driven reveal → agent dossiers in the
+same continuous composition. The first short scroll is anticipation; “1.5
+scrolls” describes pacing and must be tested as document travel across wheel,
+trackpad and touch inputs. Use direct progress for the main motion-study timeline
+so stopping holds the composition and reversing scroll reverses it. Small
+independent settling movements can be considered separately during review.
+
+F03 now includes an isolated opening-to-PR-dossier study with temporary simple
+visuals. Keep it separate from the working public composition until reviewed.
+The miniature means a physical model viewed close up inside the dossier; exact
+materials and full rendering remain F05/F06 work. Compare outer scroll reveal
+with the earlier click-to-play inner-scene proposal before changing that control
+contract. No automatic five-machine playback or paid inference on scroll.
+
+The radio-tuner reference demonstrates pinning, responsive scroll ownership,
+selection continuity and coordinated content changes. Its semicircle, glass and
+blue chromatic fringe are not adopted styling. React Bits/Codrops components are
+research references, not an instruction to install multiple animation engines.
 
 These are the values in the inspected code, not values inferred from an outdated prompt:
 

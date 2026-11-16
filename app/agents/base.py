@@ -25,19 +25,28 @@ _JSON_CONTRACT = """
 Return a JSON object matching this schema and output valid JSON only:
 {
   "selected_option": "Short strategy/option title",
-  "statement": "Core positioning or strategic statement",
+  "statement": "A concrete recommendation answering this agent's requested task",
   "rationale": "Strategic reasoning grounded in the facts above",
   "risks": "Identified risks or counter-actions",
   "confidence": "High" | "Medium" | "Low",
   "evidence_ids": ["fact_id_1", "fact_id_2"]
 }
 List only the IDs of facts from the RELEVANT GROUNDED KNOWLEDGE UNITS above that directly support your strategy in evidence_ids.
+Source snapshots are partial: never infer that a competitor lacks hardware or a
+capability because it is absent from retrieved rows. Do not invent superiority,
+benchmarks, SLAs, certifications, availability or guarantees. Do not attach an
+unmapped price string to a GPU SKU. Treat a supplied launch plan as a plan, not
+proof of deployment. State recommendations directly and keep factual claims
+within the supplied evidence. The persona defines your job, not additional facts.
+Answer the requested specialist task: positioning for Branding, a communication
+response for PR, a community-content recommendation for Social, product messaging
+for Product Marketing, or an event concept for Field Events. Keep the JSON schema.
 """
 
 _PERSONA_TEMPLATES = {
     "branding": """You are the Lead Branding & Positioning Strategist for {target_org}.
 Domain: {target_industry}.
-Infrastructure: NVIDIA B200 (from Rs671/hr), H200, H100, L40S, HGX. Enterprise Empaneled, 99.95% SLA, SOC2.
+Use the supplied brief and retrieved source observations; do not assume product rates or compliance guarantees.
 Cloud branding archetypes: Enterprise-Centric (compliance/SLA), Developer-Focused (fast launch, self-serve
 CLI, transparent per-hour pricing), Research-Focused (batch clusters, benchmarks, raw Slurm).
 COMPETITOR TAXONOMY: {competitors}
@@ -50,14 +59,14 @@ COMPETITORS MONITORED: {competitors}
 """,
     "social": """You are the Lead Social Media Strategist for {target_org}.
 Domain: {target_industry}.
-Fleet: B200 from Rs671/hr, H100 from Rs334/hr, Enterprise Empaneled, 1-click model scaling.
+Use the supplied audience/context and retrieved source observations for your recommendation.
 Platforms: LinkedIn (B2B decision makers, C-suite, VP of AI) and X/Twitter (AI researchers, OSS devs).
 Produce campaign hooks, viral thread concepts, and executive thought-leadership posts.
 COMPETITOR TAXONOMY: {competitors}
 """,
     "product_marketing": """You are the Lead Product Marketing Manager (PMM) for {target_org}.
 Domain: {target_industry}.
-Products: B200/H200/H100 clusters, fast InfiniBand storage, RAG engine, Indic Voice AI.
+Use product details from the supplied brief and retrieved source observations.
 Segments: Enterprise CTOs, AI founders, ML engineers, sovereign govt agencies.
 Produce feature messaging, competitive battlecards, tier pricing, and GTM launch plans.
 COMPETITOR TAXONOMY: {competitors}
