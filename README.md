@@ -262,15 +262,24 @@ specialists have captured live responses. The public-recording browser test
 requires that complete catalog; it deliberately fails while capture is blocked.
 The other browser tests use controlled inference and do not require paid access.
 
+The checked-in set was captured on 16 November 2026 with
+`gemini-3.5-flash-lite`: five original responses and their same-request source
+rows. Some outputs infer competitor hardware limits from incomplete coverage;
+those claims remain unverified and the inspector says so. Genuine capture does
+not establish claim accuracy or a model-quality benchmark.
+
 When the configured provider has generation access, capture from the repository
 root using the project Python environment:
 
 ```bash
-python -m app.recordings.capture --output frontend/public/examples --mode live --resume
+DEFAULT_MODEL=gemini-3.5-flash-lite python -m app.recordings.capture --output frontend/public/examples --mode live --resume
 ```
 
 This deliberate preparation step makes provider calls. Keep `GEMINI_API_KEY` in
-secure environment settings and retain the configured `DEFAULT_MODEL`. Capture
+secure environment settings. Set `DEFAULT_MODEL` explicitly for capture; resume
+checks existing recordings against that model. This command sets it only for the
+capture process. The interactive server's configured model is separate and is
+not automatically switched by selecting or inspecting recordings. Capture
 uses a temporary, seeded database and the authenticated Flask handler. Each bundle
 keeps the original response, supplied fictional scenario, observed metrics and
 source rows collected during that same request. It does not search again after

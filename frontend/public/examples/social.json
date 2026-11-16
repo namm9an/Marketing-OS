@@ -1,0 +1,151 @@
+{
+  "schema_version": 1,
+  "recording": {
+    "kind": "live-recording",
+    "captured_at": "2026-11-16T09:21:40.310655+00:00",
+    "repository_revision": "bea1e7f6534408702ef1c05505a5890f755a5fef",
+    "transport": "flask-test-client",
+    "fictional_client": "Vanguard Cloud",
+    "signal_kind": "supplied-simulated"
+  },
+  "request": {
+    "workflow": "run",
+    "agent_type": "social",
+    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend developer-facing community content from this supplied signal; no live social monitoring or publishing."
+  },
+  "response": {
+    "decision": {
+      "attempts": 2,
+      "completion_tokens": 423,
+      "confidence": "High",
+      "escalated": false,
+      "escalation_reason": null,
+      "evidence_ids": [
+        "bc27b571dc1f83531a43a55f1255891436a512c01ef816829e246b9139014a0a",
+        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
+        "d05af5c30c62363c11cedae89cfb9f32123cd272f0ea16d299efdb52b40f82cd"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "id": "387b3a8e52cc48419d7760acc69e6e9b",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 3076.97,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1064,
+      "rationale": "Nebius's verified public documentation and hardware fleet focus heavily on H100 deployment. By leveraging Vanguard Cloud's broader and more advanced hardware fleet (including B200 and H200 alongside H100) and enterprise credentials, we can capture high-end AI developers and C-suite buyers looking for next-generation compute scaling.",
+      "reasoning_source": "langgraph:social:gemini-3.5-flash-lite",
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.75,
+      "risks": "Competitors may counter with aggressive discounting or global multi-region availability claims, requiring Vanguard Cloud to lean heavily on reliability, 1-click model scaling, and localized enterprise compliance.",
+      "selected_option": "Vanguard Cloud B200 vs. Nebius Hardware Supremacy Campaign",
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1487,
+      "total_wall_ms": 7411.14
+    },
+    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend developer-facing community content from this supplied signal; no live social monitoring or publishing.",
+    "knowledge_units": [
+      {
+        "class": "fact",
+        "confidence": "high",
+        "content": "social agent decision: Vanguard Cloud B200 vs. Nebius Hardware Supremacy Campaign"
+      }
+    ],
+    "metrics": {
+      "attempts": 2,
+      "completion_tokens": 423,
+      "evidence_ids": [
+        "bc27b571dc1f83531a43a55f1255891436a512c01ef816829e246b9139014a0a",
+        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
+        "d05af5c30c62363c11cedae89cfb9f32123cd272f0ea16d299efdb52b40f82cd"
+      ],
+      "facts_retrieved": 5,
+      "fallback_used": false,
+      "finish_reason": "STOP",
+      "invalid_evidence_ids_count": 0,
+      "latency_ms": 3076.97,
+      "model": "gemini-3.5-flash-lite",
+      "prompt_tokens": 1064,
+      "requested_model": "gemini-3.5-flash-lite",
+      "retrieval_ms": 1.75,
+      "served_model_verified": true,
+      "source": "live",
+      "thoughts_tokens": null,
+      "total_tokens": 1487,
+      "total_wall_ms": 7411.14
+    },
+    "positioning": {
+      "differentiation_basis": "Sovereign Neo-Cloud Platform",
+      "state": "ACTIVE",
+      "statement": "Position Vanguard Cloud's B200 and H100 fleet against Nebius by emphasizing superior next-gen silicon availability, enterprise empanelment, and competitive local pricing starting from Rs334/hr for H100 and Rs671/hr for B200."
+    },
+    "success": true
+  },
+  "evidence": {
+    "retrievals": [
+      {
+        "agent": "social",
+        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend developer-facing community content from this supplied signal; no live social monitoring or publishing.",
+        "facts": [
+          {
+            "id": "bc27b571dc1f83531a43a55f1255891436a512c01ef816829e246b9139014a0a",
+            "organization": "Nebius",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Verified Subpage Documentation: The Ultimate AI Cloud Nebius Certification is live –– get your special offer! Products Solutions Why Nebius Resources Pricing Company Investors Contact sales Log in The Ultimate AI Cloud Build and scale AI faster on a cloud engineered from silicon to API. Start building now Talk to an expert From tr",
+            "source_url": "https://nebius.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 09:21:24",
+            "rank": -6.903408641935284
+          },
+          {
+            "id": "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
+            "organization": "Nebius",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Verified GPU Hardware Fleet on Nebius: H100.",
+            "source_url": "https://nebius.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 09:21:24",
+            "rank": -6.6978021290602765
+          },
+          {
+            "id": "85c724324cd4dc4c56cd0f41905680491398963891f9dea8a6cbf47687a06de4",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Verified Subpage Documentation: E2E Cloud | E2E Cloud Skip to main content E2E Cloud MyAccount TIR REST API MyAccount TIR Search docs or Ask AI ⌘ K Blogs Sign Up What's New TIR - Persistent Login User Management Release notes Documentation MyAccount Explore All Products ✨ NSE Listed, MeitY Empanelled AI-First Hyperscaler E2E Netwo",
+            "source_url": "https://docs.e2enetworks.com/myaccount/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 09:21:24",
+            "rank": -5.508769533540823
+          },
+          {
+            "id": "0f6a3b902ce6fa36351433a415df321091f9e32b021c4a98c86a0c36149eb9d9",
+            "organization": "Hyperstack",
+            "knowledge_class": "documentation",
+            "confidence": "high",
+            "content": "Verified Subpage Documentation: Hyperstack AI Cloud Pricing | On-Demand, Reserved and Spot GPU VMs This website stores cookies on your computer. These cookies are used to collect information about how you interact with our website and allow us to remember you. We use this information in order to improve and customize your browsing",
+            "source_url": "https://www.hyperstack.cloud/pricing",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 09:21:24",
+            "rank": -5.472648920796998
+          },
+          {
+            "id": "d05af5c30c62363c11cedae89cfb9f32123cd272f0ea16d299efdb52b40f82cd",
+            "organization": "Vanguard Cloud",
+            "knowledge_class": "hardware",
+            "confidence": "high",
+            "content": "Verified GPU Hardware Fleet on Vanguard Cloud: A100, B200, H100, H200.",
+            "source_url": "https://www.e2enetworks.com/",
+            "enriched_by": "grounded_crawler",
+            "created_at": "2026-11-16 09:21:24",
+            "rank": -4.804152463948762
+          }
+        ]
+      }
+    ]
+  }
+}

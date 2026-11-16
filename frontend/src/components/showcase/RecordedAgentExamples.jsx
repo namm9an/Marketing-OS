@@ -42,6 +42,7 @@ export default function RecordedAgentExamples() {
         {example?.state === 'unavailable' && <p role="alert">This recorded example could not be loaded. Close and reopen to retry.</p>}
         {view && <>
           <p>Recorded provider response · fictional Vanguard Cloud · supplied scenario</p>
+          <p>Competitor hardware-limit claims in these recordings are unverified. The captured sources do not cover each competitor’s full offering.</p>
           <p>Captured <time dateTime={example.recording.captured_at}>{example.recording.captured_at}</time></p>
           <p><strong>Supplied goal:</strong> {view.input.text}</p>
           <h3 className="font-semibold">{view.output.title}</h3>

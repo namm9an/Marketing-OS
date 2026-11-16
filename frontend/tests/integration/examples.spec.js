@@ -30,6 +30,7 @@ test('controlled recording contracts can be inspected and switched without any g
   await opener.focus();
   await opener.press('Enter');
   await expect(page.getByText('Controlled branding recording contract.', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Competitor hardware-limit claims in these recordings are unverified/)).toBeVisible();
   await page.getByLabel('Recorded specialist', { exact: true }).selectOption('pr');
   await expect(page.getByText('Controlled pr recording contract.', { exact: true })).toBeVisible();
   await page.getByText(/Sources captured during this request/).click();
@@ -74,6 +75,7 @@ test('the five saved public recordings display their original responses with no 
     expect(bundle.response.metrics.source).toBe('live');
     await page.getByLabel('Recorded specialist', { exact: true }).selectOption(entry.agent);
     await expect(page.getByText(bundle.response.positioning.statement, { exact: true })).toBeVisible();
+    await expect(page.getByText(/Competitor hardware-limit claims in these recordings are unverified/)).toBeVisible();
   }
   expect(apiRequests).toEqual([]);
 });
