@@ -36,6 +36,7 @@ The miniature machine is a visual metaphor. It does not reproduce hidden model t
 | Guided camera that shows the machine's story | CONFIRMED by owner, 15 November; visitor-controlled rotation is not approved |
 | PR & Policy as the first pilot | CONFIRMED by owner, 15 November; risk checkpoint and separate human-review route |
 | Stacked cards with a shorter scroll and simpler opening | CONFIRMED investigation direction by owner, 15 November; exact geometry/composition still needs review |
+| Centred arrival develops into a central agent stage with adjacent brief/result | DIRECTION CONFIRMED by owner, 17 November: supplied wireframes 3 → 1. Coordinated scroll, stable direct-entry “Explore the agents” CTA, quieter “Open console”; exact frames/geometry/timing still require review |
 | Five-sheet opening morph into the deck | CLAUDE PROPOSAL; not adopted by default under the simpler-opening direction |
 | Full autoplay on card arrival | NOT ADOPTED as the main interaction; current owner direction is click-to-play |
 | Preview motion before a click | OPTIONAL; needs a purpose and review, not five running miniatures |
@@ -262,6 +263,43 @@ The original Claude animation snapshot uses 0.11 at one opening boundary; the im
 
 The owner chose to preserve stacked cards while reviewing a shorter scroll and simpler opening. Keep the observed implementation values until the replacement geometry/composition is reviewed, then update the constants and tests together. The old five-sheet morph is not adopted by default. Test the joining frame, reverse scrolling, navigation interruption and mobile/reduced-motion alternatives for the chosen sequence. Do not move or autoplay an entire miniature machine simply because its card crosses a scroll threshold.
 
+### Agreed replacement direction — 17 November
+
+The owner agreed to use wireframe 3's centred arrival developing toward wireframe
+1's central agent visual with adjacent brief/result. Wireframe 2 is supporting
+reference for selected-agent prominence, not another complete composition to add.
+This direction replaces the rejected hinged-paper study's visual approach;
+reviewed artwork, exact geometry and final timing are still pending.
+
+| Beat | What changes | What must remain usable/truthful |
+|---|---|---|
+| Arrival | A calm centred headline/short explanation and yellow CTA, with part of the agent visual below | Readable content and immediately usable CTA; no forced loader or automatic generation |
+| Small first scroll | Agent visual elements begin a subtle positional change | Main message remains legible; no literal wheel-event count or jump into full machine playback |
+| Further scroll | Central stage expands; role/brief/result and selection/focus change in coordination | Preserve object/agent identity, direct hold/reverse and readable genuine output; no stale labels or result from another agent |
+| Exploration | Visitor selects an agent and reaches mapped comparison/scene controls | Discovery, F04 comparison and F05/F06 inner playback remain distinct; no paid inference/review/memory action from exploration |
+
+The primary “Explore the agents” action reaches exploration directly; it must not
+require every preceding animation beat. Keep its pointer/keyboard target stable
+while interacting and preserve useful focus on arrival. “Open console” remains
+a quieter navigation action, separate from submitting an actual request. Test
+direct entry, reverse scrolling and interrupted navigation together so scroll
+state and selection/content do not disagree. Reduced-motion/mobile states retain
+the same essential content and an immediate accessible exploration route.
+
+The uploaded dial clip shows a fixed selection reference with coordinated work
+display/identity changes; Glaze's brief specifies persistent objects moving
+between contexts and carefully described materials; Lūmen specifies alignment,
+hierarchy and staged entrance. Learn those qualities. A copied dial, blue fringe,
+physics keychain, dark theme or static no-scroll hero is not the agreed solution.
+Typography/colour/spacing/CTA and motion must be reviewed as one composition.
+
+Next, produce arrival, first-movement and expanded-stage frames, including a
+readable mobile arrangement, before implementing the replacement study. This
+revises F03's visual portion and updates later F09 acceptance; it does not reopen
+F01/F02, replace saved responses or claim F04–F09 are already built. Rerun the
+full common gate and current motion/accessibility checks after implementation.
+Blueprint §18 is the phase-impact and revision checklist.
+
 ## 10. Accessibility, performance, and fallback
 
 - The scene's meaning exists in real readable text. Decorative canvas/SVG is hidden from assistive technology; informative visuals have a useful description.
@@ -305,6 +343,8 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 - [ ] Both design checklists and all common phase-gate lanes pass before the next phase.
 
 ## 13. Open decisions and revision log
+
+2026-11-17 subsequent owner agreement: record centred arrival → small response → expanded central agent stage using supplied wireframes 3 → 1. Primary “Explore the agents” CTA directly reaches exploration; keep its hit/focus target stable and “Open console” quieter. Paper/ink/yellow retain their agreed roles; no dark imitation. Three concrete frames and responsive/static equivalents precede replacement animation. Revise F03's visual work, retain completed functional/data work and update planned F09 choreography. No application change or phase completion is claimed by this documentation update.
 
 2026-11-17 subsequent owner review: current MP4 study rejected for its library/children's-book appearance and mismatch with the reference. F03 visual acceptance fails for this candidate despite passing technical checks. No replacement animation implemented by this feedback update; see blueprint §17. Interactive delivery is also unresolved: the owner could not reach the cloud localhost URL or download the ZIP.
 

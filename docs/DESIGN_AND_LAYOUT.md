@@ -22,6 +22,7 @@ Confirmed by the owner:
 - Keep the light paper page and compare subtle graphite speckling with the plain base (owner confirmed 15 November).
 - Use a guided camera to explain the miniature machine's story. Exact machine materials/modelling need concrete references/stills; visitor-controlled rotation is not approved (owner clarified 15 November).
 - Preserve the stacked-card idea while reviewing a shorter scroll and simpler opening (owner confirmed 15 November).
+- Use the supplied wireframe 3's centred arrival, developing toward wireframe 1's central agent stage and adjacent explanation/result; primary “Explore the agents” CTA and quieter “Open console” action (owner agreed 17 November). Exact storyboard, copy, typography and geometry remain for review.
 - Research backgrounds and design trends as separate shortlists, then narrow them.
 - Maintain three current working documents and build through tested phases.
 
@@ -44,6 +45,11 @@ F02's data/capture foundation passes at `0dc18d6`: normalized workflow/history/s
 Subsequent owner-approved presentation direction supersedes that inspector's public capture metadata and operational explanations. F03 now implements a candidate at `/preview/f03`, technically verified through `9f0a3e7`: the exact five-colour foundation, existing sans typography, role/brief/useful result, optional sources/rationale, separate “How it’s built” and working console entry. It uses a separate genuinely recaptured catalog after bounded source/prompt correction; original F02 recordings remain unchanged. Known weak competitor-absence, SKU-price and availability implications were addressed internally, rather than covered by public disclaimers. Blueprint section 17 records the provenance, tests and limits.
 
 F03 remains OPEN. On 17 November the owner rejected the MP4 study's book/library/children's-book appearance and said it does not match the animation reference or feel like a tech product. The literal paper-cover treatment is not an accepted baseline. Typography and padding are possible contributors raised by the owner, not confirmed causes or approval of a new font. Preserve the approved palette and dossier organisational concept unless separately changed; neither requires a literal book aesthetic. The review-only toolbar is not final product UI. The inherited homepage remains during review, so its inspector has not yet been replaced. A revised concrete visual direction, owner acceptance, deliberate promotion and affected rechecks are still required; no finished comparison or miniature machine is claimed.
+
+The owner subsequently agreed to the hero/CTA direction below on 17 November.
+Revise F03's visual portion; keep completed F01/F02 functionality and useful F03
+grounding/capture/integration changes. This documentation records direction, not
+approval of an unseen replacement. Blueprint §18 records the revision sequence.
 
 Do not interpret backend test results as proof of a finished browser product. Do not spend a redesign phase making a nonfunctional control more attractive.
 
@@ -112,6 +118,14 @@ The current direction combines a calm paper dossier outside with a miniature phy
 - The old “five pixel colours only” interpretation cannot literally describe physically shaded 3D rendering. UI tokens remain exact; material lighting/shadows are a separate art-direction question for F00/F05. Do not invent new semantic UI colours under the name of lighting.
 - Avoid gradients, glow, and glass as default interface treatments. The miniature physical scene may require controlled depth/contact shadows; that does not authorize unrelated UI effects.
 
+For the agreed opening, paper is the continuous page surface, ink supplies the
+headline/text/structural weight, and yellow marks the primary CTA and selected
+agent. The CTA uses an ink label and fine ink edge; check its actual states and
+focus against paper. Brown/peach keep secondary roles rather than competing
+with the main action. The reference wireframes' pastel block colours and the
+Lūmen prompt's dark theme are not our colour allocation. Graphite stays subtle;
+readable output surfaces remain quiet.
+
 ## 5. Typography, spacing, and geometry
 
 - Start from the existing readable sans-serif family. Reserve mono for useful identifiers/numbers/compact metadata. Research text wrapping before adding a typography dependency.
@@ -132,6 +146,41 @@ The current direction combines a calm paper dossier outside with a miniature phy
 6. Clear entry into a consistent login and console.
 
 This detailed order is a proposal. “Hero” means opening section; “deck” means stacked cards. The owner chose to preserve the stack while reviewing a shorter scroll and simpler opening. The original five-sheet transforming graphic is not an adopted requirement; review the exact opening/static composition before choreography.
+
+### Agreed opening and CTA direction — 17 November
+
+The owner accepted the recommendation to develop supplied wireframe **3 → 1**
+as connected scroll states. The reference numbers identify the uploaded layout
+diagrams, not extra build phases:
+
+| State | Composition and purpose |
+|---|---|
+| Arrival — wireframe 3 | Compact navigation; centred ink headline and short explanation; one yellow “Explore the agents” CTA; partial agent visual below |
+| First small movement | Visible agent elements begin repositioning while the main message remains legible; establish that the visual responds to scroll |
+| Expanded exploration — wireframe 1 | A prominent central agent visual with compact adjacent role/brief and a useful genuine result; selection, focus and labels remain connected |
+
+Use wireframe 2 only as supporting reference for selected-agent prominence and
+nearby controls; its price/badge blocks are not features to adopt. Reduce extra
+card/media/text boxes rather than filling every placeholder. Lower background
+forms should relate to the agent presentation, not become an arbitrary staircase.
+
+“Explore the agents” directly reaches the exploration section without requiring
+the full animation. Keep it steady while hovered/focused/pressed; the moving scene
+must not carry its hit target away. “Open console” remains a quieter navigation
+action. Agent selection/comparison and console submission are separate actions;
+exploration itself never invokes a model. Comparison still belongs to F04.
+
+Before rebuilding the study, review arrival/first-movement/expanded-stage frames
+with the owner, including colour placement, headline/CTA alignment, useful agent
+content and a readable mobile arrangement. The existing sans family is the
+starting point; no reference typeface, exact headline or fixed pixel geometry
+is adopted. Narrow screens need their own readable arrangement of the same
+essential content. Reduced motion must retain an immediate route to exploration.
+
+The dial video supplies coordinated selection/focus/work-display continuity;
+Glaze supplies object continuity/material specificity; Lūmen supplies alignment,
+spacing and hierarchy discipline. Exact third-party assets, palette, placeholder
+claims, commerce content and framework instructions remain reference context.
 
 ## 7. Visitor-facing agent comparison
 
@@ -336,6 +385,8 @@ The five saved examples use the seeded local source corpus, not a fresh web craw
 
 | Date | Decision | Source / status |
 |---|---|---|
+| 2026-11-17 | Owner agrees centred arrival → central agent stage, coordinated scroll and stable direct-entry CTA | Supplied wireframes 3 → 1; wireframe 2 is supporting reference. “Explore the agents” primary, “Open console” secondary; paper/ink/yellow roles retained. Revise F03 visuals, preserve F01/F02 and functional F03 work; storyboard review precedes replacement animation. Blueprint §18 |
+| 2026-11-17 | Inspect supplied dial video and read Glaze/Lūmen reference briefs | User-supplied “Scroll-spun client dial with a needle and lens panel of each client's work.mp4” and two pasted prompts. Learn composition/motion discipline; exact assets, colours, fonts and implementation mandates are not adopted. No licensing or asset-reuse approval inferred |
 | 2026-11-17 | Owner rejects current book-like F03 motion/visual study | MP4 reads as a library/children's book, not the intended tech product; misses the supplied reference. Font/padding suggested as possible contributors. Visual realignment required before another substantial build or promotion; no new palette/material/typeface inferred |
 | 2026-11-17 | F03 candidate implemented; technical gate passes, visual review open | `/preview/f03` and `/preview/f03/motion`, application `9f0a3e7`; 349 backend, 55 frontend unit and 18 browser tests per mode. Desktop/mobile and plain/grain captures plus scroll clip in blueprint §17. No final aesthetic acceptance, promotion, new material or next-phase authorisation inferred |
 | 2026-11-17 | Record connected landing-page scroll story and proceed with F03 | Owner authorised a focused opening-to-PR-dossier motion prototype and page foundation. Small first movement precedes the larger reveal; no literal dial/glass/blue-fringe adoption. Concrete visual review remains required |

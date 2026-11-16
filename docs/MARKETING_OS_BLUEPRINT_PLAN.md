@@ -1,7 +1,7 @@
 # Marketing OS — blueprint and phased build plan
 
 Updated: 17 November 2026 (Asia/Calcutta).
-Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03's candidate is technically verified through `9f0a3e7` on `feat/frontend-page-foundation`, but the owner rejected the book-like visual/motion study on 17 November. F03 visual acceptance FAILS for that study; redesign/alignment and promotion remain OPEN. See section 15 for F02 evidence/limits and section 17 for the current F03 record. F00 visual reviews remain open.
+Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03's candidate is technically verified through `9f0a3e7` on `feat/frontend-page-foundation`, but the owner rejected the book-like visual/motion study on 17 November. The owner subsequently agreed to a centred opening developing into a central agent stage with adjacent explanation/results; section 18 records the direction and bounded F03 revision plan. F03 remains OPEN until its revised implementation and visual/functional gates pass. F00's remaining material/geometry reviews stay open.
 
 Subsequent owner approval: public agent views follow purpose → short example brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Section 16 records this presentation correction. Public timestamps/operational notes in the existing F02 inspector still need removal; this documentation update does not claim the UI has changed.
 
@@ -40,6 +40,8 @@ Design/layout and animation currently each have 16 numbered specification sectio
 | Portfolio showcase with business clarity and inspectable engineering | CONFIRMED by owner | Design for both audiences in one coherent journey |
 | Public agent presentation: purpose, short brief, visual explanation, useful result; optional sources/rationale; separate “How it’s built” section | CONFIRMED by owner, 16 November, after reviewing developer examples | Apply in F03 and subsequent scene phases. Keep capture/test dates, quota explanations and debugging notes out of the public presentation; fix weak outputs before promoting them as finished examples |
 | Paper/dossier concept | CONFIRMED by owner | Use it as the outer identity for the experience |
+| Centred opening develops into a central agent stage with adjacent explanation/results | CONFIRMED direction by owner, 17 November; section 18 | Use supplied wireframe 3 for arrival and wireframe 1 for exploration. Preserve palette; review concrete frames before replacement animation. Exact headline, geometry and materials remain open |
+| Primary hero CTA is “Explore the agents”; “Open console” is secondary | CONFIRMED direction by owner, 17 November | CTA goes directly to agent exploration without requiring the full scroll sequence; no inference/review/memory writes. Keep it stable while interacting |
 | Clicking an agent plays a miniature physical 3D machine/scene explaining its job | CONFIRMED by owner | Develop meaningful physical scenes; the old flat-SVG-only restriction is superseded |
 | Visitors can compare agents before choosing one to explore | CONFIRMED by owner | Comparison is a product feature, not merely our internal design exercise |
 | Two-agent side-by-side comparison with one shared animation stage | CONFIRMED by owner, 15 November | Keep all five roles discoverable; compare two at a time; adapt the two records accessibly on mobile |
@@ -168,6 +170,7 @@ Every implementation phase F01 onward inherits all six gate lanes. Phase-specifi
 
 ### F03 — static design system and page foundation
 
+- Revise the rejected book-like candidate using section 18: wireframe 3's centred arrival develops toward wireframe 1's central visual with adjacent brief/result. Produce arrival, first-movement and expanded-stage frames before replacement animation; direction approval is not approval of an unseen final composition.
 - Record the 17 November scroll direction: calm opening → a small initial movement → a larger scroll-driven reveal → agent dossiers within the same visual story. Treat “1.5 scrolls” as a pacing description, not a wheel-event count.
 - Build an isolated opening-to-PR-dossier motion study with simple temporary visuals for review before locking composition/choreography. Direct scroll progress holds/reverses the main sequence; exact distances and inner scene scroll-versus-click behaviour remain review choices. This is a research preview, not F05's finished physical machine or an early implementation of all F09 choreography.
 - Apply the reviewed tokens, typography, spacing, surfaces, and selected background treatment across the shell.
@@ -236,6 +239,7 @@ For each: confirm the brief, review stills, animate, run targeted checks, run th
 
 ### F09 — opening, deck, and route choreography
 
+- Implement the reviewed centred-arrival → agent-stage journey from section 18 after F08 passes. Keep “Explore the agents” direct entry, stable CTA interaction, and coordinated selection/labels/results consistent with the F03-approved composition; F03's isolated study does not close this production integration phase.
 - Follow the owner-selected investigation: preserve the stacked-card idea with a shorter scroll and simpler opening. Review the exact static composition/scroll geometry, then implement and test it. The five-sheet morph is not adopted by default.
 - Preserve or intentionally revise the current deck constants with tests: 600vh desktop; opening boundaries 0.06 / 0.13 / 0.15; five arrivals 0.15 / 0.32 / 0.49 / 0.66 / 0.83.
 - Keep navigation interruptible. Do not force desktop pinning on mobile, autoplay all five 3D machines on scroll, or trap page scrolling inside a scene.
@@ -297,7 +301,7 @@ For each reference capture its URL/source/license, the specific useful property,
 | F00 | PARTIAL; Q01–Q06 owner direction recorded, references/details still open | Exact machine material/modelling/stills and camera framing; graphite comparison, shorter-opening geometry and responsive comparison details. Optional visitor rotation is not approved |
 | F01 | PASS — functional baseline, 15 November | Application revision `d6c9973`; five atomic implementation commits; all six gate lanes have evidence in section 13. Final art direction and complete visual/performance acceptance remain later work |
 | F02 | PASS — data/capture foundation, 16 November; section 15 | Five genuine recordings at `0dc18d6`, all current gates pass. Generated claims remain unverified; later content/quality review is still required |
-| F03 | IN PROGRESS — section 17 | Technical gates pass for the candidate; owner rejected the book-like motion/visual treatment. Revision and visual acceptance are required before promotion or closure |
+| F03 | IN PROGRESS — sections 17–18 | Original candidate technically verified but visually rejected. Centred arrival → agent-stage direction agreed; revise the visual portion, preserve functional/data work and rerun the complete phase gate before closure |
 | F04–F14, including every F07 subphase | NOT STARTED | Implement sequentially after the preceding phase passes |
 
 Update these three documents when a decision changes: record the decision, source/date, affected phases, superseded choice, and required retesting. Keep the original Claude archive unchanged.
@@ -366,7 +370,7 @@ flowchart TB
     end
     subgraph Public["Public showcase - planned presentation architecture"]
         Adapter["Read-only presentation adapters - F02"]
-        Page["Agent purpose, short brief, useful result and design system - F03"]
+        Page["Centred arrival to agent stage; role, brief, result and design system - F03"]
         Compare["Agent comparison - F04"]
         Scene["One selected scene, controls and static fallback - F05 to F08"]
         Support["Optional sources and rationale"]
@@ -419,7 +423,7 @@ flowchart TB
     F00["F00 Owner direction recorded; references and details OPEN"]
     F01["F01 Functional baseline and test harness - PASS at d6c9973"]
     F02["F02 Adapters and truthful examples"]
-    F03["F03 Static design system and page"]
+    F03["F03 Revise hero, CTA and page; visual gate OPEN"]
     F04["F04 Visitor agent comparison"]
     F05["F05 One 3D pilot: stills, renderer and fallback"]
     F06["F06 Animate and review that pilot"]
@@ -462,7 +466,7 @@ The owner confirmed PR & Policy first; F07A–F07D therefore cover Branding, Soc
 | F00 | Owner's confirmed direction and original research inventories | D §1, §4, §6–§10, §14, §16 | A §2, §4, §7–§9, §13–§16 | Reference sources, decision register and consistency check; unresolved choices have named dependent phases. Research is not an application test pass |
 | F01 | Backend repair contracts; preserve Anti Gravity's existing work. No new visual choice is needed to repair integration | D §2, §3, §12, §13, §15 | A §3, §10, §15, §16 | Real browser login/run/reload/history/review/new-decision/export/logout; old responses cannot cross agents/decisions; honest modes/errors; affected mobile/reduced-motion states; full agent gate |
 | F02 | F01 PASS; Q01 public example mode | D §3, §7, §8, §12 | A §3, §4, §6 | Tested adapters for exact/null/legacy fields; five attributable examples in the chosen mode; citation/model/metric provenance; no inference during example selection |
-| F03 | F02 PASS; Q04 surface and Q06 opening composition resolved enough for static layout; Q08 presentation approved | D §3–§6, §9, §10, §12, §13, §16 | A §1, §3, §6, §9, §10, §16 | Approved purpose/brief/result hierarchy; optional supporting detail and separate engineering section; no public capture/test dates or operational notes; examples checked for known weak claims before promotion; reviewed static desktop/mobile page, readable text/contrast, static scene fallback and unchanged API journeys |
+| F03 | F02 PASS; Q04 surface, Q06/Q09 composition and Q10 CTA direction; Q08 presentation approved | D §3–§6, §9, §10, §12, §13, §16 | A §1, §3, §6, §9, §10, §16 | Owner-reviewed arrival/first-movement/expanded-stage frames and revised study; direct accessible CTA with zero inference; approved purpose/brief/result hierarchy; optional support and separate engineering section; no public operational metadata; corrected genuine examples; reviewed desktop/mobile states, contrast/static fallback and unchanged API journeys |
 | F04 | F03 PASS; Q02 comparison layout | D §3, §7, §13, §15 | A §3, §5, §10, §15 | Select/remove/compare/open by mouse, touch and keyboard; visible comparable fields; no generation/review/memory writes caused by comparison |
 | F05 | F04 PASS; Q03 pilot, Q05 material/camera direction; actual example bindings from F02 | D §4, §5, §8, §13 | A §3–§6, §8, §10, §11, §14 | Owner-reviewed stills and fallback; lazy renderer loading, asset/context failure, cleanup and payload/startup measurements; set an evidence-based scene budget before expanding |
 | F06 | F05 PASS; approved pilot stills/story | D §7, §8, §13 | A §3–§8, §10–§12, §14–§16 | Owner-reviewed pilot motion; deterministic play/pause/replay/close; interruption/rapid switching; truthful review state; reduced motion and static equivalent; no replay writes |
@@ -471,7 +475,7 @@ The owner confirmed PR & Policy first; F07A–F07D therefore cover Branding, Soc
 | F07C | F07B PASS; Product Marketing brief/stills accepted | D §8, §12, §13 | A §4 Product Marketing, §5–§8, §10–§12, §14–§16 | Exact source-backed hardware/pricing values and units; no invented TCO/optimization; independent review and full gate |
 | F07D | F07C PASS; Field Events brief/stills accepted | D §8, §12, §13 | A §4 Field Events, §5–§8, §10–§12, §14–§16 | Attributable recommendation; no implied booking/scheduling; independent review and full gate |
 | F08 | All four F07 children PASS; comparison and scene systems available | D §3, §6–§8, §13 | A §3, §5, §6, §8, §10 | Discover/compare/open/inspect/close journey; retained selection, returned focus, stale callbacks blocked, inactive renderers stopped; no unintended API writes |
-| F09 | F08 PASS; Q06 opening/deck choice; reviewed static F03 layout | D §5, §6, §13 | A §7–§10 | Forward/reverse scroll and interrupted navigation at chosen deck boundaries; mobile native flow and reduced motion; route/hash/state consistency |
+| F09 | F08 PASS; Q06/Q09 opening/deck direction and Q10 CTA; reviewed F03 layout | D §5, §6, §13 | A §7–§10 | Production centred-arrival → stage journey; direct CTA entry and stable interaction; coordinated selection/labels/results; forward/reverse and interrupted navigation; mobile native/reduced-motion flow; route/hash/state consistency |
 | F10 | F09 PASS; attributable recordings/data and evaluation evidence | D §3, §6, §11, §12 | A §1, §3, §6 | Claims linked to implementation/evidence; single/triage/digest and memory distinctions accurate; no invented live, production or held-out results |
 | F11 | F10 PASS; F01 functional contracts and reviewed design system | D §3–§5, §11–§13, §15, §16 | A §3, §7, §8, §10, §15, §16 | All real console/login states retain function and styling; old shader removed only after replacement verification; no session/history/review regression |
 | F12 | F11 PASS; cumulative device/fallback/performance evidence | D §5, §7, §11, §13, §15 | A §5, §8–§10, §12, §14–§16 | Named viewport/zoom/touch/keyboard checks, automated plus manual accessibility, unavailable WebGL, measured payload/frame pacing/cleanup and recorded remaining limits |
@@ -539,10 +543,11 @@ Ask the owner when a choice is unclear or changes their intended experience. Mak
 | Q03 | First physical pilot | F05; update F06/F07 mapping if changed | CONFIRMED by owner, 15 November: PR & Policy first, with a risk checkpoint and separate human-review route. F07 covers the other four agents |
 | Q04 | Graphite reference, texture placement, and how selective dithering complements it | F03 surface implementation | DIRECTION CONFIRMED by owner, 15 November: keep the light paper page and try subtle graphite speckling. Compare plain/textured surfaces; exact asset/intensity and selective dithering placement remain for visual review |
 | Q05 | Machine material/style and camera behaviour | F05 modelling and scene budget review | GUIDED CAMERA CONFIRMED by owner, 15 November. Owner likes the machine concept but wants concrete references/brief/stills to avoid a cheap/generic result. Exact materials/modelling remain OPEN. Visitor-controlled rotation is unapproved and requires a visible prototype before any future choice; use the F05 pilot quality checkpoint |
-| Q06 | Opening composition and shorter stacked-card scroll | Static composition in F03; choreography in F09 | DIRECTION CONFIRMED by owner, 15 November: preserve the stacked-card idea, review a shorter scroll and simpler opening. Exact layout/boundaries remain for review; existing 600vh stays until a tested deliberate change |
+| Q06 | Opening composition and shorter stacked-card scroll | Static composition in F03; choreography in F09 | DIRECTION UPDATED by owner, 17 November: supplied wireframe 3's centred opening develops toward wireframe 1's central agent visual and adjacent explanation/result. Preserve meaningful stacked-agent continuity, not the rejected hinged book. Exact frames/geometry/boundaries still need review; existing 600vh stays until a tested deliberate change |
 | Q07 | Hosting, runtime mode, persistent storage and release timing | F14 only | DEFERRED: ask when deployment is requested; do not infer a provider, paid runtime, or publication from the frontend plan |
 | Q08 | Public agent content and engineering-detail placement | F03 and subsequent scene/content work | CONFIRMED by owner, 16 November: purpose → short brief → visual explanation → useful result; optional sources/rationale; separate “How it’s built” section. Capture/test timestamps, quota explanations and debug notes stay out of public presentation. Exact layout/copy/stills still need their phase reviews |
-| Q09 | Landing-page scroll pacing and relation to agent scenes | Motion study in F03; final scene/choreography phases | Owner's 17 November direction: calm opening, small first movement, then a larger continuous scroll reveal connected to the dossiers. Compare a concrete motion study before choosing exact distances or whether scroll controls the inner miniature. The radio-dial reference supplies motion qualities, not an adopted dial/glass/blue-fringe design |
+| Q09 | Landing-page scroll pacing and relation to agent scenes | Motion study in F03; final scene/choreography phases | Owner's 17 November direction: centred calm arrival → small response → expanded agent stage with coordinated selection, labels and brief/result. Three storyboard states first, then revised direct-progress study. Exact distance and inner miniature controls remain open; radio dial/Glaze/Lūmen are references, not adopted literal styling or implementation instructions |
+| Q10 | Hero CTA placement, meaning and route | Revised F03 storyboard and implementation; final F09 journey | CONFIRMED direction by owner, 17 November: yellow “Explore the agents” CTA, ink label, quieter “Open console” navigation action. Exploration is directly reachable without watching the whole sequence; accessible focus/target stays stable during interaction; no model/review/memory action on exploration |
 
 Q01–Q06 were answered and recorded in all three specifications during this documentation turn. Q05 intentionally retains a material/modelling review: the owner has not seen a concrete proposal and should not have to approve an unseen style or camera interaction. Bring references and the F05 brief/stills before asking for that decision. Scene stills, pilot motion approval, exact texture/scroll geometry and measured budgets remain later review checkpoints. F01 can continue independently. Ask any new product/visual questions before dependent implementation; do not make the owner settle an unused package or animation technique.
 
@@ -1120,3 +1125,86 @@ The current code/artifacts remain historical review evidence. This feedback
 update changes documentation only: F02 stays complete, technical test evidence
 remains valid for its recorded revision, and no new UI/motion, model request,
 merge, deployment or environment publication is performed.
+
+## 18. Agreed hero/CTA direction and bounded F03 revision
+
+Owner approval, 17 November 2026 (Asia/Calcutta): “alright, lets write this into
+our md files” in response to the proposed use of the three uploaded hero-layout
+wireframes and their scroll/CTA relationship. Approval establishes the direction
+below; exact unseen artwork, headline/font, geometry, timing and machine materials
+still require their concrete reviews.
+
+### Reference interpretation and agreed composition
+
+- **Wireframe 3 supplies arrival:** compact navigation, centred ink headline,
+  short supporting copy, one yellow “Explore the agents” CTA, and a partial view
+  of the agent visual below. Its coloured steps are layout placeholders, not
+  colours or mandatory decorative staircase shapes to reproduce.
+- **Wireframe 1 supplies exploration:** the agent visual becomes the central
+  stage with a compact introduction/brief and useful genuine result adjacent.
+  Reduce surrounding boxes so the visual and product output have room.
+- **Wireframe 2 is supporting reference:** a prominent selected product/agent
+  and nearby controls can inform exploration. It is not a third hero to combine
+  wholesale, and its price/badge/commerce blocks do not become product features.
+- **One continuous journey:** calm arrival → small initial positional response
+  → expanded stage with agent selection, focus, labels and brief/result changing
+  together → the mapped comparison and miniature-scene phases. This is not a
+  literal book opening, a copied dial or five automatically running machines.
+- **Colour roles:** paper `#e1e1d8` remains the continuous light surface; ink
+  `#050d09` supplies essential text/structural definition; yellow `#e7d78a`
+  marks the primary action/selected agent. Brown `#4e4739` and peach `#e4c185`
+  retain their existing secondary roles. No reference dark theme or new palette
+  is adopted. Review texture intensity and actual contrast in the concrete frames.
+- **CTA behaviour:** keep the hero action readable and stationary while it is
+  being interacted with. It directly reaches agent exploration; watching every
+  animation beat is optional. Keep “Open console” quieter. Navigation/selection
+  does not generate a result, submit review or write memory.
+
+The owner-supplied 9.6-second dial video was inspected across its progression;
+the Glaze “Crafted for Motion” and Lūmen/Índex prompts were read as reference
+briefs. Learn coordinated selection/display from the dial, object continuity
+and material specificity from Glaze, and alignment/hierarchy/spacing discipline
+from Lūmen. Their instructions to recreate exact assets, colours, loaders,
+fonts, framework versions or single-file/no-scroll implementations do not apply
+to Marketing OS. No third-party asset reuse or licence clearance is inferred.
+
+### Phase impact: revise F03's visual portion, retain completed foundations
+
+| Phase/work | Disposition | Required action |
+|---|---|---|
+| Backend repairs and F01 | Retain completed functional work | No rebuild/reopening for this composition decision. Rerun regression coverage as part of the revised F03 gate |
+| F02 | Remains PASS | Keep adapters, request-bound evidence and original genuine recordings. A layout change alone does not require paid recapture |
+| F00 | Continue remaining design decisions | Record this direction; resolve exact typography/geometry/material/texture questions at their dependent review. Do not restart the whole research phase |
+| F03 grounding/capture/backend fixes | Retain | Keep source-quality fixes, corrected genuine catalog, capture resume, compiled SPA routes and meaningful tests |
+| F03 hero/layout/motion study | REVISE; phase remains OPEN | Replace rejected visual interpretation, review the three frames, then implement/retest the revised foundation and isolated study |
+| F04–F08, including F05/F06 physical pilot | Not started; no redo | Preserve their order and owner decisions. Visual modules do not imply completed comparison or physical machines |
+| F09 | Update planned acceptance, not redo | Later production choreography implements the reviewed journey after F08; F03's study is not the complete F09 build |
+| F10–F14 | Not started; no redo | Existing verification/deployment prerequisites remain |
+
+### Revision sequence and checks
+
+1. Produce three coherent frames: arrival, small first movement and expanded
+   agent stage. Include the headline area, real CTA, palette placement, meaningful
+   agent forms and representative genuine output; include a readable mobile
+   composition. Do not repeat the rejected book as a placeholder for the art direction.
+2. Review those concrete frames with the owner before the replacement animation.
+   The remaining artwork/material/geometry decisions are not already resolved.
+3. Revise the F03 static foundation and isolated study on the existing phase
+   branch, retaining useful data/integration code. Full production scene/deck
+   integration stays in its mapped later phases.
+4. Check CTA target/direct entry, keyboard/focus, forward/reverse and interrupted
+   navigation, responsive wrapping/overflow, contrast, reduced-motion/static
+   states and zero inference/review/memory writes during exploration.
+5. Run the full common gate on the resulting code: backend and frontend tests,
+   lint/build and complete development/compiled browser-to-Flask workflows,
+   including all five agents/chat/triage/digest/history/review/export/logout.
+   Existing counts prove only the previous implementation. Record new evidence
+   and retain at least two coherent implementation/test commits for the phase.
+6. Obtain owner acceptance of the revised page/study, deliberately promote the
+   accepted foundation and recheck affected behaviour before F03 PASS/F04 entry.
+   Interactive-preview delivery is still unresolved; do not claim otherwise.
+
+This update changes only the three specifications. It adds no phase, changes no
+application code or capture bytes, makes no model requests, and does not merge,
+deploy or publish an environment. The roadmap remains 15 top-level phases and
+18 separately tracked stages. The immediate next work is the F03 storyboard.
