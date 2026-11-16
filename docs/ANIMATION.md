@@ -9,7 +9,14 @@ Read with [the blueprint](MARKETING_OS_BLUEPRINT_PLAN.md) and [design/layout spe
 
 ## 1. What motion must achieve
 
-The scene should make a visitor understand the specialist's job and remember the experience. An engineer should be able to inspect the real input, evidence, workflow, output, and limits alongside it.
+The scene should make a visitor understand the specialist's job and remember the experience. The owner-approved public sequence is purpose → short example brief → visual explanation → useful result, with sources/rationale available on demand. The broader engineering explanation belongs in a separate “How it’s built” section.
+
+Keep the result readable without watching the scene. Motion should lead to a useful
+agent-appropriate outcome, with actual business risk/review state where relevant.
+Capture/test timestamps and quota/debug/operational explanations are internal
+verification material, not public scene captions. Address known weak outputs and
+source quality before presenting them as finished examples; original recordings
+remain unchanged until a corrected response is genuinely captured.
 
 Every movement should explain order, transform a meaningful object, direct attention, show an actual state change, or confirm an interaction. Start from a few understandable objects. Add detail only when it improves that explanation.
 
@@ -21,6 +28,7 @@ The miniature machine is a visual metaphor. It does not reproduce hidden model t
 |---|---|
 | Miniature physical machines or scenes for clicked agents | CONFIRMED by owner |
 | Paper/dossier identity around the scenes | CONFIRMED by owner |
+| Purpose, short brief, visual explanation and useful result; optional sources/rationale; separate engineering section | CONFIRMED by owner, 16 November. Public capture/test dates and quota/debug explanations are rejected; next UI change must apply this presentation correction |
 | Visitors compare agents before choosing one to explore | CONFIRMED by owner |
 | Compare two agents side by side, then open one shared animation stage | CONFIRMED by owner, 15 November; all five remain discoverable |
 | Genuine saved model responses for public examples; controlled/mock responses for routine tests | CONFIRMED. F02 PASS: five genuine `gemini-3.5-flash-lite` responses captured with same-request evidence; public selection tests make zero API calls. Generated claims remain unverified |
@@ -124,15 +132,22 @@ These are initial briefs. No specific machine, asset, composition, or exact chor
 - Close returns focus to the agent/comparison control that opened the scene. Preserve understandable comparison selection and scroll position.
 - No essential interaction depends on hover, dragging a camera, or sound. Use the owner-selected guided story camera. Do not add visitor rotation without a visible prototype and separate owner decision; any later camera exploration must preserve normal page scrolling.
 
-## 6. Optional technical inspection
+## 6. Engineering explanation and optional supporting detail
 
-Claude proposed six stations: Input, Retrieve, Model call, Validate, Govern, Output. Retain them as an explanatory option, mapped to actual available data and the selected workflow.
+The primary agent view explains the job, brief, scene and result. Sources and the
+model's written rationale are secondary detail. Use the separate “How it’s built”
+section for the broader engineering story; do not automatically place a technical
+execution panel beside every agent.
+
+Claude proposed six stations: Input, Retrieve, Model call, Validate, Govern, Output.
+Retain their existing data bindings for accurate explanation and verification.
+They are not a requirement to render every stored field in the public interface:
 
 | Station | Evidence to display | Boundary |
 |---|---|---|
 | Input | Supplied goal/message and labelled signal | Simulated input is labelled |
 | Retrieve | Actually captured retrieved facts, IDs/domains, or truthful available summary | No invented rows; chat recall differs from one-shot summary |
-| Model call | Actual source, requested/reported model, attempts, usage and timing where present | No fake live state, no invented null measurements |
+| Model call | Explain the provider's role and real workflow; retain actual source, model, attempts, usage and timing in verification records | No fake live state or invented measurements; no public capture/test timestamps, quota/debug notes or troubleshooting panel |
 | Validate | Actual structured-output acceptance where that workflow uses it | Do not claim every prose chat response passed the strategy JSON schema |
 | Govern | Recorded risk/escalation and, separately, review state | Human review and memory admission are distinct |
 | Output | Untouched stored response, with an explicitly labelled excerpt if needed | No hand-edited “model output” |
@@ -248,7 +263,9 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 
 ## 13. Open decisions and revision log
 
-2026-11-16 F02 PASS at `0dc18d6`: five genuine `gemini-3.5-flash-lite` captures, seven provider attempts including two temporary-503 retries, original output/source bytes preserved. Full development and compiled browser suites pass 13/13 each, including read-only actual-recording selection. Scoped mobile/keyboard/accessibility checks and current unit/API gates pass; blueprint section 15 has the evidence. No miniature renderer, comparison layout, camera behaviour, new timing, texture or dependency has been introduced. Preserve the visible source-quality limitation in future scenes; no final motion acceptance is inferred.
+2026-11-16 subsequent owner approval: public agent views use purpose → short brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Capture/test dates and operational bottleneck explanations are rejected. Correct weak examples internally rather than substituting public caveats for a quality fix. This is a documentation-only update: existing UI, scene code and original recording bytes are unchanged; F03 and the physical-scene phases have not started.
+
+2026-11-16 F02 PASS at `0dc18d6`: five genuine `gemini-3.5-flash-lite` captures, seven provider attempts including two temporary-503 retries, original output/source bytes preserved. Full development and compiled browser suites pass 13/13 each, including read-only actual-recording selection. Scoped mobile/keyboard/accessibility checks and current unit/API gates pass; blueprint section 15 has the evidence. No miniature renderer, comparison layout, camera behaviour, new timing, texture or dependency has been introduced. That revision displayed a source-quality caveat; the subsequent owner-approved presentation correction above governs future UI. No final motion acceptance is inferred.
 
 Earlier 2026-11-16 snapshot: capture was blocked before the successful provider configuration/key checks. Blueprint section 14 preserves those initial failures; it is no longer the current phase status.
 

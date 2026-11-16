@@ -3,6 +3,8 @@
 Updated: 16 November 2026 (Asia/Calcutta).
 Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6` on `feat/frontend-data-contracts`. All five genuine recordings use `gemini-3.5-flash-lite`; current full suites pass. See section 15 for evidence and source-quality limits. F03 is next and has not started; F00 visual reviews remain open.
 
+Subsequent owner approval: public agent views follow purpose → short example brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Section 16 records this presentation correction. Public timestamps/operational notes in the existing F02 inspector still need removal; this documentation update does not claim the UI has changed.
+
 ## 1. Purpose and authority
 
 Build an outstanding portfolio case study with a working product at its centre. An ordinary visitor should understand the business value through an engaging visual story. A hiring manager or ML engineer should be able to inspect the implementation, evidence, trade-offs, and limits.
@@ -36,6 +38,7 @@ Design/layout and animation currently each have 16 numbered specification sectio
 | Item | Status | Consequence |
 |---|---|---|
 | Portfolio showcase with business clarity and inspectable engineering | CONFIRMED by owner | Design for both audiences in one coherent journey |
+| Public agent presentation: purpose, short brief, visual explanation, useful result; optional sources/rationale; separate “How it’s built” section | CONFIRMED by owner, 16 November, after reviewing developer examples | Apply in F03 and subsequent scene phases. Keep capture/test dates, quota explanations and debugging notes out of the public presentation; fix weak outputs before promoting them as finished examples |
 | Paper/dossier concept | CONFIRMED by owner | Use it as the outer identity for the experience |
 | Clicking an agent plays a miniature physical 3D machine/scene explaining its job | CONFIRMED by owner | Develop meaningful physical scenes; the old flat-SVG-only restriction is superseded |
 | Visitors can compare agents before choosing one to explore | CONFIRMED by owner | Comparison is a product feature, not merely our internal design exercise |
@@ -55,7 +58,7 @@ Design/layout and animation currently each have 16 numbered specification sectio
 | Cream backgrounds, text wrapping, and explanatory diagrams | CLARIFIED ROLES | Existing light base is already cream-like; wrapping is typography work; meaningful process explanation can live inside the 3D scenes |
 | Machine materials/modelling, detailed camera framing, responsive comparison layout, exact opening/scroll composition | OPEN DETAILS | Resolve through references and one representative scene; guided camera, two-agent/shared-stage comparison and shorter-stack direction are settled |
 | Five-sheet opening transforming into the deck | CLAUDE PROPOSAL, NOT ADOPTED | The owner prefers investigating a simpler opening; do not build the old morph by default |
-| Availability of provider/credentials for genuine public recordings | NOT YET VERIFIED | The owner selected genuine recordings; preserve this requirement and record a capture blocker if unavailable |
+| Availability of provider/credentials for genuine public recordings | VERIFIED for F02's explicit `gemini-3.5-flash-lite` capture | Five original recordings exist; other model/runtime availability is a separate check |
 
 “Hero” means the opening section. “Deck” means the stack of agent cards. “Hero-to-deck” means an opening graphic transforms into that stack as the visitor scrolls. These terms describe an option, not a design decision the owner must already understand or accept.
 
@@ -66,10 +69,10 @@ Design/layout and animation currently each have 16 numbered specification sectio
 - Previously verified: 323 offline backend tests, 23 actual HTTP workflow checks, frontend build and lint. Existing warnings remain. These are historical results, not checks newly run for these planning documents.
 - Anti Gravity built the 600vh deck, opaque stacking/dimming, opening morph, shared Lenis scrolling, clickable tabs, navigation, and two-panel cards.
 - Agent scene panels are empty. Three.js-related packages already exist for a decorative console shader; this is not an implemented set of agent scenes.
-- F01 removed fabricated dossier metrics and false live/production/zero-hallucination assertions in the mounted showcase. Existing hand-written examples are labelled illustrative, with fictional Vanguard Cloud/simulated signals. A broader copy/benchmark audit remains F10 work; genuine five-agent provider recordings do not exist yet.
+- F01 removed fabricated dossier metrics and false live/production/zero-hallucination assertions. F02 subsequently captured five genuine examples; hand-written examples remain labelled illustrative. F10 retains the broader copy/benchmark audit, while known weak claims in examples need correction before the approved F03 public presentation uses them as finished results.
 - F01 PASS: full saved results/legacy states, server-owned reviews, stale-response isolation, all five selectable specialists, truthful model/loading/error controls, development proxy/cookies, logout cleanup, mobile navigation and reduced-motion baseline are verified. See the exact commits and complete gate in section 13.
 - Frontend now has real `test:unit`, `test:integration`, and `test:integration:built` commands. The gate passed 29 frontend tests, 10 Vite/Flask browser checks and 7 compiled-SPA/Gunicorn checks; the backend suite passed 323 tests. Automated axe checks passed for login, workbench, chat and generated result/review states; this is bounded evidence, not complete accessibility certification.
-- Live Gemini behaviour, production deployment, held-out evaluation, and complete accessibility/performance acceptance have not been established.
+- F02 verified genuine Gemini generation for its five Flash-Lite recordings. Production deployment, held-out quality evaluation and complete accessibility/performance acceptance remain unestablished. Its functional inspector still uses public-facing capture metadata that the owner has now rejected; section 16 specifies the pending presentation change.
 
 Do not declare all backend/product work complete simply because the repair suite passes. Keep broader open issues visible in the backend tracker.
 
@@ -81,7 +84,7 @@ Do not declare all backend/product work complete simply because the repair suite
 4. Risk flags, authenticated human review, and memory admission are different mechanisms. An operator review does not execute an external marketing action or automatically promote memory.
 5. A physical machine is an explanatory metaphor. Never depict unavailable inner reasoning, automatic phrase removal, sentiment collection, scheduling, or optimization as an observed backend event.
 6. Comparison defaults to presentation/replay data. Opening, comparing, or replaying scenes must not silently invoke paid models or write agent memory.
-7. Public examples identify the fictional Vanguard Cloud case, simulated signals, recording mode, and source snapshot honestly. Missing metrics stay unavailable; no invented numbers or synthetic progress percentages.
+7. Public examples use concise, honest example/fictional-case identification and never imply replay is a fresh model run. Preserve recording mode/source provenance in the original records; their existence does not require displaying capture dates or operational metadata. Optional sources/rationale support the result. Missing measurements remain unknown internally; do not invent numbers or synthetic progress percentages.
 
 ## 5. Mandatory gate for every implementation phase
 
@@ -167,6 +170,8 @@ Every implementation phase F01 onward inherits all six gate lanes. Phase-specifi
 
 - Apply the reviewed tokens, typography, spacing, surfaces, and selected background treatment across the shell.
 - Establish a clear opening explanation, agent discovery, comparison entry, engineering evidence, and console entry using real or explicitly labelled example data.
+- Apply the owner-approved presentation correction in section 16: clear agent purpose, short example brief and useful result; optional sources/rationale; a separate “How it’s built” section. Remove public capture/test timestamps, quota explanations and debugging notes from the F02 inspector. Later scene phases add the visual explanation without making result reading depend on playback.
+- Review the actual example outputs before using them as finished public results. Correct known weak/unsupported claims and source-quality problems internally, then genuinely recapture if needed; preserve original records. Do not simply hide a caveat and retain a known misleading assertion or invent a deliverable that the backend does not produce. Ask the owner before adopting a new output format or changing the product's behaviour.
 - Keep a simple static product explanation usable while the 3D experience is loading or unavailable.
 - Exit: static desktop/mobile states make the product understandable, contrast/layout checks pass, and existing API journeys remain intact. No new ambient motion yet.
 
@@ -358,12 +363,15 @@ flowchart TB
     end
     subgraph Public["Public showcase - planned presentation architecture"]
         Adapter["Read-only presentation adapters - F02"]
-        Page["Page and design system - F03"]
+        Page["Agent purpose, short brief, useful result and design system - F03"]
         Compare["Agent comparison - F04"]
         Scene["One selected scene, controls and static fallback - F05 to F08"]
-        Inspect["Optional technical evidence inspection - F08 and F10"]
+        Support["Optional sources and rationale"]
+        Inspect["Separate How it is built section - F03, F08 and F10"]
         Examples -.-> Adapter
         Adapter --> Page
+        Adapter --> Support
+        Page --> Inspect
         Page --> Compare
         Compare --> Scene
         Adapter --> Scene
@@ -451,7 +459,7 @@ The owner confirmed PR & Policy first; F07A–F07D therefore cover Branding, Soc
 | F00 | Owner's confirmed direction and original research inventories | D §1, §4, §6–§10, §14, §16 | A §2, §4, §7–§9, §13–§16 | Reference sources, decision register and consistency check; unresolved choices have named dependent phases. Research is not an application test pass |
 | F01 | Backend repair contracts; preserve Anti Gravity's existing work. No new visual choice is needed to repair integration | D §2, §3, §12, §13, §15 | A §3, §10, §15, §16 | Real browser login/run/reload/history/review/new-decision/export/logout; old responses cannot cross agents/decisions; honest modes/errors; affected mobile/reduced-motion states; full agent gate |
 | F02 | F01 PASS; Q01 public example mode | D §3, §7, §8, §12 | A §3, §4, §6 | Tested adapters for exact/null/legacy fields; five attributable examples in the chosen mode; citation/model/metric provenance; no inference during example selection |
-| F03 | F02 PASS; Q04 surface and Q06 opening composition resolved enough for static layout | D §3–§6, §9, §10, §13, §16 | A §1, §9, §10, §16 | Reviewed static desktop/mobile page, readable text/contrast, static scene placeholder/fallback; unchanged working API journeys |
+| F03 | F02 PASS; Q04 surface and Q06 opening composition resolved enough for static layout; Q08 presentation approved | D §3–§6, §9, §10, §12, §13, §16 | A §1, §3, §6, §9, §10, §16 | Approved purpose/brief/result hierarchy; optional supporting detail and separate engineering section; no public capture/test dates or operational notes; examples checked for known weak claims before promotion; reviewed static desktop/mobile page, readable text/contrast, static scene fallback and unchanged API journeys |
 | F04 | F03 PASS; Q02 comparison layout | D §3, §7, §13, §15 | A §3, §5, §10, §15 | Select/remove/compare/open by mouse, touch and keyboard; visible comparable fields; no generation/review/memory writes caused by comparison |
 | F05 | F04 PASS; Q03 pilot, Q05 material/camera direction; actual example bindings from F02 | D §4, §5, §8, §13 | A §3–§6, §8, §10, §11, §14 | Owner-reviewed stills and fallback; lazy renderer loading, asset/context failure, cleanup and payload/startup measurements; set an evidence-based scene budget before expanding |
 | F06 | F05 PASS; approved pilot stills/story | D §7, §8, §13 | A §3–§8, §10–§12, §14–§16 | Owner-reviewed pilot motion; deterministic play/pause/replay/close; interruption/rapid switching; truthful review state; reduced motion and static equivalent; no replay writes |
@@ -530,6 +538,7 @@ Ask the owner when a choice is unclear or changes their intended experience. Mak
 | Q05 | Machine material/style and camera behaviour | F05 modelling and scene budget review | GUIDED CAMERA CONFIRMED by owner, 15 November. Owner likes the machine concept but wants concrete references/brief/stills to avoid a cheap/generic result. Exact materials/modelling remain OPEN. Visitor-controlled rotation is unapproved and requires a visible prototype before any future choice; use the F05 pilot quality checkpoint |
 | Q06 | Opening composition and shorter stacked-card scroll | Static composition in F03; choreography in F09 | DIRECTION CONFIRMED by owner, 15 November: preserve the stacked-card idea, review a shorter scroll and simpler opening. Exact layout/boundaries remain for review; existing 600vh stays until a tested deliberate change |
 | Q07 | Hosting, runtime mode, persistent storage and release timing | F14 only | DEFERRED: ask when deployment is requested; do not infer a provider, paid runtime, or publication from the frontend plan |
+| Q08 | Public agent content and engineering-detail placement | F03 and subsequent scene/content work | CONFIRMED by owner, 16 November: purpose → short brief → visual explanation → useful result; optional sources/rationale; separate “How it’s built” section. Capture/test timestamps, quota explanations and debug notes stay out of public presentation. Exact layout/copy/stills still need their phase reviews |
 
 Q01–Q06 were answered and recorded in all three specifications during this documentation turn. Q05 intentionally retains a material/modelling review: the owner has not seen a concrete proposal and should not have to approve an unseen style or camera interaction. Bring references and the F05 brief/stills before asking for that decision. Scene stills, pilot motion approval, exact texture/scroll geometry and measured budgets remain later review checkpoints. F01 can continue independently. Ask any new product/visual questions before dependent implementation; do not make the owner settle an unused package or animation technique.
 
@@ -851,3 +860,37 @@ surface review follows the recorded light-paper/subtle-graphite and shorter-stac
 directions; material/camera stills remain for F05. No merge, deployment or
 environment publication is included. The tested phase branch can be reviewed
 before any later integration into `showcase-redesign` and eventually `main`.
+
+## 16. Approved public presentation correction
+
+Owner approval, 16 November 2026 (Asia/Calcutta), after research/discussion:
+
+1. Explain each agent's job in one clear sentence.
+2. Give a short, relatable example brief.
+3. Use the planned miniature machine to explain supported behaviour; its animation does not replace the readable result.
+4. Emphasise a useful, agent-appropriate result, including business-relevant risks or review needs where actually supported.
+5. Offer sources and the model's written rationale as secondary detail.
+6. Put the broader architecture/workflow/engineering explanation in a separate “How it’s built” section for interested visitors.
+
+The owner explicitly rejected public capture/test timestamps and explanations of
+quotas, debugging or operational bottlenecks. Retain those records for internal
+verification. Do not use a public disclaimer as the resolution to known weak
+outputs: improve the underlying output/source quality before presenting a finished
+example. Keep original genuine records unchanged and capture corrected responses
+genuinely where necessary. A concise “Example” label can identify saved data
+without implying fresh generation.
+
+Research inputs reviewed were the public [OpenAI ChatKit examples](https://github.com/openai/openai-chatkit-advanced-samples),
+[LangChain Agent Chat UI](https://github.com/langchain-ai/agent-chat-ui#rendering-artifacts),
+[OpenAI customer-service demo](https://github.com/openai/openai-cs-agents-demo),
+and [GOV.UK Details guidance source](https://github.com/alphagov/govuk-design-system/blob/main/src/components/details/index.md).
+These support task-shaped results, separate result/engineering views and optional
+secondary information; they do not establish a universal layout or approve copying
+their visual style.
+
+This is a documentation-only decision update. F02's existing data/contract pass
+remains historical evidence, not approval of its now-superseded public metadata
+presentation or of generated-claim quality. F03 has not started. Its first public
+presentation work must address these requirements and run the full common gate.
+No source code, recording bytes, original Claude archive, environment setting,
+merge or publication is changed by this update.

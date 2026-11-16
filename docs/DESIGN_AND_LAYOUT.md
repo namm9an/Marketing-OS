@@ -41,6 +41,8 @@ F01's functional baseline passed at application revision `d6c9973`: original sav
 
 F02's data/capture foundation passes at `0dc18d6`: normalized workflow/history/scene data, five genuine `gemini-3.5-flash-lite` recordings and an optional plain inspector. Original responses and same-request source rows are separate; checksums, model/citation attribution and read-only selection are verified. Existing hand-written examples stay explicitly illustrative. The inspector visibly marks unsupported competitor hardware-limit claims as unverified; genuine model output is not a verified competitive assessment. Blueprint section 15 records the complete gate and limits. F03 is next, not started; no final visual direction has been applied.
 
+Subsequent owner-approved presentation direction supersedes that inspector's public capture metadata and operational explanations. The UI still needs the correction in the next implementation change; this specification update does not remove any frontend element. Known weak outputs need correction before being presented as finished examples, with the original captured records retained.
+
 Do not interpret backend test results as proof of a finished browser product. Do not spend a redesign phase making a nonfunctional control more attractive.
 
 ## 3. Two audiences, one understandable journey
@@ -49,11 +51,38 @@ Do not interpret backend test results as proof of a finished browser product. Do
 |---|---|---|
 | First view | What is this, and why explore it? | A clear business problem, five specialist roles, one prominent next action |
 | Agent discovery/comparison | Which agent fits my task? | Purpose, suitable task, evidence available, sample result |
-| Miniature scene | What does that agent actually do? | A short physical explanation using labelled input, evidence, result, and review state |
-| Optional technical detail | How did you engineer it? | Available retrieval, workflow, schema, memory, governance, telemetry, and persistence evidence |
+| Miniature scene and result | What does that agent actually do? | A short brief, physical explanation, useful result and relevant business risk/review state; readable without watching playback |
+| Optional supporting detail | What supports this recommendation? | Sources and the model's written rationale, available on demand |
+| Separate “How it’s built” section | How did you engineer it? | Architecture, agent roles/routing, retrieval, schema, memory, governance and persistence, supported by actual implementation evidence |
 | Working console | Can I try the actual system? | Truthful mock/live mode, authentication, usable workflows, source and review state |
 
 A visitor should not need to read a paragraph of infrastructure terminology before understanding the product. Technical terms remain available where they answer a real question.
+
+### Approved agent presentation
+
+Owner confirmed this direction on 16 November after reviewing developer examples:
+
+1. One plain sentence explaining the agent's job and business value.
+2. A short, relatable example brief.
+3. The planned miniature machine explaining supported behaviour.
+4. A useful result shaped for the agent's actual job; give it enough space and keep it accessible without animation.
+5. Optional sources and written rationale. Put the broader engineering explanation in its own “How it’s built” section.
+
+Use natural labels such as “The brief” and “Recommendation” where helpful; do not
+add a stack of redundant labels or force a chat transcript for every agent. Show
+real role differences through the output, using only deliverables the backend
+actually produces. PR's supported risk flag and review route do not establish an
+automatically rewritten or legally cleared draft. Exact copy/layout remains for
+phase review rather than being inferred from this structure.
+
+Keep capture/test timestamps, quota explanations and debugging/operational notes
+out of the public product presentation. Retain them in verification records. A
+concise “Example” label can identify a saved response; do not imply that opening
+or playing it runs a model. Fix known weak claims/source quality internally before
+promoting an example as finished. Do not merely remove a caveat while retaining a
+known misleading assertion. Preserve original recordings and genuinely capture a
+corrected response when necessary. The console still needs truthful, useful
+loading/error and review states for actions a visitor actually takes.
 
 ## 4. Visual identity and reference palette
 
@@ -88,7 +117,7 @@ The current direction combines a calm paper dossier outside with a miniature phy
 1. Opening section: specific explanation, a focal visual, and an obvious way to explore/compare agents.
 2. Agent discovery: reuse useful deck work if it serves the reviewed journey. Do not retain 600vh pinning solely because it already exists.
 3. Agent comparison and selected-agent exploration: directly connected, without two redundant directories of the same five agents.
-4. Workflow/memory explanations and engineering evidence, available without forcing every visitor through them.
+4. A separate “How it’s built” section for workflow/memory/architecture and engineering evidence, available without forcing every visitor through it.
 5. Benchmarks with real methodology and known limits.
 6. Clear entry into a consistent login and console.
 
@@ -105,10 +134,10 @@ Proposed common fields:
 | Specialist | Branding, PR & Policy, Social Community, Product Marketing, or Field Events |
 | Useful when | A concrete task the specialist is designed to help with |
 | Input/example | The supplied goal or clearly labelled simulated signal |
-| Evidence | Actual available source-linked facts/context, with missing values explained |
+| Evidence | Optional source-linked supporting detail; keep the primary comparison focused on role, brief and useful result |
 | Example result | An attributable excerpt and access to the full recorded result |
-| Review/memory behaviour | What the relevant workflow actually records or flags |
-| Explore | Open that agent's physical scene and optional technical detail |
+| Review behaviour | Business-relevant risk/review needs that the selected result actually supports; memory architecture belongs in the engineering section |
+| Explore | Open that agent's physical scene and result, with supporting sources/rationale available on demand |
 
 The owner confirmed a two-agent side-by-side comparison with one shared animation stage on 15 November. Show all five roles in discovery and let visitors choose/remove either comparison entry. On mobile, adapt those same two records into a readable stacked/tabular arrangement; review the exact responsive layout rather than shrinking two desktop columns.
 
@@ -277,7 +306,13 @@ The original heading said 20, but its list contains 19 entries. Preserve those e
 
 F02 implementation: `presentation.js` normalizes run/chat/triage/digest/history and supplies six-station scene bindings without mutating raw snapshots. One-shot generated summaries, request-captured full rows, chat fact excerpts, per-specialist triage scopes and digest corpus links stay distinct. Missing IDs, measurements, flagged phrases and review events stay unavailable. `exampleCatalog.js` accepts only complete live catalogs and matching-file checksums; checksums establish consistency, not independent provider authentication or claim entailment. Physical comparison/scene UI and the final design system remain later work.
 
-The five saved examples use the seeded local source corpus, not a fresh web crawl. Inspection found some navigation/cookie text in retrieved rows and unsupported inferences that H100 evidence establishes a competitor's full hardware limits. Keep the original outputs/rows unchanged and their visible caveat. F10's content/proof review must revisit corpus quality, freshness and capability claims before presenting polished marketing assertions; F02 PASS does not certify model quality or source entailment.
+The presence of fields in an internal presentation model is not a requirement to
+render them publicly. The owner-approved information hierarchy above governs
+visibility. Capture/test dates, quota/debug notes and operational metadata remain
+verification material; the separate engineering section explains the system
+without becoming a capture-log or troubleshooting panel.
+
+The five saved examples use the seeded local source corpus, not a fresh web crawl. Inspection found some navigation/cookie text in retrieved rows and unsupported inferences that H100 evidence establishes a competitor's full hardware limits. At the F02 revision, a visible caveat disclosed those issues. The subsequently approved direction requires correcting the underlying issues before promoting these examples as finished public results. Preserve the original snapshots; F10 still owns the broader content/proof audit. F02 PASS does not certify model quality or source entailment.
 
 ## 13. Accessibility and comparison acceptance
 
@@ -291,6 +326,7 @@ The five saved examples use the seeded local source corpus, not a fresh web craw
 
 | Date | Decision | Source / status |
 |---|---|---|
+| 2026-11-16 | Purpose → short brief → visual explanation → useful result; optional sources/rationale; separate “How it’s built” section | Owner approved the researched recommendation. Public capture/test dates and quota/debug explanations are rejected. Documentation recorded; UI cleanup and example-quality correction remain pending implementation |
 | 2026-11-16 | F02 data/capture foundation PASS; five genuine Flash-Lite recordings | `0dc18d6`, full backend/frontend/browser gates recorded in blueprint section 15. Capture model explicitly selected under owner's lower-tier authorisation; final art direction and generated-claim quality remain separate |
 | 2026-11-16 | F02 data/capture implementation; retain genuine-public-example requirement | Implementation status, not a new owner design choice: upstream generation HTTP 402 blocks capture. No final palette, background, material or camera treatment implemented |
 | 2026-11-13 | Paper/dossier identity is retained | Owner confirmed |
