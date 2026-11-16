@@ -1,7 +1,7 @@
 # Marketing OS — blueprint and phased build plan
 
 Updated: 17 November 2026 (Asia/Calcutta).
-Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03's review candidate is implemented and technically verified through `9f0a3e7` on `feat/frontend-page-foundation`; owner visual review and promotion remain OPEN. See section 15 for F02 evidence/limits and section 17 for the current F03 record. F00 visual reviews remain open.
+Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03's candidate is technically verified through `9f0a3e7` on `feat/frontend-page-foundation`, but the owner rejected the book-like visual/motion study on 17 November. F03 visual acceptance FAILS for that study; redesign/alignment and promotion remain OPEN. See section 15 for F02 evidence/limits and section 17 for the current F03 record. F00 visual reviews remain open.
 
 Subsequent owner approval: public agent views follow purpose → short example brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Section 16 records this presentation correction. Public timestamps/operational notes in the existing F02 inspector still need removal; this documentation update does not claim the UI has changed.
 
@@ -297,7 +297,7 @@ For each reference capture its URL/source/license, the specific useful property,
 | F00 | PARTIAL; Q01–Q06 owner direction recorded, references/details still open | Exact machine material/modelling/stills and camera framing; graphite comparison, shorter-opening geometry and responsive comparison details. Optional visitor rotation is not approved |
 | F01 | PASS — functional baseline, 15 November | Application revision `d6c9973`; five atomic implementation commits; all six gate lanes have evidence in section 13. Final art direction and complete visual/performance acceptance remain later work |
 | F02 | PASS — data/capture foundation, 16 November; section 15 | Five genuine recordings at `0dc18d6`, all current gates pass. Generated claims remain unverified; later content/quality review is still required |
-| F03 | IN PROGRESS — section 17 | Page foundation, corrected genuine examples and isolated motion study implemented; technical gates pass. Owner visual review and promotion remain required before closure |
+| F03 | IN PROGRESS — section 17 | Technical gates pass for the candidate; owner rejected the book-like motion/visual treatment. Revision and visual acceptance are required before promotion or closure |
 | F04–F14, including every F07 subphase | NOT STARTED | Implement sequentially after the preceding phase passes |
 
 Update these three documents when a decision changes: record the decision, source/date, affected phases, superseded choice, and required retesting. Keep the original Claude archive unchanged.
@@ -927,7 +927,7 @@ Acceptance mapping at application revision `9f0a3e7`:
 | F03-05 | Concrete scroll-motion study | `foundation/MotionStudy.jsx`: calm start, small anticipation, larger reveal, direct hold/reverse and readable native fallback; zero API calls on scrolling | IMPLEMENTED / technically verified; pacing/composition approval pending |
 | F03-06 | Common functional gate | 349 backend, 55 frontend unit tests; 18 browser tests in each mode including all five agents/chat/triage/digest/history/review/export/logout; build/lint pass | PASS; exact evidence below |
 | F03-07 | Responsive/accessibility/static fallback | 360/390/768px overflow checks, keyboard selection, scoped WCAG axe check, loading/retry/stale-response tests and renderer-independent content | PASS for tested scope; visual acceptance pending |
-| F03-08 | Owner visual acceptance | Review the concrete page and motion study, including paper/grain comparison, before promoting the new composition or marking PASS | REQUIRED / PENDING |
+| F03-08 | Owner visual acceptance | Review the concrete page and motion study, including paper/grain comparison, before promoting the new composition or marking PASS | FAIL for the book-like study: owner rejected it on 17 November; revised direction required |
 
 The motion study resolves visual questions; it does not authorise five completed
 machines, arbitrary effects or library additions. Current research references
@@ -1085,7 +1085,38 @@ only to the F03 preview and bounded backend changes:
 - [ ] Promote the reviewed foundation, resolve/remove review-only controls and public legacy inspector, then rerun affected gates.
 - [ ] Recheck every F03 acceptance item and mark PASS only after visual and functional exit are complete.
 
-**F03 remains OPEN; F04 is not eligible.** The next action is review of this
-concrete candidate, followed by any requested corrections and deliberate
-promotion. No unreviewed machine, final scroll geometry or next-phase build is
-authorised by the technical pass alone.
+**F03 remains OPEN; F04 is not eligible.** Following the owner feedback below,
+the next action is visual/motion realignment, not promotion of the current study.
+No unreviewed machine, final scroll geometry or next-phase build is authorised
+by the technical pass alone.
+
+### Owner review — 17 November: current study rejected
+
+The owner viewed the MP4 and said it reads like a library or children's book
+rather than a tech product, and does not match the supplied animation reference.
+Font and padding were raised as possible contributors, not confirmed diagnoses
+or instructions to adopt a new typeface/palette. The literal hinged-paper/book
+metaphor and its visual treatment are not an accepted design baseline. Do not
+carry them into the final page simply because the implementation passes tests.
+
+The original reference described coordinated scroll-controlled selection,
+focus, visual content and transitions. The implemented paper-cover rotation
+demonstrates direct scroll ownership but does not establish the intended
+choreographic richness. A stronger technical/product direction must be made
+concrete and reviewed before another substantial animation implementation.
+The paper/dossier organisational concept, approved palette, graphite preference,
+two-agent comparison and genuine-results requirements are not automatically
+revoked by rejection of this particular visual interpretation. New materials,
+fonts, dark backgrounds or a literal radio dial are not thereby approved.
+
+Preview delivery also remains unresolved: the owner could not reach cloud
+localhost and could not download the ZIP. The downloadable package is not
+evidence that an interactive review was successfully delivered. The environment
+reports desktop support, but this turn offers no shared-browser/viewer or
+port-forwarding tool. Do not repeat an unreachable cloud loopback URL as a
+laptop-accessible link or claim interactive access has been established.
+
+The current code/artifacts remain historical review evidence. This feedback
+update changes documentation only: F02 stays complete, technical test evidence
+remains valid for its recorded revision, and no new UI/motion, model request,
+merge, deployment or environment publication is performed.

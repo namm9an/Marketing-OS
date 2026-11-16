@@ -230,6 +230,17 @@ pixel loader, new engine/dependency or completed 3D machine is introduced.
 Review the clip/stills linked in blueprint §17 before accepting pacing, material
 or the relation between outer scroll and future inner playback.
 
+Owner review, 17 November: **this book-like study is rejected as the visual/motion
+direction**. The owner said it looks like a library or children's book, does not
+feel like a tech product and does not match the supplied reference. A cover
+rotating away from text does not by itself meet the ambition for coordinated
+scroll-controlled focus, agent selection, product content and transitions. Keep
+direct scroll hold/reverse and accessible fallback as functional requirements,
+but do not promote this metaphor or treat changing its font/padding alone as an
+accepted fix. Establish a concrete revised composition and motion story with the
+owner first. No replacement material, camera, effect or animation has been
+approved by this rejection; final inner-scene controls remain open.
+
 The radio-tuner reference demonstrates pinning, responsive scroll ownership,
 selection continuity and coordinated content changes. Its semicircle, glass and
 blue chromatic fringe are not adopted styling. React Bits/Codrops components are
@@ -294,6 +305,8 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 - [ ] Both design checklists and all common phase-gate lanes pass before the next phase.
 
 ## 13. Open decisions and revision log
+
+2026-11-17 subsequent owner review: current MP4 study rejected for its library/children's-book appearance and mismatch with the reference. F03 visual acceptance fails for this candidate despite passing technical checks. No replacement animation implemented by this feedback update; see blueprint §17. Interactive delivery is also unresolved: the owner could not reach the cloud localhost URL or download the ZIP.
 
 2026-11-17 F03 review candidate: page foundation and isolated scroll study implemented through `9f0a3e7`. Full backend (349), frontend unit (55), development browser (18) and compiled browser (18) gates pass. Direct progress holds/reverses without inference; native reduced-motion/mobile fallback is tested. A 9.8-second actual browser clip and desktop/mobile/still artifacts are recorded in blueprint §17. Owner visual acceptance and promotion remain open; neither final scroll geometry nor inner-scene controls/materials are settled. The inherited homepage deck is preserved. F03 is not PASS and F04 has not started.
 
