@@ -88,7 +88,7 @@ def _isolated_runtime(mode):
             database.reset_db_state()
 
 
-def validate_recording(bundle, mode, agent):
+def validate_recording(bundle, mode, agent, expected_goal=None):
     """Validate attribution and observed evidence; no claim-entailment guarantee."""
     try:
         expected_kind = "live-recording" if mode == "live" else "controlled-fixture"
@@ -96,11 +96,13 @@ def validate_recording(bundle, mode, agent):
         if bundle["schema_version"] != 1 or bundle["recording"]["kind"] != expected_kind:
             raise CaptureBlocked("recording-kind-mismatch")
         request = bundle["request"]
-        if request != {"workflow": "run", "agent_type": agent, "goal": GOALS[agent]}:
+        if request != {"workflow": "run", "agent_type": agent, "goal": expected_goal if expected_goal is not None else GOALS[agent]}:
             raise CaptureBlocked("recording-request-mismatch")
         response = bundle["response"]
         metrics = response["metrics"]
         decision = response["decision"]
+        if response.get("goalStatement") != request["goal"]:
+            raise CaptureBlocked("recording-response-goal-mismatch")
         if response.get("success") is not True or not response["positioning"]["statement"]:
             raise CaptureBlocked("missing-successful-output")
         if not decision["reasoning_source"].startswith(f"langgraph:{agent}:") or metrics["source"] != expected_source:
@@ -137,6 +139,7 @@ def capture_examples(output, mode="live", resume=False):
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = output / "manifest.json"
     entries = []
+    scenario = SCENARIO_ID
     if manifest_path.exists():
         try:
             previous = json.loads(manifest_path.read_text())
@@ -147,10 +150,12 @@ def capture_examples(output, mode="live", resume=False):
                 raise CaptureBlocked("duplicate-existing-specialist")
             if entries and (not resume or previous.get("mode") != f"{mode}-recordings"):
                 raise CaptureBlocked("existing-capture-use-resume-or-new-directory")
+            if entries:
+                scenario = previous.get("scenario_id", SCENARIO_ID)
         except (ValueError, TypeError):
             raise CaptureBlocked("invalid-existing-manifest") from None
     manifest = {"schema_version": 1, "status": "blocked", "mode": f"{mode}-recordings",
-                "scenario_id": SCENARIO_ID, "fictional_client": "Vanguard Cloud", "examples": list(entries)}
+                "scenario_id": scenario, "fictional_client": "Vanguard Cloud", "examples": list(entries)}
     try:
         with _isolated_runtime(mode):
             from app.main import app
@@ -165,8 +170,11 @@ def capture_examples(output, mode="live", resume=False):
                     if existing:
                         if existing.get("path") != filename or hashlib.sha256(path.read_bytes()).hexdigest() != existing.get("sha256"):
                             raise CaptureBlocked("existing-recording-checksum-mismatch")
-                        validate_recording(json.loads(path.read_text()), mode, agent)
+                        saved = json.loads(path.read_text())
+                        validate_recording(saved, mode, agent, expected_goal=saved["request"]["goal"])
                         continue
+                    if scenario != SCENARIO_ID:
+                        raise CaptureBlocked("legacy-scenario-needs-original-capture-profile")
                     if path.exists():
                         raise CaptureBlocked("untracked-recording-file-exists")
                     with capture_retrievals() as retrievals:
