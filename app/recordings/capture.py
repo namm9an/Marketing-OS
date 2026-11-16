@@ -21,14 +21,14 @@ from app.core.config import settings
 from app.core.evidence_capture import capture_retrievals
 
 AGENTS = ("branding", "pr", "social", "product_marketing", "events")
-SCENARIO_ID = "fictional-vanguard-b200-launch-v1"
+SCENARIO_ID = "fictional-vanguard-b200-launch-v2"
 BRIEF = "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. "
 GOALS = {
-    "branding": BRIEF + "Recommend a positioning brief and explain unknowns without invented guarantees.",
-    "pr": BRIEF + "Review a proposed price war narrative and recommend a communication response with explicit risks; do not imply legal clearance.",
-    "social": BRIEF + "Recommend developer-facing community content from this supplied signal; no live social monitoring or publishing.",
-    "product_marketing": BRIEF + "Recommend product messaging using available B200/H100 facts and exact pricing units; no invented TCO calculation.",
-    "events": BRIEF + "Recommend a field-event theme for ML engineers using available context; no booking, scheduling or invented budget optimization.",
+    "branding": BRIEF + "Write a concise two-sentence positioning recommendation for ML teams considering this launch. Give the audience a clear proposed value and next step.",
+    "pr": BRIEF + "A price war narrative has been proposed. Recommend an alternative launch message: include the suggested message itself and the communication risk that needs human review.",
+    "social": BRIEF + "Recommend one specific developer-community post idea: give its opening hook and a useful invitation or question for ML engineers. This is a content recommendation, not publishing.",
+    "product_marketing": BRIEF + "Write a concise product-messaging recommendation for an engineering buyer: a proposed angle, its audience benefit and a question the buyer should investigate before choosing hardware.",
+    "events": BRIEF + "Recommend a named field-event theme, one session format and a useful attendee takeaway for ML engineers. This is an event concept, not a booking or scheduled event.",
 }
 
 

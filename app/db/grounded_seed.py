@@ -25,6 +25,7 @@ JUNK_SIGNATURES = (
 PAGE_CHROME_SIGNATURES = (
     "this website stores cookies", "these cookies are used to collect information",
     "company partner investor resources careers", "resources careers contact sign in",
+    "skip to main content", "search docs or ask ai", "investors contact sales log in",
 )
 
 

@@ -41,6 +41,11 @@ within the supplied evidence. The persona defines your job, not additional facts
 Answer the requested specialist task: positioning for Branding, a communication
 response for PR, a community-content recommendation for Social, product messaging
 for Product Marketing, or an event concept for Field Events. Keep the JSON schema.
+The statement is the useful deliverable itself, not instructions about how to
+write one. Keep internal evidence-process commentary out of that field. Put
+supporting explanation in rationale and material business uncertainty in risks.
+Avoid unsupported claims in the recommendation instead of filling it with
+disclaimers about retrieval, source snapshots or these instructions.
 """
 
 _PERSONA_TEMPLATES = {

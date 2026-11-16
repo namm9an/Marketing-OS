@@ -11,6 +11,8 @@ from app.services.llm_service import LLMService
 @pytest.mark.parametrize("snippet", [
     "Hyperstack GPU cloud pricing. This website stores cookies on your computer. These cookies are used to collect information about how you interact with our website.",
     "TIR Platform: AI/ML Model Deployment. Company Partner Investor Resources Careers Contact Sign In GPU Pricing Company Blog Latest News.",
+    "E2E Cloud Skip to main content MyAccount TIR Search docs or Ask AI Sign Up Explore All Products and documentation pages.",
+    "The Ultimate AI Cloud. Products Solutions Resources Pricing Company Investors Contact sales Log in. Build and scale AI faster.",
 ])
 def test_page_chrome_is_not_accepted_as_documentation_evidence(snippet):
     assert not grounded_seed.is_valid_corpus_content(snippet)
