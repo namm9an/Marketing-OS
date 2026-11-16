@@ -82,7 +82,7 @@ def seed_grounded_knowledge():
 
                 # 1. Fact: Hardware Availability
                 if gpus:
-                    gpu_fact = f"Hardware mentioned in a source snapshot for {org_name}: {', '.join(sorted(gpus))}. This is not a complete fleet inventory."
+                    gpu_fact = f"Hardware fleet observations in a source snapshot for {org_name}: {', '.join(sorted(gpus))}. This is not a complete fleet inventory."
                     fact_id = content_hash(f"{org_name}|hardware|{url}|{gpu_fact}")
                     conn.execute(
                         "INSERT INTO knowledge_units (id, organization, knowledge_class, confidence, content, source_url, enriched_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -92,7 +92,7 @@ def seed_grounded_knowledge():
 
                 # 2. Fact: Rate Cards & Pricing
                 if pricing:
-                    pricing_fact = f"Price strings observed in a source snapshot (SKU/region mapping not recorded): {', '.join(pricing[:4])}."
+                    pricing_fact = f"Pricing observations and rate-card strings in a source snapshot (SKU/region mapping not recorded): {', '.join(pricing[:4])}."
                     fact_id = content_hash(f"{org_name}|pricing|{url}|{pricing_fact}")
                     conn.execute(
                         "INSERT INTO knowledge_units (id, organization, knowledge_class, confidence, content, source_url, enriched_by) VALUES (?, ?, ?, ?, ?, ?, ?)",

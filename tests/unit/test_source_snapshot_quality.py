@@ -62,3 +62,15 @@ def test_agent_prompt_does_not_supply_unretrieved_slas_or_prices(monkeypatch):
     monkeypatch.setattr(LLMService, "generate", generate)
     result = run_agent("branding", "Recommend a launch message from available evidence")
     assert result["evidence_ids"] == ["source-1"]
+
+
+@pytest.mark.parametrize("query,skus", [
+    ("H200 GPU availability", ("H200",)),
+    ("Who offers last-generation Hopper cards?", ("H100", "H200", "GH200")),
+])
+def test_specific_hardware_queries_prioritize_matching_observations(tmp_path, monkeypatch, query, skus):
+    monkeypatch.setattr(settings, "DB_PATH", tmp_path / "hardware.db")
+    database.reset_db_state()
+    grounded_seed.seed_grounded_knowledge()
+    rows = database.search_knowledge_units(query, limit=5, sourced_only=True, expand_taxonomy=True)
+    assert rows and all(any(sku in row["content"] for sku in skus) for row in rows)
