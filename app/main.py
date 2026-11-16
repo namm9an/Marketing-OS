@@ -612,6 +612,8 @@ def api_triage():
 
 @app.route("/console", strict_slashes=False)
 @app.route("/console/<path:route>")
+@app.route("/preview/f03", strict_slashes=False)
+@app.route("/preview/f03/<path:route>")
 def serve_console(route=""):
     # Explicit routes take precedence over Flask's root static-file route.
     return serve("")
