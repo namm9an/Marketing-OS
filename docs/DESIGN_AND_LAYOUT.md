@@ -136,6 +136,67 @@ readable output surfaces remain quiet.
 - Never impose the current 900px minimum card width on a narrow viewport. Use normal flow/stacked layouts on mobile.
 - In a scene, keep essential text in readable DOM overlays or adjacent panels. Avoid tiny labels painted onto rotating machinery.
 
+### Additional CSS/design technique register — 17 November
+
+The owner supplied ten further tips and authorised research, deduplication and
+selection. These are technical review dispositions, not approval of a new
+aesthetic, component, palette or implementation. Existing U/M checklist IDs
+remain; C01–C10 track these inputs without adding phases.
+
+| ID / input | Existing coverage or observed code | Disposition for Marketing OS |
+|---|---|---|
+| C01 Nested rounded corners: inner radius = outer radius minus padding | U14 already records this; the dossier direction uses square corners | KEEP as a conditional geometry check. For concentric corners use `max(0, outer radius - total inset)`, including applicable border width/padding/margin. Unequal insets need per-corner/per-axis treatment. N/A for square corners; no reason to round the site |
+| C02 Alpha borders instead of solid hex borders | F03 already uses `color-mix(in srgb, var(--ink) 24%, transparent)` for `--rule`; other borders are intentionally solid | REFINE: translucent ink can soften decorative separators. Hex is a notation, not the cause of ugly borders; it can also encode alpha. Keep strong CTA/control/focus boundaries where needed. Check actual composited contrast over paper, graphite, fills and scene backgrounds; do not lower every border's opacity |
+| C03 Prefer OKLCH to HSL | No authoring policy yet; exact palette tokens are established | KEEP as a useful authoring/evaluation method: perceptual lightness/chroma is generally easier to adjust consistently than HSL lightness. Existing hex tokens remain valid and visually unchanged. No mandatory token migration, new palette or shade ladder; perceptual lightness does not prove WCAG contrast |
+| C04 OKLCH for grey gradient midpoints | Gradients are not an adopted page-background style | CONDITIONAL: if a justified gradient is used, compare explicit Oklab/OKLCH interpolation and hue path; inspect intermediate chroma, gamut and readability. One keyword does not fix every colour pair. This concerns interpolation, not data compression. No decorative gradient is required; alpha-mask gradients are a separate use |
+| C05 Match icon stroke to font weight | U12 covers consistency; F03 pairs 20px, 1.5-stroke role icons with bold labels | KEEP and strengthen optical review at actual size, with one icon family and role-based stroke choices. Font weight and SVG stroke width have no numeric equality. Review that current thin-icon/bold-label pairing rather than assuming it passes or fails automatically |
+| C06 Fade carousel edges with a mask | M18 covers masks generally; no new carousel is adopted | CONDITIONAL on a useful horizontal track existing. An alpha mask can fade its edges over varied backgrounds. Keep active items, readable labels, arrows and keyboard focus clear of the fade or scroll them into the clear region. No mask on the whole readable result; no carousel added just to use the effect |
+| C07 Blur during icon swaps | M19 already records crossfade/scale, with blur optional | ALREADY COVERED / OPTIONAL for genuine state changes. Preserve accessible name, focus, hit area and correct final state during interruptions. Prefer a simple swap/crossfade where clearer; omit blur under reduced motion and review readability/paint cost |
+| C08 Lighter surfaces for elevation in dark mode | Agreed page is light paper; dark theme is not selected | OUT OF CURRENT SCOPE. Tonal separation is valid in a dark theme, not a universal replacement for shadows. Retain as future reference only; no dark theme, extra surface palette or mandatory shadow removal |
+| C09 Replace mobile `100vh` with `dvh` | F03 preview/study and legacy deck contain `100vh`; native mobile flow is required, but unit choice was not explicit | KEEP with a choice per component: `dvh` fits changing visible height; `svh` provides stable height with browser controls expanded. Prefer stable/content-driven sizing for the mobile hero/study; consider dynamic sizing for a viewport-filling panel. Use `min-height` where content must grow, include header/safe-area insets and appropriate fallback; no blind global replacement |
+| C10 Multiply white-background product shots | Multiply already appears in the graphite overlay, not an adopted product-shot treatment | CONDITIONAL for a suitable decorative image. White blends into the underlying surface, but every other pixel also multiplies/darkens; inspect off-white/coloured/translucent content. Prefer a proper transparent export where possible, isolate blend scope and preserve original assets. Keep evidence/product screenshots faithful and essential text outside the blend layer |
+
+These refine the existing direction, not ten effects to display. Review
+applicable items in F03's revised foundation, F09 viewport/scroll integration
+and F11 console work; check them cumulatively in F12. Geometry/icon/border/
+viewport checks remain useful even when optional effects are N/A with a reason.
+
+#### Technical acceptance and limits
+
+- C01: inspect actual rounded nesting and full insets; do not apply a scalar
+  formula blindly to unequal corners or force rounding onto square components.
+- C02/C03: verify final composited colours. Apply the relevant text contrast
+  criterion and at least 3:1 for non-text boundaries/state indicators needed to
+  identify or operate a control. Decorative separators are not all control
+  boundaries. OKLCH or opacity alone does not establish accessibility; a border
+  can composite over its element's own background.
+- C04/C06/C07/C10: retain useful no-effect/static fallbacks and inspect relevant
+  browsers, readability, focus, interruption and rendering cost. A mask gradient
+  changes alpha, not the approved palette.
+- C09: verify expanded/collapsed mobile browser controls, rotation, content
+  growth/zoom and the on-screen keyboard where relevant, with real Safari/device
+  or appropriate browser evidence. A Chromium viewport sweep or `CSS.supports`
+  check alone does not establish iOS Safari behaviour. Dynamic height changes
+  must not make the timeline or CTA jump; mobile stays native/readable.
+- This research does not mark visual checks PASS. No code/assets, colours,
+  dependencies, model requests or completed-phase status change here.
+
+#### Sources reviewed
+
+Reviewed 17 November 2026 through official documentation/specification source
+repositories. These establish mechanics, not a universal aesthetic; check actual
+browser support and the composition at implementation:
+
+- [CSS Backgrounds corner shaping](https://github.com/w3c/csswg-drafts/blob/main/css-backgrounds-3/Overview.bs) — border/padding/content-edge radius relationships; C01.
+- [MDN colour values](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/values/color_value/index.md), [Oklab](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/values/color_value/oklab/index.md), [OKLCH](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/values/color_value/oklch/index.md) and [linear gradients](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/values/gradient/linear-gradient/index.md) — alpha, perceptual spaces and interpolation; C02–C04.
+- [WCAG non-text contrast](https://github.com/w3c/wcag/blob/main/understanding/21/non-text-contrast.html) — required indicators versus optional boundaries/decorative lines; C02/C03/C06.
+- [MDN SVG stroke width](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/properties/stroke-width/index.md), [mask-image](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/properties/mask-image/index.md) and [blur](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/values/filter-function/blur/index.md) — C05–C07 mechanics; optical weight remains a visual judgement.
+- [Material surface-colour roles](https://github.com/material-components/material-components-android/blob/master/docs/theming/Color.md) — light/dark surface/container tones as reference, not adoption of Material styling; C08.
+- [MDN viewport-relative lengths](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/values/length/index.md) — small/large/dynamic units and resize caveat; C09.
+- [MDN mix-blend-mode](https://github.com/mdn/content/blob/main/files/en-us/web/css/reference/properties/mix-blend-mode/index.md) — backdrop/stacking-context behaviour; C10.
+
+Local research snapshots: `/workspace/reviews/css-technique-research/`.
+
 ## 6. Proposed information architecture
 
 1. Opening section: specific explanation, a focal visual, and an obvious way to explore/compare agents.
@@ -318,9 +379,9 @@ Check every item after each implementation phase and again at final acceptance. 
 - [ ] U09 Make the headline specific to the actual system and use case.
 - [ ] U10 Emphasize the primary action; keep alternatives visibly secondary.
 - [ ] U11 Give the accent colour a defined role.
-- [ ] U12 Keep icon family, stroke, size, and meaning consistent.
+- [ ] U12 Keep icon family, stroke, size, meaning and optical weight beside labels consistent; see C05 in §5.
 - [ ] U13 Remove unnecessary embellishments.
-- [ ] U14 Apply inner radius = outer radius − padding when nested rounded surfaces exist; otherwise record N/A for square corners.
+- [ ] U14 Check nested rounded geometry using outer radius minus full applicable inset, including border/padding (C01 in §5); otherwise record N/A for square corners.
 - [ ] U15 Verify text contrast and focus visibility in actual states.
 - [ ] U16 Wrap headings correctly across widths and zoom levels.
 - [ ] U17 Check optical alignment as well as numerical alignment.
@@ -385,6 +446,7 @@ The five saved examples use the seeded local source corpus, not a fresh web craw
 
 | Date | Decision | Source / status |
 |---|---|---|
+| 2026-11-17 | Research ten additional CSS/design tips and deduplicate existing rules | C01–C10 in §5: retain/refine geometry, icon weight, border/colour and viewport checks; masks/blur/gradients/multiply remain conditional; dark-theme elevation is out of scope. Technical dispositions under the research request, not new aesthetic/implementation approval |
 | 2026-11-17 | Owner agrees centred arrival → central agent stage, coordinated scroll and stable direct-entry CTA | Supplied wireframes 3 → 1; wireframe 2 is supporting reference. “Explore the agents” primary, “Open console” secondary; paper/ink/yellow roles retained. Revise F03 visuals, preserve F01/F02 and functional F03 work; storyboard review precedes replacement animation. Blueprint §18 |
 | 2026-11-17 | Inspect supplied dial video and read Glaze/Lūmen reference briefs | User-supplied “Scroll-spun client dial with a needle and lens panel of each client's work.mp4” and two pasted prompts. Learn composition/motion discipline; exact assets, colours, fonts and implementation mandates are not adopted. No licensing or asset-reuse approval inferred |
 | 2026-11-17 | Owner rejects current book-like F03 motion/visual study | MP4 reads as a library/children's book, not the intended tech product; misses the supplied reference. Font/padding suggested as possible contributors. Visual realignment required before another substantial build or promotion; no new palette/material/typeface inferred |

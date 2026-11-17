@@ -178,6 +178,7 @@ Every implementation phase F01 onward inherits all six gate lanes. Phase-specifi
 - Apply the owner-approved presentation correction in section 16: clear agent purpose, short example brief and useful result; optional sources/rationale; a separate “How it’s built” section. Remove public capture/test timestamps, quota explanations and debugging notes from the F02 inspector. Later scene phases add the visual explanation without making result reading depend on playback.
 - Review the actual example outputs before using them as finished public results. Correct known weak/unsupported claims and source-quality problems internally, then genuinely recapture if needed; preserve original records. Do not simply hide a caveat and retain a known misleading assertion or invent a deliverable that the backend does not produce. Ask the owner before adopting a new output format or changing the product's behaviour.
 - Keep a simple static product explanation usable while the 3D experience is loading or unavailable.
+- Apply design/layout §5's C01–C10 register where relevant: review actual border contrast/icon weight and choose viewport sizing deliberately. Rounded corners, gradients, carousels, blur and blend effects are not features to invent to fill a checklist; preserve the light palette and genuine results.
 - Exit: static desktop/mobile states make the product understandable, contrast/layout checks pass, and existing API journeys remain intact. No new ambient motion yet.
 
 ### F04 — usable agent comparison
@@ -466,7 +467,7 @@ The owner confirmed PR & Policy first; F07A–F07D therefore cover Branding, Soc
 | F00 | Owner's confirmed direction and original research inventories | D §1, §4, §6–§10, §14, §16 | A §2, §4, §7–§9, §13–§16 | Reference sources, decision register and consistency check; unresolved choices have named dependent phases. Research is not an application test pass |
 | F01 | Backend repair contracts; preserve Anti Gravity's existing work. No new visual choice is needed to repair integration | D §2, §3, §12, §13, §15 | A §3, §10, §15, §16 | Real browser login/run/reload/history/review/new-decision/export/logout; old responses cannot cross agents/decisions; honest modes/errors; affected mobile/reduced-motion states; full agent gate |
 | F02 | F01 PASS; Q01 public example mode | D §3, §7, §8, §12 | A §3, §4, §6 | Tested adapters for exact/null/legacy fields; five attributable examples in the chosen mode; citation/model/metric provenance; no inference during example selection |
-| F03 | F02 PASS; Q04 surface, Q06/Q09 composition and Q10 CTA direction; Q08 presentation approved | D §3–§6, §9, §10, §12, §13, §16 | A §1, §3, §6, §9, §10, §16 | Owner-reviewed arrival/first-movement/expanded-stage frames and revised study; direct accessible CTA with zero inference; approved purpose/brief/result hierarchy; optional support and separate engineering section; no public operational metadata; corrected genuine examples; reviewed desktop/mobile states, contrast/static fallback and unchanged API journeys |
+| F03 | F02 PASS; Q04 surface, Q06/Q09 composition and Q10 CTA direction; Q08 presentation approved | D §3–§6, §9, §10, §12, §13, §16; C01–C10 in §5 | A §1, §3, §6, §7, §9, §10, §16 | Owner-reviewed frames and revised study; direct accessible CTA with zero inference; purpose/brief/result hierarchy, optional support and separate engineering section; no public operational metadata; corrected genuine examples; desktop/mobile states, composited contrast, icon weight, deliberate viewport sizing/static fallback and unchanged API journeys; conditional effects given justified N/A |
 | F04 | F03 PASS; Q02 comparison layout | D §3, §7, §13, §15 | A §3, §5, §10, §15 | Select/remove/compare/open by mouse, touch and keyboard; visible comparable fields; no generation/review/memory writes caused by comparison |
 | F05 | F04 PASS; Q03 pilot, Q05 material/camera direction; actual example bindings from F02 | D §4, §5, §8, §13 | A §3–§6, §8, §10, §11, §14 | Owner-reviewed stills and fallback; lazy renderer loading, asset/context failure, cleanup and payload/startup measurements; set an evidence-based scene budget before expanding |
 | F06 | F05 PASS; approved pilot stills/story | D §7, §8, §13 | A §3–§8, §10–§12, §14–§16 | Owner-reviewed pilot motion; deterministic play/pause/replay/close; interruption/rapid switching; truthful review state; reduced motion and static equivalent; no replay writes |
@@ -1208,3 +1209,29 @@ This update changes only the three specifications. It adds no phase, changes no
 application code or capture bytes, makes no model requests, and does not merge,
 deploy or publish an environment. The roadmap remains 15 top-level phases and
 18 separately tracked stages. The immediate next work is the F03 storyboard.
+
+### Additional technique research — 17 November
+
+The owner supplied ten CSS/design tips and authorised research and selection.
+Design/layout §5 now retains all ten as C01–C10 with existing coverage, technical
+disposition, implementation checks and official sources. Nested-radius geometry,
+icon consistency and optional mask/blur already had U14/U12/M18/M19 coverage;
+the register refines these without duplicate mandatory effects. Alpha separators
+and multiply texture also exist in the current candidate, which is not proof
+that every border/icon/asset treatment is already correct.
+
+Keep useful geometry/icon/contrast/viewport checks; evaluate OKLCH as an authoring
+tool while preserving the exact palette. Gradient interpolation, carousel masks,
+icon blur and product-shot multiply remain conditional. Dark-theme elevation is
+outside the approved light-page scope. In particular, `dvh` can resize during
+scrolling; choose stable `svh`/content sizing or dynamic sizing deliberately and
+verify actual mobile-browser behaviour. No global height or palette migration is
+authorised merely by a tip.
+
+Apply the register within F03's revision, F09 scroll/route integration, F11 visual
+integration and F12 device/accessibility review where relevant; mark optional
+techniques N/A when their components do not exist. This documentation-only
+research adds no phase, changes no application/capture/environment and does not
+reopen F01/F02 or close F03. After actual code changes, the ordinary targeted
+checks and full common phase gate still apply. The next work remains the three
+F03 storyboard frames and their concrete review.

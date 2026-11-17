@@ -185,11 +185,18 @@ The owner's “20 days” list contains 21 techniques. All are retained below; c
 | M16 | Exits about 20% shorter | Starting heuristic for triggered UI, not a fixed rule for reverse scroll |
 | M17 | Bring new state in as old state leaves | Keep continuity without overlapping unreadable text or accepting stale callbacks |
 | M18 | Masks for reveals/colour changes | Use where helpful, retaining accessible DOM text and reasonable paint cost |
-| M19 | Crossfade icons with scale and blur | Scale/crossfade may help; blur is not adopted by default and must justify its readability/performance cost |
+| M19 | Crossfade icons with scale and blur | Optional for a real state change; preserve label/focus/hit area and correct state during interruptions. Scale/crossfade may help; blur must justify readability/paint cost and is omitted under reduced motion |
 | M20 | Rubberband past drag boundaries | Only for real bounded drag interactions; never rubberband the page or keyboard navigation |
 | M21 | Reuse layout IDs for shared objects | Use for genuine continuity with correctly scoped IDs; do not collide between comparison/preview instances |
 
 For each implemented interaction record which notes apply, which are N/A, and why. Do not claim all 21 are implemented simply because they are listed.
+
+The owner's 17 November additions are researched as C01–C10 in design/layout §5.
+Carousel edge masks (C06) refine M18 only if a useful horizontal track exists;
+mask the visual track, not essential controls or readable results. Keep the
+active/focused item in the clear area and leave navigation/focus visible.
+Icon-swap blur (C07) is the existing optional M19, not a new required effect.
+No carousel, blur sequence or decorative gradient is added by this research.
 
 ## 8. Engines and property ownership
 
@@ -306,12 +313,14 @@ Blueprint §18 is the phase-impact and revision checklist.
 - Essential controls use DOM buttons with labels and visible focus. Support Tab/Enter/Space, Escape to close, and arrows for a station control if that control is implemented.
 - Reduced motion: no Lenis smoothing, camera flights, parallax, scroll scrubbing, typewriter, or forced autoplay. Show a useful static state and allow ordinary inspection.
 - Mobile: normal page flow, readable controls/text, no desktop min-width or scroll trap. Choose a lighter scene or static representation based on measured device capability.
+- Viewport sizing (C09 in design/layout §5): use `dvh` when a panel should fit the changing visible viewport, and stable `svh`/content-driven `min-height` when browser-bar changes should not resize the composition. Existing `100vh` hero/study/deck uses need review, not blind global replacement. Account for headers/safe areas; verify browser controls expanding/collapsing, rotation, content growth and keyboard where relevant. Dynamic resizing must not desynchronise scroll progress, agent selection or CTA position. A desktop Chromium viewport check is not an iOS Safari test.
 - If WebGL is unavailable, assets fail, or context is lost, present the static explanation and output. No blank panel, uncaught error, or blocked agent comparison.
 - Stop animation/render loops when offscreen, hidden, paused where possible, or unmounted. Dispose owned renderer resources/listeners safely; switching agents repeatedly must not leak resources.
 - Keep a single focal moving composition. Cap geometry, textures, lighting, shadows, and asset weight using pilot measurements. An old “150 SVG elements” target is not a valid count limit for 3D meshes.
 - Starting landing target: initial JS ≤180 kB gzip. Measure first-open 3D transfer/startup separately in F05 and record a reviewed budget. No loading everything merely because package dependencies are already installed.
 - Aim for smooth interaction on a typical 1366×768 laptop and test actual frame pacing. Lighthouse alone does not prove scene smoothness or explainability.
 - Static background texture remains static by default. A pointer-responsive dot field is not required; avoid competing with the selected machine.
+- Alpha borders, perceptual colour interpolation and multiply compositing (C02–C04/C10) are techniques, not animation/theme requirements. Keep essential text/results faithful and outside blurred/masked/blended visual layers; inspect actual contrast and blend scope. Dark-mode elevation (C08) is N/A to the light-paper page. No palette or machine material is changed by recording these tips.
 
 ## 11. Build and verification process
 
@@ -343,6 +352,8 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 - [ ] Both design checklists and all common phase-gate lanes pass before the next phase.
 
 ## 13. Open decisions and revision log
+
+2026-11-17 additional technique research: design/layout §5 records all ten new inputs with existing coverage, disposition, authoritative sources and verification requirements. M18/M19 retain conditional mask/blur use; viewport units distinguish stable `svh` from dynamic `dvh` and require relevant real-browser evidence. Documentation only: no new effect/theme, application change, phase completion or change to the agreed hero/CTA direction.
 
 2026-11-17 subsequent owner agreement: record centred arrival → small response → expanded central agent stage using supplied wireframes 3 → 1. Primary “Explore the agents” CTA directly reaches exploration; keep its hit/focus target stable and “Open console” quieter. Paper/ink/yellow retain their agreed roles; no dark imitation. Three concrete frames and responsive/static equivalents precede replacement animation. Revise F03's visual work, retain completed functional/data work and update planned F09 choreography. No application change or phase completion is claimed by this documentation update.
 
