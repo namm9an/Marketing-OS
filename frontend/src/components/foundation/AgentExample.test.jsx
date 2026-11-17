@@ -8,6 +8,17 @@ import { runFixture, factFixture } from '../../test/workflowFixtures';
 const available = agent => ({ state: 'available', recording: { captured_at: '2026-11-16T00:00:00Z' },
   presentation: adaptWorkflow('run', runFixture(agent), { capturedRetrievals: [{ agent, facts: [factFixture] }] }) });
 
+it('renders template and HTML-like model text as data without creating executable elements', async () => {
+  const result = available('pr');
+  result.presentation.output.text = '<img src=x onerror="window.polluted=true"> {{7*7}}';
+  const catalog = { load: vi.fn(async () => result) };
+  const { container } = render(<AgentExample agent="pr" catalog={catalog} />);
+  await screen.findByText(result.presentation.output.text);
+  expect(container.querySelector('img')).toBeNull();
+  expect(container.querySelector('script')).toBeNull();
+  expect(Object.prototype.polluted).toBeUndefined();
+});
+
 it('shows the task and untouched recommendation with optional support, without capture/operational metadata', async () => {
   const result = available('pr');
   const original = structuredClone(result);

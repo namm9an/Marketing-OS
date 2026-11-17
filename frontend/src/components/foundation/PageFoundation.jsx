@@ -3,12 +3,13 @@ import { ArrowDown, ArrowRight, ArrowUpRight } from 'lucide-react';
 import { AGENTS } from '../../lib/agents';
 import { createExampleCatalog } from '../../lib/exampleCatalog';
 import { AGENT_COPY } from './agentCopy';
+import AgentAssembly from './AgentAssembly';
 import './foundation.css';
 
 export function FoundationHeader({ onOpenConsole }) {
   return <header className="f03-header"><a className="f03-wordmark" href="#f03-top">Marketing OS</a>
     <nav aria-label="Showcase"><a href="#f03-agents">The specialists</a><a href="#f03-engineering">How it’s built</a></nav>
-    <button className="f03-button" onClick={onOpenConsole}>Open console <ArrowUpRight size={16} /></button>
+    <button className="f03-text-button" onClick={onOpenConsole}>Open console <ArrowUpRight size={16} /></button>
   </header>;
 }
 
@@ -59,25 +60,32 @@ export default function PageFoundation({ onOpenConsole }) {
   const [agent, setAgent] = useState('pr');
   const [grain, setGrain] = useState(() => new URLSearchParams(window.location.search).get('surface') !== 'plain');
   const catalog = useMemo(() => createExampleCatalog({ basePath: '/examples/f03-reviewed' }), []);
+  const frame = new URLSearchParams(window.location.search).get('frame');
+  const pose = frame === 'anticipation' ? 1 : frame === 'exploration' ? 2 : 0;
+  const preview = window.location.pathname.startsWith('/preview/');
   return <div className={`f03-page ${grain ? 'with-grain' : ''}`}>
-    <aside className="f03-review-tools" aria-label="Design review controls"><span>Page foundation review</span>
+    {preview && <aside className="f03-review-tools" aria-label="Design review controls"><span>Composition review</span>
       <button onClick={() => setGrain(value => !value)} aria-pressed={grain}>Subtle grain {grain ? 'on' : 'off'}</button>
       <a href="/preview/f03/motion">Open motion study <ArrowUpRight size={13} /></a>
-    </aside>
+    </aside>}
     <div className="f03-inner"><FoundationHeader onOpenConsole={onOpenConsole} />
       <main id="f03-top">
-        <section className="f03-hero" aria-labelledby="f03-heading"><div className="f03-hero-copy">
-          <h1 id="f03-heading">Five specialists<br />for your next move</h1>
-          <p>Bring a marketing brief. Choose the right perspective. Work towards a recommendation you can read, question and take forward.</p>
-          <a className="f03-button" href="#f03-agents">Meet the specialists <ArrowDown size={17} /></a>
-          <span className="f03-hero-note">Branding · PR · Social · Product Marketing · Events</span>
-        </div><DossierCover /></section>
+        {frame === 'exploration' ? <section className="f03-expanded-frame" aria-label="Expanded agent composition">
+          <div className="f03-expanded-intro"><span>PR & Policy</span><h1>Consider the message<br />before the launch</h1><p>{AGENT_COPY.pr.brief}</p>
+            <a className="f03-text-button" href="#f03-agents">Explore the agents <ArrowDown size={17} /></a></div>
+          <AgentAssembly pose={2} focused /><AgentExample agent="pr" catalog={catalog} />
+        </section> : <section className={`f03-hero pose-${pose}`} aria-labelledby="f03-heading"><div className="f03-hero-copy">
+          <h1 id="f03-heading">One brief<br /><span>Five marketing specialists</span></h1>
+          <p>Explore a launch through five different perspectives.<br className="f03-desktop-break" /> Read the recommendations. Inspect what supports them.</p>
+          <a className="f03-button" href="#f03-agents">Explore the agents <ArrowDown size={17} /></a>
+        </div><AgentAssembly pose={pose} />
+        <div className="f03-hero-caption"><span>One shared launch brief</span><span>Five distinct jobs</span></div></section>}
         <section id="f03-agents" className="f03-agents" aria-labelledby="f03-agents-heading">
           <div className="f03-section-heading"><h2 id="f03-agents-heading">Choose by the work<br />you need to do</h2>
             <p>One launch brief, five different jobs. Explore a specialist’s recommendation.</p></div>
           <div className="f03-agent-layout"><div className="f03-agent-index" role="group" aria-label="Choose a specialist">
             {AGENTS.map(({ id, Icon }) => <button key={id} aria-pressed={agent === id} onClick={() => setAgent(id)}>
-              <Icon size={20} strokeWidth={1.5} /><span><strong>{AGENT_COPY[id].name}</strong><small>{AGENT_COPY[id].action}</small></span><ArrowRight size={17} />
+              <Icon size={20} strokeWidth={2} /><span><strong>{AGENT_COPY[id].name}</strong><small>{AGENT_COPY[id].action}</small></span><ArrowRight size={17} />
             </button>)}
           </div><AgentExample agent={agent} catalog={catalog} /></div>
         </section>

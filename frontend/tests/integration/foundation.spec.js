@@ -12,7 +12,7 @@ test('the page foundation presents all reviewed responses without operational no
   const manifest = await (await page.request.get('/examples/f03-reviewed/manifest.json')).json();
   expect(manifest.status).toBe('ready');
   await page.goto('/preview/f03');
-  await expect(page.getByRole('heading', { level: 1 })).toHaveText('Five specialistsfor your next move');
+  await expect(page.getByRole('heading', { level: 1 })).toHaveText('One briefFive marketing specialists');
   for (const entry of manifest.examples) {
     const bundle = await (await page.request.get(`/examples/f03-reviewed/${entry.path}`)).json();
     await page.getByRole('group', { name: 'Choose a specialist' }).getByRole('button', { name: new RegExp(`^${names[entry.agent]}`) }).click();
