@@ -23,6 +23,7 @@ const child = spawn(python, server, {
     PORT: '5120', ENVIRONMENT: 'test', SESSION_COOKIE_SECURE: 'false',
     GEMINI_API_KEY: '', ADMIN_USER: 'e2e-operator', ADMIN_PASSWORD: 'e2e-local-test-password',
     TRUST_FORWARDED_FOR: 'false',
+    ALLOWED_ORIGINS: 'http://127.0.0.1:5179,http://127.0.0.1:5120',
   },
 });
 for (const signal of ['SIGINT', 'SIGTERM']) process.on(signal, () => child.kill(signal));

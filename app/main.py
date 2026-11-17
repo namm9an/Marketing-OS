@@ -3,7 +3,9 @@ Marketing OS v2.0 Application Server Entrypoint (Enterprise Hardened)
 """
 
 import hmac
+import hashlib
 import ipaddress
+import json
 import os
 import re
 from typing import Iterable, Optional
@@ -123,11 +125,20 @@ class RequestValidationError(ValueError):
 
 
 def _request_data(schema):
-    data = request.get_json(silent=True)
+    try:
+        data = request.get_json(silent=True)
+    except (RecursionError, UnicodeError):
+        raise RequestValidationError("Invalid JSON encoding or nesting") from None
     if data is None and not request.get_data():
         data = {}
     if not isinstance(data, dict):
         raise RequestValidationError("Expected a JSON object")
+    try:
+        # Reject unpaired surrogate escapes before DB/provider encoding. Preserve
+        # ordinary multilingual text and valid emoji; do not homoglyph-fold auth.
+        json.dumps(data, ensure_ascii=False).encode("utf-8")
+    except (UnicodeError, RecursionError):
+        raise RequestValidationError("Invalid JSON encoding or nesting") from None
     try:
         return schema.model_validate(data).model_dump()
     except ValidationError:
@@ -144,7 +155,13 @@ def _safe_digest_compare(a: Optional[str], b: Optional[str]) -> bool:
     """Timing-safe string comparison that encodes to UTF-8 to prevent non-ASCII string TypeError crashes."""
     if not isinstance(a, str) or not isinstance(b, str):
         return False
-    return hmac.compare_digest(a.encode("utf-8"), b.encode("utf-8"))
+    try:
+        return hmac.compare_digest(
+            hashlib.sha256(a.encode("utf-8")).digest(),
+            hashlib.sha256(b.encode("utf-8")).digest(),
+        )
+    except UnicodeError:
+        return False
 
 
 def _is_authed() -> bool:
@@ -242,8 +259,26 @@ def handle_upstream_provider(error: UpstreamProviderError):
 def _before_request():
     g.request_id = new_id()
     path = request.path
+    if path.startswith("/api/") and request.method not in {"GET", "HEAD", "OPTIONS"}:
+        origin = request.headers.get("Origin")
+        allowed = set(settings.get_allowed_origins()) | {request.host_url.rstrip("/")}
+        if (origin is not None and origin not in allowed) or (
+            origin is None and request.headers.get("Sec-Fetch-Site") == "cross-site"
+        ):
+            return jsonify({"error": "origin_not_allowed"}), 403
     if path.startswith("/api/") and path not in _OPEN_API_PATHS and not _is_authed():
         return jsonify({"error": "Authentication required"}), 401
+
+
+@app.after_request
+def _response_boundaries(response):
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    if request.path.startswith("/api/"):
+        # Includes authentication errors, exports and health; never let shared
+        # caches replay another browser's session/decision response.
+        response.headers["Cache-Control"] = "no-store, private"
+        response.vary.add("Cookie")
+    return response
 
 
 @app.route("/api/me", methods=["GET"])
@@ -266,12 +301,12 @@ def api_login():
 
     data = _request_data(LoginRequestSchema)
     user = (data.get("username") or "").strip()
-    pwd = (data.get("password") or "").strip()
+    pwd = data.get("password") or ""
 
     # Timing-safe comparison on admin username and password (resilient to non-ASCII strings)
-    if _safe_digest_compare(user.lower(), settings.ADMIN_USER.lower()) and _safe_digest_compare(
-        pwd, settings.ADMIN_PASSWORD
-    ):
+    user_matches = _safe_digest_compare(user.lower(), settings.ADMIN_USER.lower())
+    password_matches = _safe_digest_compare(pwd, settings.ADMIN_PASSWORD)
+    if user_matches & password_matches:
         login_rate_limiter.record_success(client_ip)
         token = session_store.create_session(settings.ADMIN_USER)
         resp = jsonify({"success": True, "username": settings.ADMIN_USER})
