@@ -199,6 +199,82 @@ Local research snapshots: `/workspace/reviews/css-technique-research/`.
 
 ## 6. Proposed information architecture
 
+### Component and state coverage — owner review, 17 November
+
+The owner asked whether the whole component system is defined beyond the hero.
+Product flow, palette and result hierarchy are settled; a complete visual
+component sheet is not yet approved. These are recommendations/coverage, not
+approval of a library or every listed feature. Existing console functionality
+does not establish finished F11 styling.
+
+| Component | Product use and recommended direction | Coverage / phase |
+|---|---|---|
+| Buttons | Yellow/ink primary, quiet secondary; stable target, labels, focus/press/disabled/loading and useful failures | Roles defined; F03 visual sheet pending; console F11 |
+| Dropdown | Real labelled agent/workflow/model selection, keyboard and clear selected value; keep five showcase roles discoverable | Existing controls; styling F03/F11, no decorative dropdown |
+| Speed dial | Floating actions only for a demonstrated frequent-action need | Not required; omit |
+| Modal | Scene/detail viewer only if a separate focus context helps; label, Escape/close, focus containment/return and mobile fallback | Viewer decision F05/F08; sources can remain inline |
+| Swap | Real icon/state change with stable accessible name and correct final state; M19 optional transition | Motion policy defined; only for controls that need it |
+| Theme controller | Requires a separately designed/tested second theme | Not adopted; preserve light palette |
+| Data display | Purpose → brief → useful genuine result → relevant risk/review → optional sources/rationale; engineering separate | Defined; F02 adapters; F03 layout, F04 comparison, F10 evidence |
+| Avatar | Consistent specialist icons or actual attributed identity; no fictional human profiles/testimonials | Roles exist; illustration styling not accepted |
+| Badge | Meaningful example, actual review or explicit execution state on the right surface | Meaning defined; U01/S01 audit; no filler/live badges or public provider-debug labels |
+| Card | Useful brief/result/evidence grouping and readable mobile hierarchy; dossier means organisation, not a compulsory literal book | Content defined; F03 visual redesign OPEN |
+| Carousel | Only genuinely useful sequential content with direct selection/static alternative | No current need; comparison is F04, not autoplay; C06 conditional |
+| Chat bubble | User/agent turns, selected specialist, pending/error, retained thread and accessible sources | Functional chat exists; F11 visual system; isolation regressions retained |
+| Collapse | Native expandable sources/rationale or genuine secondary detail; keyboard/focus and clear label | Existing details pattern; F03 review |
+| Countdown | Actual time-bound event/action only | No showcase need; omit fake waiting, urgency or progress |
+| List | Agent choices, history, sources/memories; stable order and selected/empty/loading/error states | Existing data paths; F03/F04/F11 consistency |
+| Stat | Measured, attributable value with its meaning/limits | No decorative counters; F10 evidence audit |
+| Status | Actual pending/completed/error/review in text as well as colour; risk flag is not approval | Contracts exist; F03/F11 styling |
+| Table | Real comparison/history/evidence fields, readable headers and responsive adaptation | F04/F10/F11 as useful; no invented rankings/decorative dashboard |
+| Text rotate | Only if it preserves a clear stable message and serves an interaction | Not required for hero; avoid rotating vague slogans |
+| Documentation navigation | Anchors for real engineering content; sidebar only for actual long documentation | Navigation exists; F10 content review; no fake code breadcrumbs |
+
+For each chosen component specify purpose, data/action binding, palette/type/
+spacing/icons, applicable resting/hover/focus/pressed/selected/disabled states,
+loading/empty/error/success, keyboard/touch, reduced-motion/static fallback and
+integration evidence. Mark irrelevant states N/A rather than inventing controls.
+The component sheet should show button, selector, result card, source collapse,
+list/status and chat patterns together while retaining their phase ownership.
+
+### Supplied component references — candidates, not adopted
+
+**Vector Wordmark (Originkit, supplied TSX):** React plus WebGL/canvas text atlas,
+pointer/lattice effects and coordinate labels. Candidate for one hero display
+word/wordmark or bounded typographic transition; navigation identity stays
+readable/stable. Defaults include 1200×800 minimum size and labels on. There is
+no readable DOM text fallback when WebGL is missing, no reduced-motion branch
+or offscreen IntersectionObserver. Its loop stops for document visibility but
+otherwise continues; cleanup removes listeners/observer without explicitly
+deleting the GL program/buffer/texture. Its custom parser does not accept
+arbitrary CSS/OKLCH colour syntax. Adapt/test these before any import; preserve
+real DOM heading semantics and the exact palette.
+
+**Spider Button (Originkit, supplied TSX):** real HTML button plus WebGL pill,
+2D web/rope/cursor effects, pointer/touch/key handlers and onClick. It has GL
+fallback, reduced-motion handling and resource cleanup, but samples the motion
+preference at mount and keeps a frame loop even for reduced motion, without
+offscreen/document-visibility gating. Defaults include a 1200×800 container,
+glossy red pill, web/custom-cursor decoration and white-oriented focus styling.
+Candidate for an isolated secondary-interaction trial after palette/focus/
+target/loop adaptation. Recommend a simpler stable hero CTA first; this web
+motif is not an explanation of an agent's actual capability.
+
+Both sources were inspected, not rendered/adopted as production components.
+They do not define the hero object, scroll geometry, data layout or machine
+materials. Check reuse terms before importing third-party code. No Originkit
+package/dependency or new colour has been added.
+
+### Remaining visual decision
+
+The owner rejected the revised schematic-machine/expanded PR frames and asked
+for revision before animation. It is still unclear whether the objection is
+machine artwork, typography/spacing, the centred-to-three-column execution or
+all of these. New component references are not approval of a replacement.
+Do not animate/promote this candidate or mark F03 PASS. Standard component
+behaviour can be specified from existing contracts without twenty separate
+owner decisions; precise hero artwork/effect intensity needs concrete review.
+
 1. Opening section: specific explanation, a focal visual, and an obvious way to explore/compare agents.
 2. Agent discovery: reuse useful deck work if it serves the reviewed journey. Do not retain 600vh pinning solely because it already exists.
 3. Agent comparison and selected-agent exploration: directly connected, without two redundant directories of the same five agents.

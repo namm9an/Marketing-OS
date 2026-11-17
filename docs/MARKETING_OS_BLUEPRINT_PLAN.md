@@ -1,7 +1,7 @@
 # Marketing OS — blueprint and phased build plan
 
 Updated: 17 November 2026 (Asia/Calcutta).
-Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03's candidate is technically verified through `9f0a3e7` on `feat/frontend-page-foundation`, but the owner rejected the book-like visual/motion study on 17 November. The owner subsequently agreed to a centred opening developing into a central agent stage with adjacent explanation/results; section 18 records the direction and bounded F03 revision plan. F03 remains OPEN until its revised implementation and visual/functional gates pass. F00's remaining material/geometry reviews stay open.
+Status: F01 functional baseline PASS at `d6c9973`; F02 data/capture foundation PASS at `0dc18d6`, documented through `827ed61`. F03's new API/security loop and isolated static review frames are committed through `a4104a2`; all six technical lanes pass, but the owner rejected the revised schematic composition before animation. Section 19 records the 17 November execution, component coverage and remaining visual decision. F03 remains OPEN; no replacement animation, homepage promotion or F04 entry is approved. F00's remaining material/geometry reviews stay open.
 
 Subsequent owner approval: public agent views follow purpose → short example brief → visual explanation → useful result, with optional sources/rationale and a separate “How it’s built” section. Section 16 records this presentation correction. Public timestamps/operational notes in the existing F02 inspector still need removal; this documentation update does not claim the UI has changed.
 
@@ -100,6 +100,13 @@ Work one phase at a time. Within it: reproduce the relevant defect or define acc
 | Agent operation | Exercise all five one-shot specialists, chat continuation and memory, two-agent triage, five-agent digest, history/detail/review, export, and logout. Check attribution and namespace boundaries |
 | UI regression | Build/lint pass; browser console has no application errors in covered journeys; compare relevant screenshots, mobile behaviour, keyboard use, reduced motion, and error/empty/loading states |
 | Design review | Apply both checklists in DESIGN_AND_LAYOUT.md; mark applicable items PASS/FAIL, or N/A with a reason. Review material visual changes with the owner |
+
+The owner subsequently required a repeatable backend/API/security loop at every
+phase. Use [the backend phase checklist](BACKEND_PHASE_CHECKLIST.md) and
+`tools/verify_phase.py`; its technical report supplements these six lanes and
+never closes an unapproved visual gate. Every registered API needs explicit
+healthy-contract/auth tests. Record threat applicability, dependency findings
+and deployment-layer limits rather than claiming universal security.
 
 No “done” or “next phase” while a required lane fails or is untested. A skipped required check is not a pass. A phase that reveals a shared integration defect must fix it or explicitly revise scope with the owner before closing.
 
@@ -549,6 +556,7 @@ Ask the owner when a choice is unclear or changes their intended experience. Mak
 | Q08 | Public agent content and engineering-detail placement | F03 and subsequent scene/content work | CONFIRMED by owner, 16 November: purpose → short brief → visual explanation → useful result; optional sources/rationale; separate “How it’s built” section. Capture/test timestamps, quota explanations and debug notes stay out of public presentation. Exact layout/copy/stills still need their phase reviews |
 | Q09 | Landing-page scroll pacing and relation to agent scenes | Motion study in F03; final scene/choreography phases | Owner's 17 November direction: centred calm arrival → small response → expanded agent stage with coordinated selection, labels and brief/result. Three storyboard states first, then revised direct-progress study. Exact distance and inner miniature controls remain open; radio dial/Glaze/Lūmen are references, not adopted literal styling or implementation instructions |
 | Q10 | Hero CTA placement, meaning and route | Revised F03 storyboard and implementation; final F09 journey | CONFIRMED direction by owner, 17 November: yellow “Explore the agents” CTA, ink label, quieter “Open console” navigation action. Exploration is directly reachable without watching the whole sequence; accessible focus/target stays stable during interaction; no model/review/memory action on exploration |
+| Q11 | Revised hero artwork and coherent component sheet | F03 replacement animation/promotion | OPEN: owner rejected the schematic-machine/expanded PR stills. Need to identify whether artwork, type/spacing, layout execution or all need revision. Vector Wordmark/Spider Button are newly supplied references, not adopted replacements. D §6 inventories component roles and states; ordinary accessible behaviour does not need a separate owner decision for every control |
 
 Q01–Q06 were answered and recorded in all three specifications during this documentation turn. Q05 intentionally retains a material/modelling review: the owner has not seen a concrete proposal and should not have to approve an unseen style or camera interaction. Bring references and the F05 brief/stills before asking for that decision. Scene stills, pilot motion approval, exact texture/scroll geometry and measured budgets remain later review checkpoints. F01 can continue independently. Ask any new product/visual questions before dependent implementation; do not make the owner settle an unused package or animation technique.
 
@@ -1235,3 +1243,88 @@ research adds no phase, changes no application/capture/environment and does not
 reopen F01/F02 or close F03. After actual code changes, the ordinary targeted
 checks and full common phase gate still apply. The next work remains the three
 F03 storyboard frames and their concrete review.
+
+## 19. F03 execution, security loop and component coverage — 17 November
+
+The owner requested completion with a repeatable backend/frontend verification
+loop and a security checklist at every phase. Work continues on
+`feat/frontend-page-foundation`; no merge, deployment or environment publication.
+
+### Implemented and tested
+
+- `abeef69` `fix: harden API boundaries and automate phase verification`:
+  no-store/private API responses, safe MIME handling, unsafe-request origin
+  checks, exact password comparison without trimming or username-only short
+  circuit, and malformed Unicode/deep-JSON rejection. Legitimate multilingual
+  prompts, existing result schemas and valid workflows remain supported.
+- New `tests/integration/test_phase_security.py` inventories all 16 API
+  method/route contracts, positive/anonymous/cache cases, long credentials,
+  forged/revoked sessions, origins, XML, malformed input and literal template
+  handling. New parser/ReDoS tests are bounded/local, not a traffic flood.
+- `tools/verify_phase.py` encapsulates all six technical lanes, fail-fast with
+  isolated state, controlled inference, logs and a JSON report. API inventory
+  and security regressions are included in every backend run; visual acceptance,
+  dependency findings and deployed edge checks remain separately recorded.
+- [Backend phase checklist](BACKEND_PHASE_CHECKLIST.md) retains all 20 requested
+  threat classes with actual applicability. The owner clarified SAML bypass and
+  regex ReDoS; there is no instruction to add SAML/Redis/GraphQL/JWT/2FA features.
+- `a4104a2` `feat: add isolated F03 composition review frames`: new original
+  static schematic assembly and centred/expanded review frames, stable CTA,
+  stronger icon weight and a React untrusted-text regression. These are isolated
+  preview changes. The public homepage and old motion study are not replaced.
+
+### Complete technical gate evidence
+
+Command: `.venv/bin/python tools/verify_phase.py F03 --output
+/workspace/reviews/f03-loop-verification` (one shell line).
+
+| Lane | Current result |
+|---|---|
+| Backend unit/integration | 411 passed, including 62 new security/parser/ReDoS cases and all 16 API healthy-contract checks |
+| Frontend unit | 56 passed / 12 files, including literal HTML/template-like model text, stale fetch and failure/retry |
+| Lint | Exit 0; 27 existing warnings |
+| Build | Exit 0 |
+| Development browser/API | 18 passed; full saved-example and console/agent workflows |
+| Compiled browser/API | 18 passed; actual built SPA through two Gunicorn workers |
+
+The suites ran at `c66aa84` plus the implementation working tree subsequently
+committed as `abeef69`/`a4104a2`. No app/test change followed those runs; runner
+reporting subsequently gained working-file hashes and explicit advisory-scope
+metadata, without changing gate commands. `report.json`, individual logs and
+backend JUnit evidence are local under the output directory above. New code
+changes require new affected checks/full gate; these counts are not permanent
+proof for a future revision. No paid model calls were used.
+
+Dependency audits are separate: production npm reports zero known advisories;
+the complete build/dev graph reports 15 affected package entries. The installed
+Python scan reports advisory entries in pip/Requests, with duplicate IDs and
+important applicability limits. Exact scope, reports and open update/release
+tasks are in the backend checklist. This is not an advisory-clean release or
+verification of a deployed HTTP/2/proxy/TLS stack.
+
+### Visual review and new component references
+
+The owner saw the arrival/expanded PR stills and selected **“Revise the
+composition before animating.”** Asking which aspects need changing remains
+open while the owner asks for a complete component-system vision. The static
+candidate and artifacts are retained as review evidence, not approved output.
+No new animation or silent promotion follows that rejection.
+
+Design/layout §6 now records the requested button, dropdown, speed dial, modal,
+swap, theme controller, data, avatar/badge/card/carousel/chat/collapse/countdown,
+list/stat/status/table/text-rotate and documentation-navigation coverage.
+Behaviour/data already exist for several controls; a finished common visual
+sheet has not been approved. Adopt familiar accessible defaults for standard
+states; identify only the consequential open art-direction choices for owner
+review. No need to build every component in a library catalogue.
+
+The two uploaded Originkit sources were inspected only. Vector Wordmark is a
+candidate typographic focal effect; Spider Button is an optional isolated
+interaction trial. Neither solves hero artwork/page-scroll architecture or
+authorises its default colours, sizing or decorative effects. D §6 records
+responsive/DOM fallback/reduced-motion/resource-loop concerns before integration.
+
+Next: clarify the rejected composition and review a coherent component sheet
+with the hero; then revise the artwork/layout, animate the accepted study,
+record a new clip, rerun affected/full gates and obtain the phase's visual exit.
+F01/F02 remain complete. **F03 stays OPEN and F04 is not eligible.**

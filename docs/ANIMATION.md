@@ -353,6 +353,8 @@ Every motion phase must prove that playing scenes/using comparison leaves backen
 
 ## 13. Open decisions and revision log
 
+2026-11-17 F03 execution: owner rejected the revised schematic-machine/expanded PR stills and asked for revision before animation. No replacement timeline is approved by those frames. New Originkit Vector Wordmark/Spider Button sources are candidates only; design/layout §6 records their actual responsive, fallback and resource-management gaps. Component state contracts can proceed, but these microinteractions do not define page scroll or resolve hero artwork. Backend/security verification continues independently; F03 stays OPEN.
+
 2026-11-17 additional technique research: design/layout §5 records all ten new inputs with existing coverage, disposition, authoritative sources and verification requirements. M18/M19 retain conditional mask/blur use; viewport units distinguish stable `svh` from dynamic `dvh` and require relevant real-browser evidence. Documentation only: no new effect/theme, application change, phase completion or change to the agreed hero/CTA direction.
 
 2026-11-17 subsequent owner agreement: record centred arrival → small response → expanded central agent stage using supplied wireframes 3 → 1. Primary “Explore the agents” CTA directly reaches exploration; keep its hit/focus target stable and “Open console” quieter. Paper/ink/yellow retain their agreed roles; no dark imitation. Three concrete frames and responsive/static equivalents precede replacement animation. Revise F03's visual work, retain completed functional/data work and update planned F09 choreography. No application change or phase completion is claimed by this documentation update.
