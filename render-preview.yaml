@@ -1,0 +1,32 @@
+# Proposed review service only. This file does not change the existing service
+# or deploy anything until the owner creates/approves a service in Render.
+services:
+  - type: web
+    name: marketing-os-review
+    env: docker
+    plan: free
+    branch: feat/frontend-page-foundation
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: false
+    envVars:
+      - key: PORT
+        value: "10000"
+      - key: ENVIRONMENT
+        value: "production"
+      - key: SESSION_COOKIE_SECURE
+        value: "true"
+      - key: TRUST_FORWARDED_FOR
+        value: "false"
+      - key: ADMIN_USER
+        value: "reviewer"
+      - key: ADMIN_PASSWORD
+        generateValue: true
+      - key: DEFAULT_MODEL
+        value: "gemini-3.5-flash-lite"
+      - key: DB_PATH
+        value: "/tmp/marketing-os-review.db"
+      - key: ALLOWED_ORIGINS
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false

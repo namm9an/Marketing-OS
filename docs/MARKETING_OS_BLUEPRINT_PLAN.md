@@ -1246,6 +1246,16 @@ F03 storyboard frames and their concrete review.
 
 ## 19. F03 execution, security loop and component coverage — 17 November
 
+Subsequent owner steering: prioritise a working **desktop** website and defer
+bespoke mobile polish to F12, retaining current functional responsive safeguards
+and tests. This supersedes requiring new mobile visual approval at the current
+F03 review; record that work as deferred, not passed. The owner confirms there
+is no working Render deployment and is open to a hosted review recommendation.
+Preparing `render-preview.yaml` and README setup guidance does not deploy or
+authorise a final release, alter the existing service, or close F14. A real review
+URL and deployed login/API/provider smoke check are still pending. Use the
+current phase branch and preserve `showcase-redesign`/`main` during review.
+
 The owner requested completion with a repeatable backend/frontend verification
 loop and a security checklist at every phase. Work continues on
 `feat/frontend-page-foundation`; no merge, deployment or environment publication.

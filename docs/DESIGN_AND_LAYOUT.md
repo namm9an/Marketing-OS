@@ -11,6 +11,13 @@ Read with [the blueprint](MARKETING_OS_BLUEPRINT_PLAN.md) and [animation specifi
 
 Marketing OS is an interactive portfolio case study with a real product underneath it. A casual visitor should understand what useful work the agents help with. An engineer should be able to inspect the actual system and its limits.
 
+Owner priority, 17 November: finish the usable desktop website first; bespoke
+mobile visual polish can wait. Preserve existing responsive safeguards/tests
+but defer new mobile art-direction/polish decisions to F12. Do not mark those
+deferred checks PASS or let them obscure the current desktop review. A reachable
+interactive review site is now the delivery priority; screenshots alone have
+not given the owner adequate ability to judge the site.
+
 Confirmed by the owner:
 
 - Keep the paper/dossier concept.

@@ -303,3 +303,49 @@ Run the retrieval benchmark suite:
 ```bash
 python -m app.eval.retrieval --expand-taxonomy
 ```
+
+## Desktop review site (proposed, not deployed)
+
+The cloud machine's loopback URL is not a URL on the owner's laptop. A separate
+Render service can serve the compiled React pages and Flask API from one HTTPS
+origin, without moving development to the desktop or merging into `main`.
+[render-preview.yaml](render-preview.yaml) describes a proposed review service;
+it leaves the existing `render.yaml` untouched and automatic deployment off.
+
+One-time owner setup in Render:
+
+1. Connect the GitHub repository to a **new Web Service**, select branch
+   `feat/frontend-page-foundation`, Docker runtime, repository root and
+   `./Dockerfile`. Use `/api/health` as the health check. These same settings
+   can be used through a Blueprint if the dashboard supports selecting the
+   custom `render-preview.yaml` file.
+2. Apply the variables in that file. Use username `reviewer` and a generated,
+   unique `ADMIN_PASSWORD`; retain that password in Render, not chat/Git.
+   Set `SESSION_COOKIE_SECURE=true` and `TRUST_FORWARDED_FOR=false`.
+   The old config's forwarded-trust setting requires real trusted proxy
+   addresses; do not replace that with a wildcard merely to get startup working.
+3. Set `ALLOWED_ORIGINS` to the **actual HTTPS origin Render assigns**, without
+   a trailing slash/path. If the URL is only assigned after initial creation,
+   update this field and redeploy before trying browser login. This is needed
+   because TLS terminates at Render and untrusted forwarded headers stay ignored.
+4. For real interactive generation, add `GEMINI_API_KEY` securely in Render and
+   keep `DEFAULT_MODEL` explicit. The proposed model is the Flash-Lite model
+   used for the genuine recordings; current live availability needs its own
+   check. Without a key, console generation is explicitly mock mode. The five
+   genuine saved public examples require no generation/key to inspect.
+5. Deploy and share the actual URL. Check `/api/health`, `/preview/f03`, direct
+   `/console` login/run/history/export/logout, and rejection of an unapproved
+   Origin. Use one deliberate live request to verify provider access when enabled;
+   routine tests remain controlled. A passing local gate is not a deployed check.
+
+The new review site initially shows the current branch, including the unapproved
+F03 candidate at `/preview/f03`. Neither Originkit reference is integrated yet.
+The landing pages are publicly reachable; console/API data actions require the
+operator login. This is not whole-site password protection. The review SQLite
+database is deliberately disposable and may reset on restart/redeploy; production
+persistence, edge/HTTP2 checks and release approval remain F14 work. Current
+dependency advisories remain documented in [the checklist](docs/BACKEND_PHASE_CHECKLIST.md).
+
+After creation, keep development here and use deliberate manual deployments of
+review commits. No deployment, account connection or secret transfer has been
+performed by adding this configuration.

@@ -24,6 +24,15 @@ The miniature machine is a visual metaphor. It does not reproduce hidden model t
 
 ## 2. Confirmed direction and open choices
 
+17 November priority update: desktop composition, working controls and an
+accessible interactive review come first. New bespoke mobile choreography/polish
+is deferred to F12; keep the existing native/reduced-motion fallbacks and tests.
+Neither Vector Wordmark nor Spider Button has been integrated. The proposed
+wordmark placement is one hero typographic focal effect with stable readable
+DOM text and the existing palette; header/navigation/CTA remain usable. This
+recommendation is not approval of an unseen new composition or of the supplied
+autonomous sweep, coordinate labels, cursor replacement or glossy colours.
+
 | Item | Status |
 |---|---|
 | Miniature physical machines or scenes for clicked agents | CONFIRMED by owner |
