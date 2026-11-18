@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test';
 import AxeBuilder from '@axe-core/playwright';
 
-const path = '/preview/f03/connected';
+const path = '/';
 const names = ['Branding', 'PR & Policy', 'Social Community', 'Product Marketing', 'Field Events'];
 
 test('scroll holds and reverses while direct choices keep the artwork and saved result in sync', async ({ page }) => {
@@ -85,24 +85,28 @@ test('genuine loading is local to the artwork and the page recovers to a readabl
   expect((await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze()).violations).toEqual([]);
 });
 
-test('console entry and browser back restore the connected preview', async ({ page }) => {
+test('console entry and return restore the selected homepage agent and treatment', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await page.goto(path);
+  await page.goto('/?agent=pr&treatment=focal#f03-agents');
+  const choice = page.getByRole('button', { name: 'PR & Policy', exact: true });
+  await expect(choice).toHaveAttribute('aria-pressed', 'true');
   await page.getByRole('button', { name: 'Open console', exact: true }).click();
   await expect(page).toHaveURL(/\/console$/);
   await expect(page.getByRole('button', { name: 'Authenticate Operator' })).toBeVisible();
   await page.getByRole('button', { name: /Showcase/ }).click();
-  await expect(page).toHaveURL(/\/preview\/f03\/connected$/);
+  await expect(page).toHaveURL(url => url.pathname === '/' && url.searchParams.get('agent') === 'pr'
+    && url.searchParams.get('treatment') === 'focal' && url.hash === '#f03-agents');
+  await expect(choice).toHaveAttribute('aria-pressed', 'true');
   await expect(page.getByRole('heading', { name: 'Marketing OS', exact: true })).toBeVisible();
 });
 
-test('a failed preview module leaves usable reload and showcase routes', async ({ page }) => {
+test('a failed showcase module leaves usable reload and console routes', async ({ page }) => {
   const moduleUrl = /\/ConnectedFoundation(?:-[\w-]+)?\.jsx?(?:\?|$)/;
   await page.route(moduleUrl, route => route.abort());
   await page.goto(path);
-  await expect(page.getByRole('heading', { name: 'The preview couldn’t open' })).toBeVisible();
-  await expect(page.getByRole('link', { name: 'Open the showcase' })).toHaveAttribute('href', '/');
+  await expect(page.getByRole('heading', { name: 'The showcase couldn’t open' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Open the console' })).toHaveAttribute('href', '/console');
   await page.unroute(moduleUrl);
-  await page.getByRole('button', { name: 'Reload preview' }).click();
+  await page.getByRole('button', { name: 'Reload showcase' }).click();
   await expect(page.getByRole('heading', { name: 'Marketing OS', exact: true })).toBeVisible();
 });

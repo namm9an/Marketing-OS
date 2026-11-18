@@ -1,80 +1,58 @@
 import React, { useState, useEffect, Suspense } from 'react';
-import { LenisProvider } from './context/LenisContext';
-import StickySystemHeader from './components/showcase/StickySystemHeader';
-import PublicCaseStudyPage from './components/showcase/PublicCaseStudyPage';
 
-// Lazy load the full interactive workbench so the public case study bundle stays micro-lightweight
 const InteractiveConsole = React.lazy(() => import('./components/console/InteractiveConsole'));
-const PageFoundation = React.lazy(() => import('./components/foundation/PageFoundation'));
-const MotionStudy = React.lazy(() => import('./components/foundation/MotionStudy'));
 const ConnectedFoundation = React.lazy(() => import('./components/foundation/ConnectedFoundation'));
 
-class ConnectedPreviewBoundary extends React.Component {
+class ShowcaseBoundary extends React.Component {
   state = { failed: false };
 
   static getDerivedStateFromError() { return { failed: true }; }
 
   render() {
     if (this.state.failed) return <main className="p-6">
-      <h1>The preview couldn’t open</h1>
-      <button type="button" className="underline mr-4" onClick={() => window.location.reload()}>Reload preview</button>
-      <a className="underline" href="/">Open the showcase</a>
+      <h1>The showcase couldn’t open</h1>
+      <button type="button" className="underline mr-4" onClick={() => window.location.reload()}>Reload showcase</button>
+      <a className="underline" href="/console">Open the console</a>
     </main>;
     return this.props.children;
   }
 }
 
-const routeFor = () => window.location.pathname.startsWith('/console') ? 'console'
-  : window.location.pathname.replace(/\/$/, '') === '/preview/f03/connected' ? 'connected-foundation'
-  : window.location.pathname.startsWith('/preview/f03/motion') ? 'motion-study'
-    : window.location.pathname.startsWith('/preview/f03') ? 'foundation' : 'case-study';
+const isConsoleRoute = () => window.location.pathname === '/console' || window.location.pathname.startsWith('/console/');
 
 export default function App() {
-  const [currentRoute, setCurrentRoute] = useState(routeFor);
+  const [inConsole, setInConsole] = useState(isConsoleRoute);
 
-  // Handle browser back/forward buttons
   useEffect(() => {
-    const handlePopState = () => {
-      setCurrentRoute(routeFor());
+    const syncRoute = () => {
+      const { pathname, search, hash } = window.location;
+      if (pathname === '/preview/f03' || pathname.startsWith('/preview/f03/')) {
+        window.history.replaceState(window.history.state, '', `/${search}${hash}`);
+      }
+      setInConsole(isConsoleRoute());
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+    syncRoute();
+    window.addEventListener('popstate', syncRoute);
+    return () => window.removeEventListener('popstate', syncRoute);
   }, []);
 
   const navigateToConsole = () => {
-    const fromConnectedPreview = currentRoute === 'connected-foundation';
-    window.history.pushState({ fromConnectedPreview }, '', '/console');
-    setCurrentRoute('console');
-    window.scrollTo({ top: 0, behavior: fromConnectedPreview ? 'instant' : 'smooth' });
+    window.history.pushState({ fromShowcase: true }, '', '/console');
+    setInConsole(true);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  const navigateToCaseStudy = () => {
-    if (window.history.state?.fromConnectedPreview) {
+  const navigateToShowcase = () => {
+    if (window.history.state?.fromShowcase) {
       window.history.back();
       return;
     }
     window.history.pushState({}, '', '/');
-    setCurrentRoute('case-study');
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setInConsole(false);
+    window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  if (currentRoute === 'connected-foundation') {
-    return <ConnectedPreviewBoundary>
-      <Suspense fallback={<main aria-busy="true"><p role="status">Loading the showcase…</p></main>}>
-        <ConnectedFoundation onOpenConsole={navigateToConsole} />
-      </Suspense>
-    </ConnectedPreviewBoundary>;
-  }
-
-  if (currentRoute === 'foundation' || currentRoute === 'motion-study') {
-    return <Suspense fallback={<p role="status">Loading preview…</p>}>
-      {currentRoute === 'foundation'
-        ? <LenisProvider><PageFoundation onOpenConsole={navigateToConsole} /></LenisProvider>
-        : <MotionStudy />}
-    </Suspense>;
-  }
-
-  if (currentRoute === 'console') {
+  if (inConsole) {
     return (
       <div className="min-h-screen bg-[#FBF9F5]">
         <Suspense
@@ -84,20 +62,17 @@ export default function App() {
             </div>
           }
         >
-          <InteractiveConsole onBackToCaseStudy={navigateToCaseStudy} />
+          <InteractiveConsole onBackToCaseStudy={navigateToShowcase} />
         </Suspense>
       </div>
     );
   }
 
   return (
-    <LenisProvider enabled={currentRoute === 'case-study'}>
-      <div className="min-h-screen bg-[#F6F5F1] text-[#111315]">
-        <StickySystemHeader onOpenConsole={navigateToConsole} isConsoleActive={false} />
-        <main>
-          <PublicCaseStudyPage onOpenConsole={navigateToConsole} />
-        </main>
-      </div>
-    </LenisProvider>
+    <ShowcaseBoundary>
+      <Suspense fallback={<main aria-busy="true"><p role="status">Loading the showcase…</p></main>}>
+        <ConnectedFoundation onOpenConsole={navigateToConsole} />
+      </Suspense>
+    </ShowcaseBoundary>
   );
 }

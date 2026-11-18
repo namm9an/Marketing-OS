@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { AgentExample } from './PageFoundation';
+import { AgentExample } from './AgentExample';
 import { adaptWorkflow } from '../../lib/presentation';
 import { runFixture, factFixture } from '../../test/workflowFixtures';
 

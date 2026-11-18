@@ -3,7 +3,7 @@ import { motion, useMotionValue, useMotionValueEvent, useTransform } from 'frame
 import { AGENTS } from '../../lib/agents';
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { AGENT_COPY } from './agentCopy';
-import { AgentExample } from './PageFoundation';
+import { AgentExample } from './AgentExample';
 import { agentForProgress, cardPose, clampProgress, expansionFor, GALLERY_START, progressForAgent } from './discoveryGeometry';
 
 const indexFromLocation = () => AGENTS.findIndex(({ id }) => id === new URLSearchParams(window.location.search).get('agent'));

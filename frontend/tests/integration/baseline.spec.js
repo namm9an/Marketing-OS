@@ -3,6 +3,7 @@ import AxeBuilder from '@axe-core/playwright';
 import { login } from './helpers';
 
 test.use({ reducedMotion: 'reduce' });
+const specialists = ['Branding', 'PR & Policy', 'Social Community', 'Product Marketing', 'Field Events'];
 
 test('mobile console preserves usable goal, chat and navigation without horizontal overflow', async ({ page }, testInfo) => {
   await page.setViewportSize({ width: 390, height: 844 });
@@ -29,26 +30,36 @@ test('mobile console preserves usable goal, chat and navigation without horizont
   }
 });
 
-test('reduced motion uses native scrolling and leaves every dossier readable', async ({ page }, testInfo) => {
+test('reduced motion uses native scrolling and leaves every specialist readable', async ({ page }, testInfo) => {
   await page.goto('/');
-  await expect(page.locator('html')).not.toHaveClass(/lenis/);
-  for (const name of ['Branding Specialist', 'PR & Policy Specialist', 'Social Community Specialist', 'Product Marketing Specialist', 'Field Events Specialist']) {
-    const heading = page.locator('#section-dossier-cascade').getByRole('heading', { name, exact: true });
-    await heading.scrollIntoViewIfNeeded();
-    await expect(heading).toBeInViewport();
+  await expect(page.locator('.connected-track')).toHaveClass(/connected-static/);
+  await expect(page.locator('.connected-orbit')).toHaveCount(0);
+  const picker = page.getByRole('group', { name: 'Choose a specialist' });
+  for (const name of specialists) {
+    const choice = picker.getByRole('button', { name, exact: true });
+    await choice.focus();
+    await page.keyboard.press('Enter');
+    await expect(choice).toHaveAttribute('aria-pressed', 'true');
+    const example = page.locator('#f03-full-result').getByRole('article', { name: `${name} example`, exact: true });
+    await example.scrollIntoViewIfNeeded();
+    await expect(example).toBeInViewport();
   }
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1366);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
   await page.screenshot({ path: testInfo.outputPath('showcase-reduced-motion.png'), fullPage: true });
 });
 
-test('mobile showcase keeps all dossiers reachable with native document flow', async ({ page }, testInfo) => {
+test('mobile showcase keeps all specialists reachable with native document flow', async ({ page }, testInfo) => {
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  for (const name of ['Branding Specialist', 'PR & Policy Specialist', 'Social Community Specialist', 'Product Marketing Specialist', 'Field Events Specialist']) {
-    const heading = page.locator('#section-dossier-cascade').getByRole('heading', { name, exact: true });
-    await heading.scrollIntoViewIfNeeded();
-    await expect(heading).toBeInViewport();
+  await expect(page.locator('.connected-track')).toHaveClass(/connected-static/);
+  const picker = page.getByRole('group', { name: 'Choose a specialist' });
+  for (const name of specialists) {
+    const choice = picker.getByRole('button', { name, exact: true });
+    await choice.click();
+    await expect(choice).toHaveAttribute('aria-pressed', 'true');
+    await expect(page.locator('#f03-full-result').getByRole('article', { name: `${name} example`, exact: true })).toBeVisible();
   }
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
@@ -62,15 +73,16 @@ test('mobile showcase keeps all dossiers reachable with native document flow', a
 test('desktop navigation still works and a changed motion preference switches to native scrolling', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
-  await expect(page.locator('html')).toHaveClass(/lenis/);
-  await page.getByRole('link', { name: '02. Workflows', exact: true }).click();
-  await expect(page).toHaveURL(/#section-workflows$/);
+  await expect(page.locator('.connected-orbit')).toHaveCount(1);
+  await page.getByRole('navigation', { name: 'Showcase' }).getByRole('link', { name: 'Agents', exact: true }).click();
+  await expect(page).toHaveURL(/#f03-agents$/);
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1366);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(page.locator('html')).not.toHaveClass(/lenis/);
-  const heading = page.locator('#section-dossier-cascade').getByRole('heading', { name: 'PR & Policy Specialist', exact: true });
-  await heading.scrollIntoViewIfNeeded();
-  await expect(heading).toBeInViewport();
+  await expect(page.locator('.connected-track')).toHaveClass(/connected-static/);
+  const choice = page.getByRole('group', { name: 'Choose a specialist' }).getByRole('button', { name: 'PR & Policy', exact: true });
+  await choice.click();
+  await expect(choice).toBeInViewport();
+  await expect(choice).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('login and working console expose labelled, readable controls to assistive technology', async ({ page }, testInfo) => {
