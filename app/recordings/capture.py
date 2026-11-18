@@ -21,14 +21,14 @@ from app.core.config import settings
 from app.core.evidence_capture import capture_retrievals
 
 AGENTS = ("branding", "pr", "social", "product_marketing", "events")
-SCENARIO_ID = "fictional-vanguard-b200-launch-v1"
+SCENARIO_ID = "fictional-vanguard-b200-launch-v2"
 BRIEF = "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. "
 GOALS = {
-    "branding": BRIEF + "Recommend a positioning brief and explain unknowns without invented guarantees.",
-    "pr": BRIEF + "Review a proposed price war narrative and recommend a communication response with explicit risks; do not imply legal clearance.",
-    "social": BRIEF + "Recommend developer-facing community content from this supplied signal; no live social monitoring or publishing.",
-    "product_marketing": BRIEF + "Recommend product messaging using available B200/H100 facts and exact pricing units; no invented TCO calculation.",
-    "events": BRIEF + "Recommend a field-event theme for ML engineers using available context; no booking, scheduling or invented budget optimization.",
+    "branding": BRIEF + "Write a concise two-sentence positioning recommendation for ML teams considering this launch. Give the audience a clear proposed value and next step.",
+    "pr": BRIEF + "A price war narrative has been proposed. Recommend an alternative launch message: include the suggested message itself and the communication risk that needs human review.",
+    "social": BRIEF + "Recommend one specific developer-community post idea: give its opening hook and a useful invitation or question for ML engineers. This is a content recommendation, not publishing.",
+    "product_marketing": BRIEF + "Write a concise product-messaging recommendation for an engineering buyer: a proposed angle, its audience benefit and a question the buyer should investigate before choosing hardware. This is a planned upcoming launch: do not promise current or immediate access, deployment readiness, delivery timing or absence of waitlists.",
+    "events": BRIEF + "Recommend a named field-event theme, one session format and a useful attendee takeaway for ML engineers. This is an event concept, not a booking or scheduled event.",
 }
 
 
@@ -88,7 +88,7 @@ def _isolated_runtime(mode):
             database.reset_db_state()
 
 
-def validate_recording(bundle, mode, agent):
+def validate_recording(bundle, mode, agent, expected_goal=None):
     """Validate attribution and observed evidence; no claim-entailment guarantee."""
     try:
         expected_kind = "live-recording" if mode == "live" else "controlled-fixture"
@@ -96,11 +96,13 @@ def validate_recording(bundle, mode, agent):
         if bundle["schema_version"] != 1 or bundle["recording"]["kind"] != expected_kind:
             raise CaptureBlocked("recording-kind-mismatch")
         request = bundle["request"]
-        if request != {"workflow": "run", "agent_type": agent, "goal": GOALS[agent]}:
+        if request != {"workflow": "run", "agent_type": agent, "goal": expected_goal if expected_goal is not None else GOALS[agent]}:
             raise CaptureBlocked("recording-request-mismatch")
         response = bundle["response"]
         metrics = response["metrics"]
         decision = response["decision"]
+        if response.get("goalStatement") != request["goal"]:
+            raise CaptureBlocked("recording-response-goal-mismatch")
         if response.get("success") is not True or not response["positioning"]["statement"]:
             raise CaptureBlocked("missing-successful-output")
         if not decision["reasoning_source"].startswith(f"langgraph:{agent}:") or metrics["source"] != expected_source:
@@ -137,6 +139,7 @@ def capture_examples(output, mode="live", resume=False):
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = output / "manifest.json"
     entries = []
+    scenario = SCENARIO_ID
     if manifest_path.exists():
         try:
             previous = json.loads(manifest_path.read_text())
@@ -147,10 +150,12 @@ def capture_examples(output, mode="live", resume=False):
                 raise CaptureBlocked("duplicate-existing-specialist")
             if entries and (not resume or previous.get("mode") != f"{mode}-recordings"):
                 raise CaptureBlocked("existing-capture-use-resume-or-new-directory")
+            if entries:
+                scenario = previous.get("scenario_id", SCENARIO_ID)
         except (ValueError, TypeError):
             raise CaptureBlocked("invalid-existing-manifest") from None
     manifest = {"schema_version": 1, "status": "blocked", "mode": f"{mode}-recordings",
-                "scenario_id": SCENARIO_ID, "fictional_client": "Vanguard Cloud", "examples": list(entries)}
+                "scenario_id": scenario, "fictional_client": "Vanguard Cloud", "examples": list(entries)}
     try:
         with _isolated_runtime(mode):
             from app.main import app
@@ -165,8 +170,11 @@ def capture_examples(output, mode="live", resume=False):
                     if existing:
                         if existing.get("path") != filename or hashlib.sha256(path.read_bytes()).hexdigest() != existing.get("sha256"):
                             raise CaptureBlocked("existing-recording-checksum-mismatch")
-                        validate_recording(json.loads(path.read_text()), mode, agent)
+                        saved = json.loads(path.read_text())
+                        validate_recording(saved, mode, agent, expected_goal=saved["request"]["goal"])
                         continue
+                    if scenario != SCENARIO_ID:
+                        raise CaptureBlocked("legacy-scenario-needs-original-capture-profile")
                     if path.exists():
                         raise CaptureBlocked("untracked-recording-file-exists")
                     with capture_retrievals() as retrievals:

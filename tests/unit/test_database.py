@@ -269,6 +269,14 @@ class TestDatabaseLayer(unittest.TestCase):
         """Verify prices edge provenance contains valid JSON with rate metadata and both ID keys."""
         from app.memory.graph import rebuild_corpus_graph
         seed_grounded_knowledge()
+        # A generic page price list does not establish a SKU/rate mapping. Use an
+        # explicitly mapped observation to exercise the graph's price provenance.
+        save_knowledge_unit(
+            id_str="mapped-price-observation", organization="Example Cloud",
+            k_class="pricing", confidence="high", content="H100 on-demand $1.20/hr",
+            source_url="https://example.com/rate-card", enriched_by="grounded_crawler",
+        )
+        rebuild_corpus_graph()
         conn = get_connection()
         try:
             prices_edges = conn.execute("SELECT * FROM edges WHERE rel = 'prices'").fetchall()

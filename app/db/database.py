@@ -628,17 +628,31 @@ def search_knowledge_units(
             return [dict(row) for row in cursor.fetchall()]
 
         agent_filter_k = " AND is_grounded_source(k.enriched_by, k.source_url)" if sourced_only else ""
+        # Keep an explicit SKU/family request ahead of generic GPU-page wording.
+        # Ranking changes relevance only; it does not infer complete availability.
+        hardware_text = query or ""
+        if expand_taxonomy:
+            for word in _keywords(hardware_text):
+                hardware_text += " " + " ".join(_TAXONOMY_EXPANSIONS.get(word, []))
+        hardware_terms = sorted(set(re.findall(
+            r"\b(?:A100|B200|GB200|GB300|H100|H200|GH200|L40S?|L4|RTX\s*4090)\b",
+            hardware_text, re.IGNORECASE,
+        )))
+        priority = ""
+        if hardware_terms:
+            matches = " OR ".join("k.content LIKE ?" for _ in hardware_terms)
+            priority = f"CASE WHEN k.knowledge_class = 'hardware' AND ({matches}) THEN 0 ELSE 1 END, "
         sql = f"""
         SELECT k.id, k.organization, k.knowledge_class, k.confidence, k.content, k.source_url, k.enriched_by, k.created_at,
                bm25(knowledge_units_fts) AS rank
         FROM knowledge_units_fts fts
         JOIN knowledge_units k ON fts.id = k.id
         WHERE knowledge_units_fts MATCH ?{agent_filter_k}
-        ORDER BY rank ASC
+        ORDER BY {priority}rank ASC
         LIMIT ?
         """
         try:
-            cursor = conn.execute(sql, (match_query, limit))
+            cursor = conn.execute(sql, (match_query, *[f"%{term}%" for term in hardware_terms], limit))
             return [dict(row) for row in cursor.fetchall()]
         except sqlite3.OperationalError as e:
             log.warning(f"[FTS5] MATCH failed on {match_query!r}: {e}, falling back to table scan")

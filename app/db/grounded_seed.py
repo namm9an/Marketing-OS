@@ -1,6 +1,6 @@
 """
-Strict Grounded Database Seed Script for marketing_os.db
-Extracts double-checked empirical facts directly from scraped subpages with explicit source URL provenance.
+Seed stored source observations with URL provenance.
+Snapshots are partial observations, not a complete/current catalogue of a company.
 """
 
 import sys
@@ -22,13 +22,18 @@ JUNK_SIGNATURES = (
     "404", "page not found", "not found", "oops!",
     "403", "forbidden", "access denied", "just a moment"
 )
+PAGE_CHROME_SIGNATURES = (
+    "this website stores cookies", "these cookies are used to collect information",
+    "company partner investor resources careers", "resources careers contact sign in",
+    "skip to main content", "search docs or ask ai", "investors contact sales log in",
+)
 
 
 def is_valid_corpus_content(text: str, min_len: int = 40) -> bool:
-    clean = (text or "").lower().strip()
+    clean = " ".join((text or "").lower().split())
     if len(clean) < min_len:
         return False
-    return not any(sig in clean for sig in JUNK_SIGNATURES)
+    return not any(sig in clean for sig in JUNK_SIGNATURES + PAGE_CHROME_SIGNATURES)
 
 
 def seed_grounded_knowledge():
@@ -77,7 +82,7 @@ def seed_grounded_knowledge():
 
                 # 1. Fact: Hardware Availability
                 if gpus:
-                    gpu_fact = f"Verified GPU Hardware Fleet on {org_name}: {', '.join(sorted(gpus))}."
+                    gpu_fact = f"Hardware fleet observations in a source snapshot for {org_name}: {', '.join(sorted(gpus))}. This is not a complete fleet inventory."
                     fact_id = content_hash(f"{org_name}|hardware|{url}|{gpu_fact}")
                     conn.execute(
                         "INSERT INTO knowledge_units (id, organization, knowledge_class, confidence, content, source_url, enriched_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -87,8 +92,7 @@ def seed_grounded_knowledge():
 
                 # 2. Fact: Rate Cards & Pricing
                 if pricing:
-                    sorted_skus = f" for {', '.join(sorted(gpus))}" if gpus else ""
-                    pricing_fact = f"Empirical Pricing & Rate Card Terms{sorted_skus}: {', '.join(pricing[:4])}."
+                    pricing_fact = f"Pricing observations and rate-card strings in a source snapshot (SKU/region mapping not recorded): {', '.join(pricing[:4])}."
                     fact_id = content_hash(f"{org_name}|pricing|{url}|{pricing_fact}")
                     conn.execute(
                         "INSERT INTO knowledge_units (id, organization, knowledge_class, confidence, content, source_url, enriched_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -110,7 +114,7 @@ def seed_grounded_knowledge():
                 # 4. Fact: Grounded Subpage Snippet
                 if len(snippet) > 50 and is_valid_corpus_content(snippet, min_len=40):
                     clean_snippet = " ".join(snippet.split())[:300]
-                    content_fact = f"Verified Subpage Documentation: {clean_snippet}"
+                    content_fact = f"Source page excerpt: {clean_snippet}"
                     fact_id = content_hash(f"{org_name}|documentation|{url}|{content_fact}")
                     conn.execute(
                         "INSERT INTO knowledge_units (id, organization, knowledge_class, confidence, content, source_url, enriched_by) VALUES (?, ?, ?, ?, ?, ?, ?)",
@@ -119,7 +123,7 @@ def seed_grounded_knowledge():
                     total_facts += 1
 
         conn.commit()
-        print(f"[+] Successfully populated database with {total_facts} 100% grounded facts across {len(raw_data)} Neo-Clouds!")
+        print(f"[+] Seeded {total_facts} source-linked observations across {len(raw_data)} organizations.")
 
 
     finally:

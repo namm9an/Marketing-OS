@@ -79,6 +79,21 @@ def test_resume_reuses_untouched_recordings_without_new_generation(tmp_path, mon
     assert originals == {agent: (tmp_path / f"{agent}.json").read_bytes() for agent in AGENTS}
 
 
+def test_resume_preserves_legacy_scenario_after_default_briefs_change(tmp_path, monkeypatch):
+    from app.recordings import capture as capture_module
+    current_goals, current_scenario = capture_module.GOALS, capture_module.SCENARIO_ID
+    legacy_goals = {agent: capture_module.BRIEF + f"Legacy {agent} launch recommendation." for agent in AGENTS}
+    monkeypatch.setattr(capture_module, "GOALS", legacy_goals)
+    monkeypatch.setattr(capture_module, "SCENARIO_ID", "legacy-test-scenario")
+    capture_examples(tmp_path, mode="controlled")
+    originals = {path.name: path.read_bytes() for path in tmp_path.glob('*.json')}
+    monkeypatch.setattr(capture_module, "GOALS", current_goals)
+    monkeypatch.setattr(capture_module, "SCENARIO_ID", current_scenario)
+    monkeypatch.setattr(LLMService, "generate", lambda *a, **k: pytest.fail("Complete saved captures must not regenerate"))
+    assert capture_examples(tmp_path, mode="controlled", resume=True)["status"] == "controlled-only"
+    assert originals == {path.name: path.read_bytes() for path in tmp_path.glob('*.json')}
+
+
 def test_modified_recording_fails_closed_before_recapture(tmp_path, monkeypatch):
     capture_examples(tmp_path, mode="controlled")
     path = tmp_path / "branding.json"
