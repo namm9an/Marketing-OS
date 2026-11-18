@@ -5,16 +5,16 @@ Snapshots are partial observations, not a complete/current catalogue of a compan
 
 import sys
 import json
-import sqlite3
+from contextlib import closing
 from pathlib import Path
 
 # Add project root to sys.path
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(BASE_DIR))
 
-from app.db.database import get_connection, init_db
+from app.db.database import get_connection, init_db, retry_on_locked
 from app.core.config import settings
-from app.core.primitives import content_hash, new_id
+from app.core.primitives import content_hash
 
 DEEP_SCRAPE_PATH = BASE_DIR / "app" / "data" / "deep_scrape_results.json"
 
@@ -36,26 +36,21 @@ def is_valid_corpus_content(text: str, min_len: int = 40) -> bool:
     return not any(sig in clean for sig in JUNK_SIGNATURES + PAGE_CHROME_SIGNATURES)
 
 
-def seed_grounded_knowledge():
-    if not DEEP_SCRAPE_PATH.exists():
-        print(f"[!] Grounded scrape file {DEEP_SCRAPE_PATH} not found!")
-        return
-
-    raw_data = json.loads(DEEP_SCRAPE_PATH.read_text())
-    conn = get_connection()
-    try:
-        # Ensure fresh schema
-        conn.execute("DROP TABLE IF EXISTS knowledge_units_fts")
-        conn.execute("DROP TABLE IF EXISTS knowledge_units")
-        conn.commit()
-    finally:
-        conn.close()
-
-    init_db(force=True)
-    conn = get_connection()
-    try:
+@retry_on_locked()
+def seed_grounded_knowledge(*, only_if_empty: bool = False):
+    init_db()
+    with closing(get_connection()) as conn, conn:
+        # Serialize the empty check and replacement across startup workers.
+        conn.execute("BEGIN IMMEDIATE")
+        if only_if_empty and conn.execute("SELECT 1 FROM knowledge_units LIMIT 1").fetchone():
+            return
+        if not DEEP_SCRAPE_PATH.exists():
+            print(f"[!] Grounded scrape file {DEEP_SCRAPE_PATH} not found!")
+            return
+        raw_data = json.loads(DEEP_SCRAPE_PATH.read_text())
+        conn.execute("DELETE FROM knowledge_units")
+        conn.execute("DELETE FROM knowledge_units_fts")
         total_facts = 0
-
 
         for org in raw_data:
             org_name = org["name"]
@@ -122,12 +117,7 @@ def seed_grounded_knowledge():
                     )
                     total_facts += 1
 
-        conn.commit()
-        print(f"[+] Seeded {total_facts} source-linked observations across {len(raw_data)} organizations.")
-
-
-    finally:
-        conn.close()
+    print(f"[+] Seeded {total_facts} source-linked observations across {len(raw_data)} organizations.")
 
     # The corpus graph (M9.4) is derived from these rows, and this function replaced all
     # of them. Re-derive here rather than at boot alone, so the graph can never describe
