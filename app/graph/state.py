@@ -4,7 +4,7 @@ LangGraph Swarm State Definition
 
 from typing import TypedDict, List, Dict, Any, Optional
 
-class SwarmState(TypedDict):
+class SwarmState(TypedDict, total=False):
     goal_statement: str
     active_agent: str  # 'branding' | 'pr' | 'crawler' | 'governance'
     provider: str
@@ -23,4 +23,21 @@ class SwarmState(TypedDict):
     api_key: Optional[str]
     client_ip: Optional[str]
     request_id: Optional[str]
+    reservation_id: Optional[str]
     notice: Optional[str]
+    telemetry: Dict[str, Any]
+    # Telemetry and provenance citations
+    latency_ms: Optional[float]
+    total_wall_ms: Optional[float]
+    retrieval_ms: Optional[float]
+    attempts: Optional[int]
+    prompt_tokens: Optional[int]
+    completion_tokens: Optional[int]
+    thoughts_tokens: Optional[int]
+    facts_retrieved: Optional[int]
+    source: Optional[str]
+    model: Optional[str]
+    requested_model: Optional[str]
+    fallback_used: Optional[bool]
+    evidence_ids: Optional[List[str]]
+    invalid_evidence_ids_count: Optional[int]

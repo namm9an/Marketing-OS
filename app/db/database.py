@@ -7,6 +7,7 @@ import sqlite3
 import json
 import logging
 from typing import List, Dict, Any, Optional
+from app.core.grounding import is_grounded_source
 from app.core.config import settings
 
 log = logging.getLogger(__name__)
@@ -108,9 +109,33 @@ CREATE TABLE IF NOT EXISTS decisions (
     reasoning_source TEXT NOT NULL,
     rationale TEXT NOT NULL,
     risks TEXT NOT NULL,
+    latency_ms REAL DEFAULT 0.0,
+    total_wall_ms REAL DEFAULT 0.0,
+    retrieval_ms REAL DEFAULT 0.0,
+    attempts INTEGER DEFAULT 1,
+    prompt_tokens INTEGER DEFAULT 0,
+    completion_tokens INTEGER DEFAULT 0,
+    thoughts_tokens INTEGER DEFAULT 0,
+    facts_retrieved INTEGER DEFAULT 0,
+    source TEXT DEFAULT 'mock',
+    model TEXT DEFAULT 'mock-fallback',
+    requested_model TEXT DEFAULT 'gemini-3.8-flash',
+    fallback_used INTEGER DEFAULT 0,
+    evidence_ids TEXT DEFAULT '[]',
+    invalid_evidence_ids_count INTEGER DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_decisions_created ON decisions(created_at DESC);
+
+CREATE TABLE IF NOT EXISTS decision_reviews (
+    id TEXT PRIMARY KEY,
+    decision_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('approved', 'rejected')),
+    reviewed_by TEXT NOT NULL,
+    reason TEXT NOT NULL,
+    reviewed_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_reviews_decision ON decision_reviews(decision_id);
 
 CREATE TABLE IF NOT EXISTS sessions (
     token TEXT PRIMARY KEY,
@@ -262,6 +287,7 @@ CREATE INDEX IF NOT EXISTS idx_edges_ns ON edges(namespace);
 def get_connection(timeout: float = 10.0, isolation_level: Optional[str] = ""):
     conn = sqlite3.connect(str(settings.DB_PATH), timeout=timeout, isolation_level=isolation_level)
     conn.row_factory = sqlite3.Row
+    conn.create_function("is_grounded_source", 2, is_grounded_source, deterministic=True)
     conn.execute("PRAGMA journal_mode = WAL;")
     conn.execute("PRAGMA busy_timeout = 5000;")
     conn.execute("PRAGMA synchronous = NORMAL;")
@@ -319,6 +345,37 @@ def init_db(force: bool = False):
     try:
         with conn:
             conn.executescript(SCHEMA)
+            # Serialize inspection and ALTERs across workers, preserving all-or-nothing upgrades.
+            conn.execute("BEGIN IMMEDIATE")
+            cursor = conn.execute("PRAGMA table_info(decisions)")
+            existing_cols = {row["name"] for row in cursor.fetchall()}
+            telemetry_cols = {
+                "total_tokens": "INTEGER",
+                "finish_reason": "TEXT",
+                "served_model_verified": "INTEGER DEFAULT 0",
+                "workflow_type": "TEXT NOT NULL DEFAULT 'legacy'",
+                "result_json": "TEXT",
+                "review_status": "TEXT NOT NULL DEFAULT 'unreviewed'",
+                "reviewed_by": "TEXT",
+                "reviewed_at": "TEXT",
+                "latency_ms": "REAL DEFAULT 0.0",
+                "total_wall_ms": "REAL DEFAULT 0.0",
+                "retrieval_ms": "REAL DEFAULT 0.0",
+                "attempts": "INTEGER DEFAULT 1",
+                "prompt_tokens": "INTEGER DEFAULT 0",
+                "completion_tokens": "INTEGER DEFAULT 0",
+                "thoughts_tokens": "INTEGER DEFAULT 0",
+                "facts_retrieved": "INTEGER DEFAULT 0",
+                "source": "TEXT DEFAULT 'mock'",
+                "model": "TEXT DEFAULT 'mock-fallback'",
+                "requested_model": "TEXT DEFAULT 'gemini-3.8-flash'",
+                "fallback_used": "INTEGER DEFAULT 0",
+                "evidence_ids": "TEXT DEFAULT '[]'",
+                "invalid_evidence_ids_count": "INTEGER DEFAULT 0",
+            }
+            for col, col_type in telemetry_cols.items():
+                if col not in existing_cols:
+                    conn.execute(f"ALTER TABLE decisions ADD COLUMN {col} {col_type}")
             conn.execute(
                 """
                 INSERT OR IGNORE INTO knowledge_units_fts(id, organization, knowledge_class, content)
@@ -341,19 +398,40 @@ def save_decision(
     escalated: bool,
     reasoning_source: str,
     rationale: str,
-    risks: str
+    risks: str,
+    latency_ms: float = 0.0,
+    total_wall_ms: float = 0.0,
+    retrieval_ms: float = 0.0,
+    attempts: int = 1,
+    prompt_tokens: int = 0,
+    completion_tokens: int = 0,
+    thoughts_tokens: int = 0,
+    facts_retrieved: int = 0,
+    source: str = "mock",
+    model: str = "mock-fallback",
+    requested_model: str = "gemini-3.8-flash",
+    fallback_used: bool = False,
+    evidence_ids: Optional[List[str]] = None,
+    invalid_evidence_ids_count: int = 0,
+    total_tokens: Optional[int] = None,
+    finish_reason: Optional[str] = None,
+    served_model_verified: bool = False,
 ):
     from app.services.llm_service import redact_credentials
 
     init_db()
     conn = get_connection()
+    evidence_ids_str = json.dumps(evidence_ids or [])
     try:
         with conn:
             conn.execute(
                 """
-                INSERT OR REPLACE INTO decisions
-                (id, goal_statement, selected_option, confidence, escalated, reasoning_source, rationale, risks)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO decisions
+                (id, goal_statement, selected_option, confidence, escalated, reasoning_source, rationale, risks,
+                 latency_ms, total_wall_ms, retrieval_ms, attempts, prompt_tokens, completion_tokens, thoughts_tokens,
+                 facts_retrieved, source, model, requested_model, fallback_used, evidence_ids, invalid_evidence_ids_count,
+                 review_status, total_tokens, finish_reason, served_model_verified)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     decision_id,
@@ -364,6 +442,24 @@ def save_decision(
                     reasoning_source,
                     redact_credentials(rationale),
                     redact_credentials(risks),
+                    float(latency_ms) if latency_ms is not None else None,
+                    float(total_wall_ms) if total_wall_ms is not None else None,
+                    float(retrieval_ms or 0.0),
+                    int(attempts) if attempts is not None else None,
+                    int(prompt_tokens) if prompt_tokens is not None else None,
+                    int(completion_tokens) if completion_tokens is not None else None,
+                    int(thoughts_tokens) if thoughts_tokens is not None else None,
+                    int(facts_retrieved or 0),
+                    str(source or "mock"),
+                    str(model or "mock-fallback"),
+                    str(requested_model or "gemini-3.8-flash"),
+                    1 if fallback_used else 0,
+                    evidence_ids_str,
+                    int(invalid_evidence_ids_count or 0),
+                    "pending" if escalated else "unreviewed",
+                    total_tokens,
+                    finish_reason,
+                    int(served_model_verified),
                 )
             )
     finally:
@@ -380,8 +476,94 @@ def get_all_decisions(limit: Optional[int] = None, offset: int = 0) -> List[Dict
             )
         else:
             cursor = conn.execute("SELECT * FROM decisions ORDER BY created_at DESC")
-        rows = cursor.fetchall()
-        return [dict(row) for row in rows]
+        return [_decode_decision(row) for row in cursor.fetchall()]
+    finally:
+        conn.close()
+
+
+def _decode_decision(row) -> Dict[str, Any]:
+    decision = dict(row)
+    decision["fallback_used"] = bool(decision["fallback_used"])
+    decision["served_model_verified"] = bool(decision["served_model_verified"])
+    decision["evidence_ids"] = json.loads(decision["evidence_ids"] or "[]")
+    snapshot = decision.pop("result_json", None)
+    decision["result"] = json.loads(snapshot) if snapshot else None
+    decision["result_available"] = snapshot is not None
+    return decision
+
+
+@retry_on_locked()
+def save_workflow_result(decision_id: str, workflow_type: str, result: Dict[str, Any]) -> None:
+    """Persist the returned contract, rather than inventing a reconstruction from a title."""
+    from app.core.exceptions import PersistenceError
+    from app.services.llm_service import redact_credentials
+
+    def redact_value(value):
+        # Redact values before encoding; regexes on JSON can remove escaped quotes.
+        if isinstance(value, str):
+            return redact_credentials(value)
+        if isinstance(value, dict):
+            return {key: redact_value(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [redact_value(item) for item in value]
+        return value
+
+    conn = get_connection()
+    try:
+        with conn:
+            cursor = conn.execute(
+                "UPDATE decisions SET workflow_type = ?, result_json = ? WHERE id = ? AND result_json IS NULL",
+                (workflow_type, json.dumps(redact_value(result)), decision_id),
+            )
+            if cursor.rowcount != 1:
+                raise PersistenceError("The workflow result could not be stored")
+    except sqlite3.Error as exc:
+        raise PersistenceError("The workflow result could not be stored") from exc
+    finally:
+        conn.close()
+
+
+def get_decision(decision_id: str) -> Optional[Dict[str, Any]]:
+    init_db()
+    conn = get_connection()
+    try:
+        row = conn.execute("SELECT * FROM decisions WHERE id = ?", (decision_id,)).fetchone()
+        if row is None:
+            return None
+        decision = _decode_decision(row)
+        decision["reviews"] = [dict(r) for r in conn.execute(
+            "SELECT * FROM decision_reviews WHERE decision_id = ? ORDER BY rowid", (decision_id,),
+        )]
+        return decision
+    finally:
+        conn.close()
+
+
+@retry_on_locked()
+def review_decision(decision_id: str, status: str, reviewed_by: str, reason: str = "") -> bool:
+    """Append an operator review; preserve the generated decision and original risk flag."""
+    from app.core.primitives import new_id, now_iso
+    from app.services.llm_service import redact_credentials
+
+    if status not in ("approved", "rejected"):
+        raise ValueError("review status must be approved or rejected")
+    init_db()
+    conn = get_connection()
+    try:
+        with conn:
+            conn.execute("BEGIN IMMEDIATE")
+            if conn.execute("SELECT id FROM decisions WHERE id = ?", (decision_id,)).fetchone() is None:
+                return False
+            reviewed_at = now_iso()
+            conn.execute(
+                "INSERT INTO decision_reviews VALUES (?, ?, ?, ?, ?, ?)",
+                (new_id(), decision_id, status, reviewed_by, redact_credentials(reason), reviewed_at),
+            )
+            conn.execute(
+                "UPDATE decisions SET review_status = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?",
+                (status, reviewed_by, reviewed_at, decision_id),
+            )
+        return True
     finally:
         conn.close()
 
@@ -434,7 +616,7 @@ def search_knowledge_units(
     `expand_taxonomy` applies deterministic domain expansion before FTS5 search.
     """
     init_db()
-    agent_filter = " AND enriched_by NOT LIKE '%agent%'" if sourced_only else ""
+    agent_filter = " AND is_grounded_source(enriched_by, source_url)" if sourced_only else ""
     conn = get_connection()
     try:
         match_query = _expand_query_terms(query, expand_taxonomy=expand_taxonomy) if query else ""
@@ -445,7 +627,7 @@ def search_knowledge_units(
             )
             return [dict(row) for row in cursor.fetchall()]
 
-        agent_filter_k = " AND k.enriched_by NOT LIKE '%agent%'" if sourced_only else ""
+        agent_filter_k = " AND is_grounded_source(k.enriched_by, k.source_url)" if sourced_only else ""
         sql = f"""
         SELECT k.id, k.organization, k.knowledge_class, k.confidence, k.content, k.source_url, k.enriched_by, k.created_at,
                bm25(knowledge_units_fts) AS rank
@@ -507,8 +689,7 @@ def get_competitor_facts(limit: int = 200, target_org: Optional[str] = None) -> 
               AND organization NOT LIKE ?
               AND organization NOT LIKE '%E2E%'
               AND organization NOT LIKE '%(Us)%'
-              AND enriched_by NOT LIKE '%agent%'
-              AND source_url IS NOT NULL AND source_url != ''
+              AND is_grounded_source(enriched_by, source_url)
             ORDER BY organization, knowledge_class
             LIMIT ?
             """,

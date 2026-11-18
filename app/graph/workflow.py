@@ -31,8 +31,11 @@ from langgraph.graph import StateGraph, START, END
 
 from app.agents.base import run_agent, AGENT_REGISTRY, DEFAULT_PROVIDER
 from app.graph.state import SwarmState
-from app.db.database import save_decision
+from app.db.database import save_decision, save_workflow_result
+from app.services.llm_service import current_quota_reservation
+from app.core.telemetry import provider_metrics, persistence_metrics
 from app.core.primitives import new_id
+from app.core.exceptions import AppException, PersistenceError
 
 log = logging.getLogger(__name__)
 
@@ -91,19 +94,25 @@ def _make_worker(agent_type: str):
                 api_key=state.get("api_key"),
                 client_ip=state.get("client_ip"),
                 request_id=state.get("request_id"),
+                reservation_id=state.get("reservation_id"),
             )
             return {
+                "telemetry": provider_metrics(parsed),
                 "selected_option": parsed.get("selected_option"),
                 "positioning_statement": parsed.get("statement"),
                 "rationale": parsed.get("rationale"),
                 "risks": parsed.get("risks"),
                 "confidence": parsed.get("confidence", "High"),
                 "notice": parsed.get("notice"),
+                "retrieval_ms": parsed.get("retrieval_ms", 0.0),
+                "facts_retrieved": parsed.get("facts_retrieved", 0),
+                "evidence_ids": parsed.get("evidence_ids", []),
+                "invalid_evidence_ids_count": parsed.get("invalid_evidence_ids_count", 0),
             }
         except Exception as err:
             # If server API key is configured or explicit key provided, visibly report provider failures
             from app.core.config import settings
-            if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+            if isinstance(err, AppException) or settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
                 raise
             log.warning(f"[{agent_type}] worker error, generating fallback response: {err}")
             return {
@@ -132,7 +141,8 @@ def _governance(state: SwarmState) -> Dict[str, Any]:
         rationale=rationale,
     )
     record_id = new_id()
-    source = f"langgraph:{state.get('active_agent')}:{state.get('provider')}"
+    telemetry = provider_metrics(state.get("telemetry", {}))
+    source = f"langgraph:{state.get('active_agent')}:{telemetry['model']}"
     try:
         save_decision(
             decision_id=record_id,
@@ -143,9 +153,14 @@ def _governance(state: SwarmState) -> Dict[str, Any]:
             reasoning_source=source,
             rationale=rationale,
             risks=reason or risks or "None identified",
+            **persistence_metrics(telemetry),
+            retrieval_ms=state.get("retrieval_ms", 0.0),
+            facts_retrieved=state.get("facts_retrieved", 0),
+            evidence_ids=state.get("evidence_ids", []),
+            invalid_evidence_ids_count=state.get("invalid_evidence_ids_count", 0),
         )
-    except Exception as db_err:  # pragma: no cover - persistence is best-effort
-        log.warning(f"[DB Warning] Could not persist decision: {db_err}")
+    except Exception as db_err:
+        raise PersistenceError("Could not persist the decision") from db_err
     return {"escalated": escalated, "escalation_reason": reason, "decision_id": record_id}
 
 
@@ -193,6 +208,7 @@ class SwarmWorkflowEngine:
             "api_key": api_key,
             "client_ip": client_ip,
             "request_id": request_id,
+            "reservation_id": current_quota_reservation(),
         }
         config: Dict[str, Any] = {}
         handler = _langfuse_handler()
@@ -204,6 +220,22 @@ class SwarmWorkflowEngine:
         selected_option = final.get("selected_option") or "Strategy Brief"
         confidence = final.get("confidence") or "High"
         active = final.get("active_agent", agent_type)
+        telemetry = provider_metrics(final.get("telemetry", {}))
+        decision_payload = {
+            "id": final.get("decision_id"),
+            "selected_option": selected_option,
+            "confidence": confidence,
+            "escalated": final.get("escalated", False),
+            "escalation_reason": final.get("escalation_reason"),
+            "reasoning_source": f"langgraph:{active}:{telemetry['model']}",
+            "rationale": final.get("rationale") or "",
+            "risks": final.get("risks") or "",
+            **telemetry,
+            "retrieval_ms": final.get("retrieval_ms", 0.0),
+            "facts_retrieved": final.get("facts_retrieved", 0),
+            "evidence_ids": final.get("evidence_ids", []),
+            "invalid_evidence_ids_count": final.get("invalid_evidence_ids_count", 0),
+        }
         res = {
             "success": True,
             "positioning": {
@@ -211,15 +243,13 @@ class SwarmWorkflowEngine:
                 "differentiation_basis": "Sovereign Neo-Cloud Platform",
                 "state": "ACTIVE",
             },
-            "decision": {
-                "id": final.get("decision_id"),
-                "selected_option": selected_option,
-                "confidence": confidence,
-                "escalated": final.get("escalated", False),
-                "escalation_reason": final.get("escalation_reason"),
-                "reasoning_source": f"langgraph:{active}:{provider}",
-                "rationale": final.get("rationale") or "",
-                "risks": final.get("risks") or "",
+            "decision": decision_payload,
+            "metrics": {
+                **telemetry,
+                "retrieval_ms": decision_payload["retrieval_ms"],
+                "facts_retrieved": decision_payload["facts_retrieved"],
+                "evidence_ids": decision_payload["evidence_ids"],
+                "invalid_evidence_ids_count": decision_payload["invalid_evidence_ids_count"],
             },
             "knowledge_units": [
                 {
@@ -231,6 +261,8 @@ class SwarmWorkflowEngine:
         }
         if final.get("notice"):
             res["notice"] = final["notice"]
+        res["goalStatement"] = goal_statement
+        save_workflow_result(final["decision_id"], "run", res)
         return res
 
 

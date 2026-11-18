@@ -44,6 +44,9 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: str = Field(default="", description="API key for Gemini models")
     DEFAULT_MODEL: str = Field(default="gemini-3.8-flash", description="Default LLM model identifier")
     GEMINI_DAILY_LIMIT: int = Field(default=200, description="Daily limit for Gemini API calls")
+    RETRIEVAL_EXPAND_TAXONOMY: bool = Field(
+        default=True, description="Enable the benchmarked taxonomy expansion in product retrieval",
+    )
     VISITOR_DAILY_LIMIT: int = Field(default=10, description="Daily limit for visitor AI actions")
     IP_DAILY_LIMIT: int = Field(default=50, description="Daily abuse ceiling limit per IP address")
 
@@ -65,7 +68,7 @@ class Settings(BaseSettings):
         default=False,
         description="Trust X-Forwarded-For header only when explicitly enabled",
     )
-    TRUSTED_PROXIES: List[str] = Field(
+    TRUSTED_PROXIES: Union[str, List[str]] = Field(
         default_factory=list,
         description="List of trusted proxy IP addresses",
     )
@@ -106,7 +109,10 @@ class Settings(BaseSettings):
     def validate_production_settings(self) -> "Settings":
         env = (self.ENVIRONMENT or "development").strip().lower()
         if self.TRUST_FORWARDED_FOR:
-            proxies = [str(proxy).strip() for proxy in self.TRUSTED_PROXIES if str(proxy).strip()]
+            raw_proxies = self.TRUSTED_PROXIES
+            if isinstance(raw_proxies, str):
+                raw_proxies = [p.strip() for p in raw_proxies.split(",") if p.strip()]
+            proxies = [str(proxy).strip() for proxy in raw_proxies if str(proxy).strip()]
             if not proxies:
                 raise ValueError(
                     "TRUSTED_PROXIES must name at least one proxy IP or CIDR when "

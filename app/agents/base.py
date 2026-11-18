@@ -7,12 +7,17 @@ differing only by persona. That body lives here once; each agent is just a regis
 """
 
 import json
-from typing import Dict, Any, Optional
+import re
+import time
+from typing import Dict, Any, Optional, List, Tuple
 
 from app.core.config import settings
 from app.services.llm_service import LLMService
+from app.core.telemetry import provider_metrics
 from app.db.database import search_knowledge_units
 from app.core.schemas import AgentResponseSchema
+from app.core.exceptions import UpstreamProviderError
+from app.core.evidence_capture import observe_retrieval
 
 DEFAULT_PROVIDER = "gemini-3.8-flash"
 
@@ -23,8 +28,10 @@ Return a JSON object matching this schema and output valid JSON only:
   "statement": "Core positioning or strategic statement",
   "rationale": "Strategic reasoning grounded in the facts above",
   "risks": "Identified risks or counter-actions",
-  "confidence": "High" | "Medium" | "Low"
+  "confidence": "High" | "Medium" | "Low",
+  "evidence_ids": ["fact_id_1", "fact_id_2"]
 }
+List only the IDs of facts from the RELEVANT GROUNDED KNOWLEDGE UNITS above that directly support your strategy in evidence_ids.
 """
 
 _PERSONA_TEMPLATES = {
@@ -124,6 +131,28 @@ def _strip_code_fence(text: str) -> str:
     return text
 
 
+def verify_citations(cited_ids: Any, retrieved_ids: set) -> Tuple[List[str], int]:
+    """
+    Deterministically check that every returned id is in the retrieved set.
+    Drop any that are not and record an invalid_evidence_ids count.
+
+    Note: This proves cited facts were actually retrieved, not that the text is supported by them.
+    """
+    if not isinstance(cited_ids, (list, tuple, set)):
+        return [], 0
+    valid = []
+    invalid_count = 0
+    seen = set()
+    for item in cited_ids:
+        if isinstance(item, str) and item in retrieved_ids:
+            if item not in seen:
+                valid.append(item)
+                seen.add(item)
+        else:
+            invalid_count += 1
+    return valid, invalid_count
+
+
 def run_agent(
     agent_type: str,
     goal_statement: str,
@@ -132,22 +161,35 @@ def run_agent(
     api_key: Optional[str] = None,
     client_ip: Optional[str] = None,
     request_id: Optional[str] = None,
+    reservation_id: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Run one agent. `extra_context` replaces the default retrieval when supplied —
     the weekly digest uses it to ground agents on competitor-only facts."""
     cfg = AGENT_REGISTRY.get(agent_type, AGENT_REGISTRY["branding"])
 
-    # 1. Retrieve grounded facts from the SQLite knowledge base.
+    # 1. Retrieve grounded facts from the SQLite knowledge base (timed separately as retrieval_ms).
+    t_retrieval_0 = time.perf_counter()
+    retrieved_facts_ids = set()
     if extra_context:
         facts_context = f"\n\nGROUNDED KNOWLEDGE UNITS FROM DB:\n{extra_context}"
+        facts_retrieved = extra_context.count("\n- ") or (1 if extra_context.strip() else 0)
+        for m in re.finditer(r"\[id:\s*([a-zA-Z0-9_-]+)\]", extra_context):
+            retrieved_facts_ids.add(m.group(1))
     else:
-        db_facts = search_knowledge_units(query=goal_statement, limit=5, sourced_only=True)
+        db_facts = search_knowledge_units(
+            query=goal_statement, limit=5, sourced_only=True,
+            expand_taxonomy=settings.RETRIEVAL_EXPAND_TAXONOMY,
+        )
+        observe_retrieval(agent_type, goal_statement, db_facts)
+        facts_retrieved = len(db_facts)
+        retrieved_facts_ids = {str(f["id"]) for f in db_facts if "id" in f}
         facts_context = ""
         if db_facts:
             facts_context = "\n\nRELEVANT GROUNDED KNOWLEDGE UNITS FROM DB:\n" + "\n".join(
-                f"- [{f['organization']} / {f['knowledge_class']}] (URL: {f.get('source_url', 'N/A')}): {f['content']}"
+                f"- [id: {f['id']}] [{f['organization']} / {f['knowledge_class']}] (URL: {f.get('source_url', 'N/A')}): {f['content']}"
                 for f in db_facts
             )
+    retrieval_ms = round((time.perf_counter() - t_retrieval_0) * 1000, 2)
     user_prompt = f"Goal: {goal_statement}{facts_context}\nFormulate the strategy for your domain."
 
     # 2. Call the LLM.
@@ -158,20 +200,30 @@ def run_agent(
         api_key=api_key,
         client_ip=client_ip,
         request_id=request_id,
+        reservation_id=reservation_id,
     )
-    text = _strip_code_fence(result["text"])
-
     # 3. Validate against the Pydantic contract (every agent, consistently).
     try:
+        text = _strip_code_fence(result["text"])
         parsed = AgentResponseSchema(**json.loads(text)).model_dump()
-    except Exception:
-        parsed = {
-            "selected_option": f"{agent_type.replace('_', ' ').title()} Strategy",
-            "statement": text or f"{settings.TARGET_ORGANIZATION} delivers enterprise {settings.TARGET_INDUSTRY.lower()} infrastructure.",
-            "rationale": f"Grounded in enterprise compliance, certified SLA, and proven reliability for {settings.TARGET_ORGANIZATION}.",
-            "risks": "Hyperscaler pricing pressure on standard compute instances.",
-            "confidence": "High",
-        }
+    except (ValueError, TypeError, KeyError, IndexError):
+        raise UpstreamProviderError(
+            "Model output did not satisfy the strategy schema", status_code=502,
+        ) from None
+
+    # Deterministic citation check
+    valid_evidence_ids, invalid_evidence_count = verify_citations(
+        parsed.get("evidence_ids", []), retrieved_facts_ids
+    )
+    parsed["evidence_ids"] = valid_evidence_ids
+    parsed["invalid_evidence_ids_count"] = invalid_evidence_count
+
+    # Keep missing usage unknown, and preserve the provider's reported identity.
+    parsed.update(provider_metrics(result))
+    parsed["tokens"] = parsed["total_tokens"]
+    parsed["retrieval_ms"] = retrieval_ms
+    parsed["facts_retrieved"] = facts_retrieved
+
     if result.get("notice"):
         parsed["notice"] = result["notice"]
 

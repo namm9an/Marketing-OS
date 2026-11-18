@@ -33,7 +33,8 @@ def test_server_model_enforcement_and_no_key_in_url():
         mock_resp = MagicMock()
         mock_resp.__enter__.return_value = mock_resp
         mock_resp.read.return_value = json.dumps({
-            "candidates": [{"content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
+            "modelVersion": "gemini-3.8-flash",
+            "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
         }).encode("utf-8")
         return mock_resp
 
@@ -75,7 +76,8 @@ def test_captured_headers_contain_key_without_logging_it():
         mock_resp = MagicMock()
         mock_resp.__enter__.return_value = mock_resp
         mock_resp.read.return_value = json.dumps({
-            "candidates": [{"content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
+            "modelVersion": "gemini-3.8-flash",
+            "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": '{"selected_option": "Test", "statement": "OK", "rationale": "OK", "risks": "None", "confidence": "High"}'}]}}]
         }).encode("utf-8")
         return mock_resp
 
@@ -99,6 +101,31 @@ def test_captured_headers_contain_key_without_logging_it():
 
 def test_gemini_3_8_flash_remains_configured_default():
     assert settings.DEFAULT_MODEL == "gemini-3.8-flash"
+
+
+@pytest.mark.parametrize("model", ["gemini-3.5-flash-lite", "gemini-3.8-flash"])
+def test_newer_models_do_not_receive_a_legacy_zero_thinking_budget(monkeypatch, model):
+    monkeypatch.setattr(settings, "DEFAULT_MODEL", model)
+    observed = []
+
+    def upstream(request, timeout):
+        payload = json.loads(request.data)
+        # Thinking budgets are model-specific; use provider defaults for newer models.
+        assert "thinkingConfig" not in payload["generationConfig"]
+        observed.append(request.full_url)
+        response = MagicMock()
+        response.__enter__.return_value = response
+        response.read.return_value = json.dumps({
+            "modelVersion": model,
+            "candidates": [{"finishReason": "STOP", "content": {"parts": [{"text": "OK"}]}}],
+        }).encode()
+        return response
+
+    monkeypatch.setattr("urllib.request.urlopen", upstream)
+    result = LLMService.generate("system", "goal", api_key="synthetic-test-key")
+    assert observed == [f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"]
+    assert result["requested_model"] == model and result["model"] == model
+    assert result["attempts"] == 1 and result["fallback_used"] is False
 
 
 def test_quota_reached_raises_error_no_mock_answer(monkeypatch):

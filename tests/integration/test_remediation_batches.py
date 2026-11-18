@@ -165,7 +165,9 @@ def test_multi_agent_action_uses_one_visitor_credit_and_correct_global_credits(m
     # 2. Live outbound requests: mock urllib to verify debiting immediately before real request
     monkeypatch.setattr(settings, "GEMINI_API_KEY", "test-live-key")
     mock_payload = json.dumps({
+        "modelVersion": "gemini-3.8-flash",
         "candidates": [{
+            "finishReason": "STOP",
             "content": {"parts": [{"text": json.dumps({"selected_option": "Opt", "statement": "Stmt", "rationale": "Rat", "risks": "Risk", "confidence": "High"})}]}
         }]
     }).encode("utf-8")

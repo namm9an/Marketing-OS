@@ -7,15 +7,21 @@ import ipaddress
 import os
 import re
 from typing import Iterable, Optional
-from flask import Flask, request, jsonify, send_from_directory, Response, g
+from flask import Flask, request, jsonify, Response, g
 from flask_cors import CORS
+from pydantic import ValidationError
 from werkzeug.middleware.proxy_fix import ProxyFix
 from app.core.config import settings
 from app.core.primitives import new_id
+from app.core.schemas import (
+    RunRequestSchema, ChatRequestSchema, TriageRequestSchema,
+    LoginRequestSchema, DigestRequestSchema, DecisionReviewRequestSchema, ExportRequestSchema,
+)
 from app.core.exceptions import (
     GlobalQuotaExhaustedError,
     UpstreamRateLimitError,
     UpstreamProviderError,
+    PersistenceError,
 )
 from app.core.security import (
     validate_prompt,
@@ -32,10 +38,26 @@ from app.graph.chat import run_chat
 from app.graph.triage import run_triage
 from app.graph.digest import run_digest, build_network
 from app.memory import store
-from app.db.database import get_all_decisions, init_db, get_connection
+from app.db.database import get_all_decisions, get_decision, review_decision, init_db, get_connection
 from app.memory.graph import rebuild_corpus_graph
 
 init_db()
+
+# Auto-seed grounded facts on startup if the database is unseeded (0 rows)
+conn = get_connection()
+try:
+    ku_count = conn.execute("SELECT COUNT(*) FROM knowledge_units").fetchone()[0]
+finally:
+    conn.close()
+
+if ku_count == 0:
+    import logging
+    log = logging.getLogger("marketing_os")
+    log.info("knowledge_units table is empty (0 rows); running grounded_seed on startup...")
+    from app.db.grounded_seed import seed_grounded_knowledge
+    seed_grounded_knowledge()
+    log.info("grounded_seed completed on startup.")
+
 # Deterministic and idempotent, so re-deriving on every boot keeps the graph in step with
 # the corpus without a migration step. Cheap: one pass over ~94 sourced rows.
 rebuild_corpus_graph()
@@ -77,8 +99,7 @@ class TrustedProxyFix:
             return self._proxy_fix(environ, start_response)
         return self.app(environ, start_response)
 
-FRONTEND_DIST = settings.BASE_DIR / "frontend" / "dist"
-app = Flask(__name__, static_folder=str(FRONTEND_DIST), static_url_path="")
+app = Flask(__name__, static_folder=None)
 # Lower payload boundary from 16MB to 64KB
 app.config["MAX_CONTENT_LENGTH"] = MAX_PAYLOAD_BYTES  # 64 KB max payload limit
 CORS(app, origins=settings.get_allowed_origins(), supports_credentials=True)
@@ -94,6 +115,28 @@ if settings.TRUST_FORWARDED_FOR:
 # Cryptographically random, expiring, revocable session token in browser cookie
 SESSION_COOKIE = "auth_session"
 _OPEN_API_PATHS = {"/api/health", "/api/login", "/api/logout", "/api/me"}
+
+
+class RequestValidationError(ValueError):
+    pass
+
+
+def _request_data(schema):
+    data = request.get_json(silent=True)
+    if data is None and not request.get_data():
+        data = {}
+    if not isinstance(data, dict):
+        raise RequestValidationError("Expected a JSON object")
+    try:
+        return schema.model_validate(data).model_dump()
+    except ValidationError:
+        # Do not echo submitted passwords, provider keys or arbitrary payload values.
+        raise RequestValidationError("Request fields do not satisfy the API contract") from None
+
+
+@app.errorhandler(RequestValidationError)
+def invalid_request(error):
+    return jsonify({"error": "invalid_request", "message": str(error)}), 400
 
 
 def _safe_digest_compare(a: Optional[str], b: Optional[str]) -> bool:
@@ -165,6 +208,11 @@ def request_entity_too_large(error):
     }), 413
 
 
+@app.errorhandler(PersistenceError)
+def persistence_unavailable(error):
+    return jsonify({"error": "persistence_unavailable", "message": "Could not store the result. Please try again later."}), 503
+
+
 @app.errorhandler(UpstreamRateLimitError)
 def handle_upstream_rate_limit(error: UpstreamRateLimitError):
     return RateLimiter.make_429_response(
@@ -215,7 +263,7 @@ def api_login():
         )
         return resp, code
 
-    data = request.get_json(silent=True) or {}
+    data = _request_data(LoginRequestSchema)
     user = (data.get("username") or "").strip()
     pwd = (data.get("password") or "").strip()
 
@@ -279,7 +327,7 @@ def health():
 
 @app.route("/api/run", methods=["POST"])
 def api_run():
-    data = request.get_json() or {}
+    data = _request_data(RunRequestSchema)
     goal = (data.get("goal") or "").strip()
     agent_type = (data.get("agent_type") or "branding").strip()
     provider = settings.DEFAULT_MODEL
@@ -314,6 +362,8 @@ def api_run():
         return RateLimiter.make_429_response(e.retry_after, message=str(e))
     except UpstreamProviderError as e:
         return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
+    except PersistenceError:
+        raise
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     finally:
@@ -331,9 +381,26 @@ def api_history():
     return jsonify({"success": True, "history": get_all_decisions(limit=limit, offset=offset)})
 
 
+@app.route("/api/decisions/<decision_id>", methods=["GET"])
+def api_decision_detail(decision_id):
+    decision = get_decision(decision_id)
+    if decision is None:
+        return jsonify({"error": "unknown decision"}), 404
+    return jsonify({"success": True, "decision": decision})
+
+
+@app.route("/api/decisions/<decision_id>/review", methods=["POST"])
+def api_decision_review(decision_id):
+    data = _request_data(DecisionReviewRequestSchema)
+    reason = data["reason"]
+    if not review_decision(decision_id, data["status"], g.current_user, reason):
+        return jsonify({"error": "unknown decision"}), 404
+    return jsonify({"success": True, "decision": get_decision(decision_id)})
+
+
 @app.route("/api/export/markdown", methods=["POST"])
 def api_export_markdown():
-    d = request.get_json(silent=True) or {}
+    d = _request_data(ExportRequestSchema)
     decision = d.get("decision") if isinstance(d.get("decision"), dict) else {}
     positioning = d.get("positioning") if isinstance(d.get("positioning"), dict) else {}
     md = (
@@ -364,6 +431,7 @@ def api_digest_network():
 
 @app.route("/api/digest", methods=["POST"])
 def api_digest():
+    _request_data(DigestRequestSchema)
     provider = settings.DEFAULT_MODEL
     client_ip, _ = _get_client_context()
 
@@ -388,7 +456,7 @@ def api_digest():
 
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
-    data = request.get_json(silent=True) or {}
+    data = _request_data(ChatRequestSchema)
     message = (data.get("message") or "").strip()
     provider = settings.DEFAULT_MODEL
     agent_type = (data.get("agent") or "branding").strip()
@@ -426,6 +494,8 @@ def api_chat():
         return RateLimiter.make_429_response(e.retry_after, message=str(e))
     except UpstreamProviderError as e:
         return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
+    except PersistenceError:
+        raise
     except ValueError as e:  # unknown agent / unknown thread / empty message
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -489,7 +559,7 @@ def api_memory():
 
 @app.route("/api/triage", methods=["POST"])
 def api_triage():
-    data = request.get_json(silent=True) or {}
+    data = _request_data(TriageRequestSchema)
     message = (data.get("message") or "").strip()
     agents = data.get("agents") or []
     provider = settings.DEFAULT_MODEL
@@ -527,6 +597,8 @@ def api_triage():
         return RateLimiter.make_429_response(e.retry_after, message=str(e))
     except UpstreamProviderError as e:
         return jsonify({"error": "upstream_provider_error", "message": "Upstream AI provider error. Please try again later."}), e.status_code or 502
+    except PersistenceError:
+        raise
     except ValueError as e:  # bad pair / unknown agent / empty message / wrong thread
         return jsonify({"error": str(e)}), 400
     except Exception as e:
@@ -537,16 +609,11 @@ def api_triage():
             rate_limiter.release_reservation(res_id)
 
 
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def serve(path):
-    if path != "" and (FRONTEND_DIST / path).exists():
-        return send_from_directory(str(FRONTEND_DIST), path)
-    if (FRONTEND_DIST / "index.html").exists():
-        return send_from_directory(str(FRONTEND_DIST), "index.html")
-    return "Marketing OS v2.0 Server Running. Build frontend with 'npm run build' inside frontend/."
+@app.get("/")
+def service_info():
+    return jsonify({"service": settings.PROJECT_NAME, "health": "/api/health"})
 
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 5000))
+    port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port, debug=False)

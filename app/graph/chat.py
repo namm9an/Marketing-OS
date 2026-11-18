@@ -34,9 +34,11 @@ from langgraph.graph import StateGraph, START, END
 from app.core.config import settings
 from app.core.primitives import new_id
 from app.agents.base import AGENT_REGISTRY, DEFAULT_PROVIDER
-from app.db.database import search_knowledge_units, save_decision
+from app.db.database import search_knowledge_units, save_decision, save_workflow_result
+from app.core.exceptions import AppException, PersistenceError, UpstreamProviderError
+from app.core.telemetry import provider_metrics, persistence_metrics
 from app.memory import gate, graph, store
-from app.services.llm_service import LLMService
+from app.services.llm_service import LLMService, current_quota_reservation
 
 log = logging.getLogger(__name__)
 
@@ -73,7 +75,9 @@ class ChatState(TypedDict, total=False):
     api_key: Optional[str]
     client_ip: Optional[str]
     request_id: Optional[str]
+    reservation_id: Optional[str]
     notice: Optional[str]
+    telemetry: Dict[str, Any]
     user_turn_id: str
     history: List[Dict[str, Any]]
     memories: List[Dict[str, Any]]
@@ -177,7 +181,10 @@ def recall_for(agent_type: str, message: str) -> Dict[str, Any]:
     memories += store.get_memories(extra, scope)
     paths = [p for p in hop["paths"] if p["memory_id"] in set(extra)]
 
-    facts = search_knowledge_units(query=message, limit=_FACT_RECALL, sourced_only=True)
+    facts = search_knowledge_units(
+        query=message, limit=_FACT_RECALL, sourced_only=True,
+        expand_taxonomy=settings.RETRIEVAL_EXPAND_TAXONOMY,
+    )
     log.info(f"[Recall/{agent_type}] {len(memories)} memories ({len(extra)} via graph), "
              f"{len(facts)} facts")
     return {"memories": memories, "facts": facts, "graph_paths": paths}
@@ -237,21 +244,24 @@ def _respond(state: ChatState) -> Dict[str, Any]:
             api_key=state.get("api_key"),
             client_ip=state.get("client_ip"),
             request_id=state.get("request_id"),
+            reservation_id=state.get("reservation_id"),
             temperature=0.5,
             max_tokens=900,
         )
         notice = result.get("notice")
-        if result.get("model_used", "").endswith("fallback"):
-            resp = {"reply": _fallback_reply(state), "confidence": "High"}
+        if result.get("source") == "mock":
+            resp = {"reply": _fallback_reply(state), "confidence": "High", "telemetry": provider_metrics(result)}
             if notice:
                 resp["notice"] = notice
             return resp
-        resp = {"reply": result["text"].strip(), "confidence": "High"}
+        if not result.get("text", "").strip():
+            raise UpstreamProviderError("Model returned no chat answer")
+        resp = {"reply": result["text"].strip(), "confidence": "High", "telemetry": provider_metrics(result)}
         if notice:
             resp["notice"] = notice
         return resp
     except Exception as err:
-        if settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
+        if isinstance(err, AppException) or settings.GEMINI_API_KEY or state.get("api_key") or "quota reached" in str(err).lower():
             raise
         log.warning(f"[Chat/{agent_type}] worker error, generating fallback reply: {err}")
         return {"reply": _fallback_reply(state), "confidence": "Low"}
@@ -293,20 +303,22 @@ def _governance(state: ChatState) -> Dict[str, Any]:
     escalated, reason = _governance_check(confidence, message, reply, risks)
     record_id = new_id()
     agent_type = state.get("agent_type", "branding")
-    source = f"langgraph:chat:{agent_type}:{state.get('provider', DEFAULT_PROVIDER)}"
+    telemetry = provider_metrics(state.get("telemetry", {}))
+    source = f"langgraph:chat:{agent_type}:{telemetry['model']}"
     try:
         save_decision(
             decision_id=record_id,
             goal_statement=message,
             selected_option=f"Chat Turn ({agent_type})",
+            **persistence_metrics(telemetry),
             confidence=confidence,
             escalated=escalated,
             reasoning_source=source,
             rationale=reply[:500] if reply else f"Chat consultation with {agent_type}",
             risks=reason or risks or "None identified",
         )
-    except Exception as db_err:  # pragma: no cover
-        log.warning(f"[DB Warning] Could not persist chat decision: {db_err}")
+    except Exception as db_err:
+        raise PersistenceError("Could not persist the chat decision") from db_err
     return {
         "escalated": escalated,
         "escalation_reason": reason,
@@ -352,8 +364,14 @@ def run_chat(
         raise ValueError("message is required")
 
     namespace = namespace or store.agent_ns(agent_type)
-    if thread_id and store.get_thread(thread_id) is None:
-        raise ValueError(f"unknown thread: {thread_id!r}")
+    if namespace not in store.readable_namespaces(agent_type):
+        raise ValueError("namespace is not readable by the selected agent")
+    if thread_id:
+        thread = store.get_thread(thread_id)
+        if thread is None:
+            raise ValueError(f"unknown thread: {thread_id!r}")
+        if thread["namespace"] != namespace:
+            raise ValueError("thread does not belong to the selected agent namespace")
     if not thread_id:
         thread_id = store.create_thread(namespace, title=message.strip()[:80])
 
@@ -366,14 +384,17 @@ def run_chat(
         "api_key": api_key,
         "client_ip": client_ip,
         "request_id": request_id,
+        "reservation_id": current_quota_reservation(),
     })
 
+    telemetry = provider_metrics(final.get("telemetry", {}))
     res = {
         "success": True,
         "agent": agent_type,
         "namespace": namespace,
         "thread_id": thread_id,
         "reply": final.get("reply", ""),
+        "metrics": {**telemetry, "calls": [telemetry]},
         # Visible recall: what this answer was actually built from.
         "recall": {
             "memories": [
@@ -402,6 +423,7 @@ def run_chat(
     }
     if final.get("notice"):
         res["notice"] = final["notice"]
+    save_workflow_result(final["decision_id"], "chat", res)
     return res
 
 
