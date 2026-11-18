@@ -40,25 +40,11 @@ from app.graph.chat import run_chat
 from app.graph.triage import run_triage
 from app.graph.digest import run_digest, build_network
 from app.memory import store
-from app.db.database import get_all_decisions, get_decision, review_decision, init_db, get_connection
+from app.db.database import get_all_decisions, get_decision, review_decision, get_connection
+from app.db.grounded_seed import seed_grounded_knowledge
 from app.memory.graph import rebuild_corpus_graph
 
-init_db()
-
-# Auto-seed grounded facts on startup if the database is unseeded (0 rows)
-conn = get_connection()
-try:
-    ku_count = conn.execute("SELECT COUNT(*) FROM knowledge_units").fetchone()[0]
-finally:
-    conn.close()
-
-if ku_count == 0:
-    import logging
-    log = logging.getLogger("marketing_os")
-    log.info("knowledge_units table is empty (0 rows); running grounded_seed on startup...")
-    from app.db.grounded_seed import seed_grounded_knowledge
-    seed_grounded_knowledge()
-    log.info("grounded_seed completed on startup.")
+seed_grounded_knowledge(only_if_empty=True)
 
 # Deterministic and idempotent, so re-deriving on every boot keeps the graph in step with
 # the corpus without a migration step. Cheap: one pass over ~94 sourced rows.

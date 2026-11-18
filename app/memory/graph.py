@@ -92,10 +92,9 @@ def rebuild_corpus_graph() -> int:
     Organisation is taken from the row's own column rather than matched out of the prose,
     so the `org --offers/prices--> SKU` edge is as sourced as the fact it came from.
 
-    Replace, not top-up. `seed_grounded_knowledge()` DROPs knowledge_units and reinserts
-    with fresh ids, so surviving edges would cite knowledge_unit ids that no longer exist
-    — provenance pointing at nothing is worse than no edge. Only `corpus:global` is
-    cleared: agent and triage anchors are memory, and a corpus reseed must not touch them.
+    Replace all corpus edges. A reseed can remove facts, so edges from the old corpus
+    could cite rows that no longer exist. Only `corpus:global` is cleared to preserve
+    agent and triage memory anchors.
     """
     init_db()
     facts = search_knowledge_units(limit=10_000, sourced_only=True)

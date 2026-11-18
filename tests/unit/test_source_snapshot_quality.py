@@ -64,6 +64,28 @@ def test_agent_prompt_does_not_supply_unretrieved_slas_or_prices(monkeypatch):
     assert result["evidence_ids"] == ["source-1"]
 
 
+def test_reseed_failure_preserves_existing_corpus_and_search_index(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "DB_PATH", tmp_path / "corpus.db")
+    grounded_seed.seed_grounded_knowledge(only_if_empty=True)
+    original = database.search_knowledge_units("H100", limit=20, sourced_only=True)
+    assert original
+
+    source = tmp_path / "invalid-scrape.json"
+    source.write_text(json.dumps([{
+        "name": "RollbackSentinel", "region": "global", "subpages": [{
+            "status": "success", "url": "https://example.com/gpu", "gpus": ["L40S"],
+        }],
+    }, {"name": "Missing region"}]))
+    monkeypatch.setattr(grounded_seed, "DEEP_SCRAPE_PATH", source)
+
+    grounded_seed.seed_grounded_knowledge(only_if_empty=True)
+    with pytest.raises(KeyError, match="region"):
+        grounded_seed.seed_grounded_knowledge()
+
+    assert database.search_knowledge_units("H100", limit=20, sourced_only=True) == original
+    assert not database.search_knowledge_units("RollbackSentinel")
+
+
 @pytest.mark.parametrize("query,skus", [
     ("H200 GPU availability", ("H200",)),
     ("Who offers last-generation Hopper cards?", ("H100", "H200", "GH200")),
