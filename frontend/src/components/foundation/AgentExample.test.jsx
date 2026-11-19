@@ -54,3 +54,19 @@ it('can retry a failed static read without submitting a model request', async ()
   await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument());
   expect(catalog.load.mock.calls).toEqual([['pr'], ['pr']]);
 });
+
+it('keeps archived source data intact while omitting retired sources from the public dossier', async () => {
+  const result = available('pr');
+  result.presentation.evidence.facts.push({
+    id: 'retired-source',
+    content: 'Retired source row',
+    sourceUrl: 'https://www.e2enetworks.com/',
+  });
+  const original = structuredClone(result);
+  const catalog = { load: vi.fn(async () => result) };
+  render(<AgentExample agent="pr" catalog={catalog} inDossier />);
+  fireEvent.click(await screen.findByText('Sources and rationale'));
+  expect(screen.queryByText('Retired source row')).not.toBeInTheDocument();
+  expect(screen.queryByRole('link', {name: 'www.e2enetworks.com'})).not.toBeInTheDocument();
+  expect(result).toEqual(original);
+});

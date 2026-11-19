@@ -631,23 +631,35 @@ def api_triage():
             rate_limiter.release_reservation(res_id)
 
 
+@app.route("/")
 @app.route("/console", strict_slashes=False)
 @app.route("/console/<path:route>")
-@app.route("/preview/f03", strict_slashes=False)
-@app.route("/preview/f03/<path:route>")
-def serve_console(route=""):
-    # Explicit routes take precedence over Flask's root static-file route.
-    return serve("")
-
-
-@app.route("/", defaults={"path": ""})
-@app.route("/<path:path>")
-def serve(path):
-    if path != "" and (FRONTEND_DIST / path).exists():
-        return send_from_directory(str(FRONTEND_DIST), path)
-    if (FRONTEND_DIST / "index.html").exists():
+def serve_spa(route=""):
+    if (FRONTEND_DIST / "index.html").is_file():
         return send_from_directory(str(FRONTEND_DIST), "index.html")
     return "Marketing OS v2.0 Server Running. Build frontend with 'npm run build' inside frontend/."
+
+
+@app.errorhandler(404)
+def serve_not_found(error):
+    # Render the client fallback only for browser document requests.
+    path = request.path.strip("/")
+    if (
+        request.method not in {"GET", "HEAD"}
+        or path.partition("/")[0] in {"api", "assets", "examples", "showcase"}
+        or "." in path.rpartition("/")[2]
+        or not (FRONTEND_DIST / "index.html").is_file()
+    ):
+        return error
+
+    is_document = any(media == "text/html" and quality > 0 for media, quality in request.accept_mimetypes)
+    if is_document:
+        response = send_from_directory(str(FRONTEND_DIST), "index.html", conditional=False)
+        response.status_code = 404
+    else:
+        response = error.get_response()
+    response.vary.add("Accept")
+    return response
 
 
 if __name__ == "__main__":

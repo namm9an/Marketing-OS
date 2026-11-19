@@ -32,17 +32,17 @@ test('mobile console preserves usable goal, chat and navigation without horizont
 
 test('reduced motion uses native scrolling and leaves every specialist readable', async ({ page }, testInfo) => {
   await page.goto('/');
-  await expect(page.locator('.connected-track')).toHaveClass(/connected-static/);
-  await expect(page.locator('.connected-orbit')).toHaveCount(0);
-  const picker = page.getByRole('group', { name: 'Choose a specialist' });
+  await expect(page.locator('.connected-orbit-shell')).toHaveCount(0);
+  const picker = page.getByRole('group', { name: 'Choose a specialist', exact: true });
   for (const name of specialists) {
     const choice = picker.getByRole('button', { name, exact: true });
     await choice.focus();
     await page.keyboard.press('Enter');
-    await expect(choice).toHaveAttribute('aria-pressed', 'true');
-    const example = page.locator('#f03-full-result').getByRole('article', { name: `${name} example`, exact: true });
-    await example.scrollIntoViewIfNeeded();
-    await expect(example).toBeInViewport();
+    const dossier = page.getByRole('dialog', { name, exact: true });
+    await expect(dossier).toBeInViewport();
+    await expect(dossier.getByRole('article', { name: `${name} example`, exact: true })).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(choice).toBeFocused();
   }
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1366);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
@@ -53,13 +53,14 @@ test('mobile showcase keeps all specialists reachable with native document flow'
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('/');
-  await expect(page.locator('.connected-track')).toHaveClass(/connected-static/);
-  const picker = page.getByRole('group', { name: 'Choose a specialist' });
+  await expect(page.locator('.connected-orbit-shell')).toHaveCount(0);
+  const picker = page.getByRole('group', { name: 'Choose a specialist', exact: true });
   for (const name of specialists) {
     const choice = picker.getByRole('button', { name, exact: true });
     await choice.click();
-    await expect(choice).toHaveAttribute('aria-pressed', 'true');
-    await expect(page.locator('#f03-full-result').getByRole('article', { name: `${name} example`, exact: true })).toBeVisible();
+    const dossier = page.getByRole('dialog', { name, exact: true });
+    await expect(dossier.getByRole('article', { name: `${name} example`, exact: true })).toBeVisible();
+    await dossier.getByRole('button', { name: 'Close dossier' }).click();
   }
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
   await page.evaluate(() => window.scrollTo({ top: 0, behavior: 'instant' }));
@@ -73,16 +74,19 @@ test('mobile showcase keeps all specialists reachable with native document flow'
 test('desktop navigation still works and a changed motion preference switches to native scrolling', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'no-preference' });
   await page.goto('/');
-  await expect(page.locator('.connected-orbit')).toHaveCount(1);
   await page.getByRole('navigation', { name: 'Showcase' }).getByRole('link', { name: 'Agents', exact: true }).click();
-  await expect(page).toHaveURL(/#f03-agents$/);
+  await expect(page).toHaveURL(/#agents$/);
+  await expect(page.locator('.connected-orbit-shell')).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(1366);
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  await expect(page.locator('.connected-track')).toHaveClass(/connected-static/);
-  const choice = page.getByRole('group', { name: 'Choose a specialist' }).getByRole('button', { name: 'PR & Policy', exact: true });
+  await expect(page.locator('.connected-orbit-shell')).toHaveCount(0);
+  const choice = page.getByRole('group', { name: 'Choose a specialist', exact: true }).getByRole('button', { name: 'PR & Policy', exact: true });
   await choice.click();
+  const dossier = page.getByRole('dialog', { name: 'PR & Policy', exact: true });
+  await expect(dossier).toBeVisible();
+  await dossier.getByRole('button', { name: 'Close dossier' }).click();
   await expect(choice).toBeInViewport();
-  await expect(choice).toHaveAttribute('aria-pressed', 'true');
+  await expect(choice).toBeFocused();
 });
 
 test('login and working console expose labelled, readable controls to assistive technology', async ({ page }, testInfo) => {

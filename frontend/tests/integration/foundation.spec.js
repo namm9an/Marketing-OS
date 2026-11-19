@@ -2,28 +2,38 @@ import { expect, test } from '@playwright/test';
 
 test.use({ reducedMotion: 'reduce' });
 
-test('old review bookmarks open the single homepage and preserve agent and treatment', async ({ page }) => {
-  for (const preview of ['/preview/f03', '/preview/f03/', '/preview/f03/motion', '/preview/f03/connected']) {
-    await page.goto(`${preview}?agent=branding&treatment=plain#f03-full-result`);
-    await expect(page).toHaveURL(/\/\?agent=branding&treatment=plain#f03-full-result$/);
-    await expect(page.locator('.connected-page')).toHaveAttribute('data-treatment', 'plain');
-    await expect(page.locator('#f03-full-result').getByRole('article', { name: 'Branding example', exact: true })).toBeInViewport();
-    await expect(page.getByRole('heading', { level: 1 })).toHaveText('Marketing OS');
+test('retired previews and unknown addresses show a readable page with a route home', async ({ page }, testInfo) => {
+  for (const path of ['/preview/f03', '/preview/f03/motion', '/absent-page']) {
+    const response = await page.goto(path);
+    if (testInfo.config.configFile?.endsWith('playwright.built.config.js')) {
+      expect(response.status()).toBe(404);
+    }
+    await expect(page.getByRole('heading', { name: /page not found/i })).toBeVisible();
+    await expect(page.getByRole('heading', { name: 'Marketing Helper', exact: true })).toHaveCount(0);
+    await page.getByRole('link', { name: 'Visit the homepage', exact: true }).click();
+    await expect(page.getByRole('heading', { name: 'Marketing Helper', exact: true })).toBeVisible();
   }
 });
 
-test('direct homepage agent links select the agent in the scroll gallery', async ({ page }) => {
-  await page.emulateMedia({ reducedMotion: 'no-preference' });
-  await page.goto('/?agent=branding');
-  await expect(page.locator('.connected-track')).toHaveAttribute('data-agent', 'branding');
-  await expect(page.getByRole('group', { name: 'Choose a specialist' })
-    .getByRole('button', { name: 'Branding', exact: true })).toHaveAttribute('aria-pressed', 'true');
-  await expect(page).toHaveURL(/\/\?agent=branding#f03-agents$/);
+test('direct agent links open the matching dossier and Back returns to the gallery', async ({ page }) => {
+  await page.goto('/?agent=branding#dossier');
+  const branding = page.getByRole('dialog', { name: 'Branding', exact: true });
+  await expect(branding.getByRole('heading', { name: 'A positioning recommendation', exact: true })).toBeVisible();
+  await branding.getByRole('button', { name: 'Close dossier' }).click();
+  await expect(page).toHaveURL(/#agents$/);
+  const picker = page.getByRole('group', { name: 'Choose a specialist', exact: true });
+  const pr = picker.getByRole('button', { name: 'PR & Policy', exact: true });
+  await pr.click();
+  await expect(page.getByRole('dialog', { name: 'PR & Policy', exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(page).toHaveURL(/#agents$/);
+  await expect(pr).toBeFocused();
 });
 
 test('the homepage console entry authenticates and runs the real Flask workflow', async ({ page }) => {
   await page.goto('/');
-  await page.getByRole('button', { name: 'Open console', exact: true }).click();
+  await page.locator('.connected-hero').getByRole('link', { name: 'Open console', exact: true }).click();
   await expect(page).toHaveURL(/\/console$/);
   await page.getByPlaceholder('admin', { exact: true }).fill('e2e-operator');
   await page.locator('input[type=password]').fill('e2e-local-test-password');
@@ -42,5 +52,5 @@ test('a direct console visit can return to the homepage', async ({ page }) => {
   await page.goto('/console');
   await page.getByRole('button', { name: /Showcase/ }).click();
   await expect(page).toHaveURL(/\/$/);
-  await expect(page.getByRole('heading', { name: 'Marketing OS', exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Marketing Helper', exact: true })).toBeVisible();
 });

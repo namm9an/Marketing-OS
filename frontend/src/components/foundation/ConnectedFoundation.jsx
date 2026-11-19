@@ -1,29 +1,72 @@
-import { useMemo, useRef, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef } from 'react';
 import { ArrowDown, ArrowUpRight } from 'lucide-react';
 import { createExampleCatalog } from '../../lib/exampleCatalog';
-import { AGENT_COPY } from './agentCopy';
+import { useMediaQuery } from '../../lib/useMediaQuery';
 import ConnectedDiscovery from './ConnectedDiscovery';
 import './foundation.css';
 import './connected.css';
 
-const artRoot = '/showcase/phase-3';
+const workingName = 'Marketing Helper';
 
-function VectorIdentity() {
-  return <div className="connected-identity" onPointerMove={event => {
-    if (event.pointerType !== 'mouse') return;
-    const { left, top, width, height } = event.currentTarget.getBoundingClientRect();
-    event.currentTarget.style.setProperty('--tilt-x', `${(0.5 - (event.clientY - top) / height) * 9}deg`);
-    event.currentTarget.style.setProperty('--tilt-y', `${((event.clientX - left) / width - 0.5) * 10}deg`);
-  }} onPointerLeave={event => {
-    event.currentTarget.style.removeProperty('--tilt-x');
-    event.currentTarget.style.removeProperty('--tilt-y');
-  }}>
-    <h1><span>Marketing OS</span></h1>
-    <p>Five marketing specialists take one launch brief and turn it into recommendations you can inspect.</p>
-  </div>;
+function clearGuides(heading) {
+  heading?.querySelectorAll('[data-guide]').forEach(letter => letter.removeAttribute('data-guide'));
 }
 
-function SpiderExplore({ onClick }) {
+function VectorIdentity() {
+  const heading = useRef(null);
+  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
+
+  useEffect(() => {
+    if (reduced) clearGuides(heading.current);
+  }, [reduced]);
+
+  function showGuides(event) {
+    if (event.pointerType !== 'mouse' || reduced) return;
+    const node = event.currentTarget;
+    const bounds = node.getBoundingClientRect();
+    const glyphs = Array.from(node.querySelectorAll('[data-letter]'), letter => ({
+      letter,
+      rect: letter.getBoundingClientRect(),
+    }));
+    for (const { letter, rect } of glyphs) {
+      const near = event.clientY >= rect.top && event.clientY <= rect.bottom
+        && Math.abs(event.clientX - rect.left - rect.width / 2) < rect.width * .85;
+      if (near) {
+        const x = Math.round(rect.left - bounds.left);
+        const y = Math.round(rect.top - bounds.top);
+        letter.setAttribute('data-guide', `${x} / ${y}`);
+      } else {
+        letter.removeAttribute('data-guide');
+      }
+    }
+  }
+
+  return <h1 ref={heading} className="connected-identity" aria-label={workingName}
+    onPointerMove={showGuides}
+    onPointerLeave={() => clearGuides(heading.current)}
+    onPointerCancel={() => clearGuides(heading.current)}>
+    {workingName.split(' ').map((word, wordIndex) => <Fragment key={word}>
+      {wordIndex > 0 && ' '}
+      <span className="connected-word" aria-hidden="true">
+        {Array.from(word, (letter, index) => <span key={index} data-letter={letter}>{letter}</span>)}
+      </span>
+    </Fragment>)}
+  </h1>;
+}
+
+function ConsoleLink({ onOpenConsole }) {
+  function open(event) {
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button) return;
+    event.preventDefault();
+    onOpenConsole();
+  }
+
+  return <a className="connected-action connected-console" href="/console" onClick={open}>
+    Open console <ArrowUpRight size={16} aria-hidden="true" />
+  </a>;
+}
+
+function SpiderExplore() {
   const canvas = useRef(null);
   const anchor = useRef(null);
 
@@ -69,68 +112,62 @@ function SpiderExplore({ onClick }) {
 
   return <div className="connected-spider" onPointerMove={draw} onPointerLeave={() => draw()}>
     <canvas ref={canvas} aria-hidden="true" />
-    <a ref={anchor} className="connected-explore" href="#f03-agents" onClick={onClick}>
+    <a ref={anchor} className="connected-action connected-explore" href="#agents">
       Explore the agents <ArrowDown size={18} aria-hidden="true" />
     </a>
   </div>;
 }
 
-function SurfaceArt({ treatment }) {
-  const [state, setState] = useState('pending');
-  const [attempt, setAttempt] = useState(0);
-  const imagePath = `${artRoot}/${treatment === 'plain' ? 'instrument-plain' : 'instrument-dither'}.webp`;
-  return <>
-    <div className="connected-surface" data-art-state={state}>
-      <img key={attempt} src={attempt ? `${imagePath}?retry=${attempt}` : imagePath} width="1440" height="960" alt=""
-        onLoad={() => setState('ready')} onError={() => setState('unavailable')} />
-    </div>
-    {state === 'pending' && <span role="status" className="connected-art-status">
-      <span className="connected-pixels" aria-hidden="true" /> Loading artwork…
-    </span>}
-    {state === 'unavailable' && <div className="connected-art-status">
-      <span role="status">Artwork unavailable.</span>{' '}
-      <button className="f03-text-button" type="button" onClick={() => {
-        setState('pending');
-        setAttempt(previous => previous + 1);
-      }}>Retry artwork</button>
-    </div>}
-  </>;
-}
-
-function Artifact({ agent }) {
-  const [failed, setFailed] = useState(false);
-  const { name } = AGENT_COPY[agent];
-  return <div className="connected-artifact">
-    <div className="connected-artifact-image">
-      {!failed && <img src={`${artRoot}/${agent}.webp`} alt="" width="420" height="320" decoding="async"
-        onError={() => setFailed(true)} />}
-    </div>
-    <strong>{name}</strong>
-  </div>;
-}
-
 export default function ConnectedFoundation({ onOpenConsole }) {
-  const [treatment] = useState(() => {
-    const requested = new URLSearchParams(window.location.search).get('treatment');
-    return requested === 'focal' || requested === 'plain' ? requested : 'field';
-  });
   const catalog = useMemo(() => createExampleCatalog({ basePath: '/examples/f03-reviewed' }), []);
-  return <div className={`f03-page connected-page${treatment === 'plain' ? '' : ' with-grain'}`} data-treatment={treatment}>
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!['top', 'introduction', 'agents', 'results', 'how-its-built'].includes(id)) return;
+    const frame = requestAnimationFrame(() => {
+      if (!document.querySelector('.connected-dossier[open]')) document.getElementById(id)?.scrollIntoView();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, []);
+  return <div className="f03-page connected-page with-grain" data-treatment="type" id="top">
     <header className="connected-header">
-      <a className="connected-brand" href="#f03-top">Marketing OS</a>
+      <a className="connected-brand" href="#top">{workingName}</a>
       <nav aria-label="Showcase">
-        <a href="#f03-agents">Agents</a>
-        <a href="#f03-engineering">How it’s built</a>
+        <a href="#agents">Agents</a>
+        <a href="#results">Results</a>
+        <a href="#how-its-built">How it’s built</a>
       </nav>
-      <button type="button" className="f03-text-button" onClick={onOpenConsole}>
-        Open console <ArrowUpRight size={16} aria-hidden="true" />
-      </button>
+      <ConsoleLink onOpenConsole={onOpenConsole} />
     </header>
-    <main id="f03-top">
-      <ConnectedDiscovery backdrop={<SurfaceArt treatment={treatment} />} heading={<VectorIdentity />}
-        explore={onClick => <SpiderExplore onClick={onClick} />} catalog={catalog}
-        renderArtifact={agent => <Artifact key={agent} agent={agent} />} />
-      <section id="f03-engineering" className="connected-engineering" aria-labelledby="connected-engineering-title">
+    <main>
+      <section className="connected-opening" aria-label="Opening">
+        <div className="connected-hero">
+          <VectorIdentity />
+          <div className="connected-pitch">
+            <p>Bring a brief. See five specialist perspectives.</p>
+            <div className="connected-actions">
+              <ConsoleLink onOpenConsole={onOpenConsole} />
+              <SpiderExplore />
+            </div>
+          </div>
+          <figure className="connected-hero-brief">
+            <figcaption>Example brief</figcaption>
+            <p>How should we position a new launch?</p>
+            <p>Audience, competitor evidence and launch goals</p>
+          </figure>
+        </div>
+      </section>
+      <section id="introduction" className="connected-introduction" aria-labelledby="introduction-title">
+        <div>
+          <h2 id="introduction-title">Follow the recommendation back to the evidence</h2>
+          <p>Each specialist makes a different decision about the launch. Open a dossier to see what influenced it.</p>
+        </div>
+        <figure className="connected-brief-path">
+          <figcaption>What you can inspect</figcaption>
+          <ol><li>Brief</li><li>Evidence</li><li>Recommendation</li></ol>
+        </figure>
+      </section>
+      <ConnectedDiscovery catalog={catalog} />
+      <section id="how-its-built" tabIndex={-1} className="connected-engineering" aria-labelledby="connected-engineering-title">
         <h2 id="connected-engineering-title">How it’s built</h2>
         <dl>
           <div><dt>Shared sources</dt><dd>Each specialist retrieves source-linked context for the brief. You can inspect that context alongside the recommendation.</dd></div>
@@ -143,8 +180,11 @@ export default function ConnectedFoundation({ onOpenConsole }) {
       </section>
     </main>
     <footer className="connected-footer">
-      <a className="connected-brand" href="#f03-top">Marketing OS</a>
-      <a href="#f03-top">Back to top</a>
+      <div>
+        <p>Bring a brief</p>
+        <ConsoleLink onOpenConsole={onOpenConsole} />
+      </div>
+      <a href="#top">Back to top</a>
     </footer>
   </div>;
 }

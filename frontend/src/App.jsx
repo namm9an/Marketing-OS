@@ -18,19 +18,13 @@ class ShowcaseBoundary extends React.Component {
   }
 }
 
-const isConsoleRoute = () => window.location.pathname === '/console' || window.location.pathname.startsWith('/console/');
+const isConsoleRoute = path => path === '/console' || path.startsWith('/console/');
 
 export default function App() {
-  const [inConsole, setInConsole] = useState(isConsoleRoute);
+  const [path, setPath] = useState(() => window.location.pathname);
 
   useEffect(() => {
-    const syncRoute = () => {
-      const { pathname, search, hash } = window.location;
-      if (pathname === '/preview/f03' || pathname.startsWith('/preview/f03/')) {
-        window.history.replaceState(window.history.state, '', `/${search}${hash}`);
-      }
-      setInConsole(isConsoleRoute());
-    };
+    const syncRoute = () => setPath(window.location.pathname);
     syncRoute();
     window.addEventListener('popstate', syncRoute);
     return () => window.removeEventListener('popstate', syncRoute);
@@ -38,7 +32,7 @@ export default function App() {
 
   const navigateToConsole = () => {
     window.history.pushState({ fromShowcase: true }, '', '/console');
-    setInConsole(true);
+    setPath('/console');
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
@@ -48,11 +42,11 @@ export default function App() {
       return;
     }
     window.history.pushState({}, '', '/');
-    setInConsole(false);
+    setPath('/');
     window.scrollTo({ top: 0, behavior: 'instant' });
   };
 
-  if (inConsole) {
+  if (isConsoleRoute(path)) {
     return (
       <div className="min-h-screen bg-[#FBF9F5]">
         <Suspense
@@ -67,6 +61,17 @@ export default function App() {
       </div>
     );
   }
+
+  if (path !== '/') return (
+    <main className="mx-auto max-w-5xl px-6 py-20">
+      <h1 className="text-4xl font-semibold">Page not found</h1>
+      <p className="mt-4">This address doesn’t lead to a page.</p>
+      <div className="mt-8 flex flex-wrap gap-6">
+        <a className="inline-flex min-h-11 items-center underline" href="/">Visit the homepage</a>
+        <a className="inline-flex min-h-11 items-center underline" href="/console">Open the console</a>
+      </div>
+    </main>
+  );
 
   return (
     <ShowcaseBoundary>

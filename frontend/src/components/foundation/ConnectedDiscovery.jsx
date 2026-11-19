@@ -1,215 +1,226 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { motion, useMotionValue, useMotionValueEvent, useTransform } from 'framer-motion';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AGENTS } from '../../lib/agents';
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { AGENT_COPY } from './agentCopy';
 import { AgentExample } from './AgentExample';
-import { agentForProgress, cardPose, clampProgress, expansionFor, GALLERY_START, progressForAgent } from './discoveryGeometry';
+import OrbitSphere from './OrbitSphere';
 
-const indexFromLocation = () => AGENTS.findIndex(({ id }) => id === new URLSearchParams(window.location.search).get('agent'));
-const normalClick = event => !event || (!event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey && !event.button);
+const workImages = {
+  branding: ['Positioning map', 'Brand system', 'Audience segments', 'Message hierarchy', 'Brand applications'],
+  pr: ['Claim review', 'Evidence ledger', 'Policy markup', 'Review checklist', 'Decision tree'],
+  social: ['Community brief', 'Content storyboard', 'Thread outline', 'Weekly rhythm', 'Response map'],
+  product_marketing: ['Product comparison', 'Evidence matrix', 'Feature hierarchy', 'Product story', 'Offer structure'],
+  events: ['Event agenda', 'Session tracks', 'Journey map', 'Stage plan', 'Program grid'],
+};
 
-function SpatialCard({ index, progress, width, selectedIndex, selected, renderArtifact, onSelect }) {
-  const pose = useTransform(() => cardPose(index, progress.get(), width.get(), selectedIndex.get()));
-  const x = useTransform(pose, value => value.x);
-  const y = useTransform(pose, value => value.y);
-  const scale = useTransform(pose, value => value.scale);
-  const rotateY = useTransform(pose, value => value.yaw);
-  const opacity = useTransform(pose, value => value.opacity);
-  const zIndex = useTransform(pose, value => value.zIndex);
-  const { id } = AGENTS[index];
-  return <motion.div className={`connected-card ${selected ? 'is-selected' : ''}`} style={{ x, y, scale, rotateY, opacity, zIndex }} data-agent={id}>
-    <div aria-hidden="true">{renderArtifact(id)}</div>
-    <button type="button" tabIndex={-1} className="connected-card-select" aria-label={`Explore ${AGENT_COPY[id].name}`}
-      onClick={() => onSelect(index)} />
-  </motion.div>;
+// Interleave roles so the presentation offers different kinds of work at its front.
+const workTiles = workImages.branding.flatMap((_, index) => AGENTS.map(({ id: agent }) => {
+  const id = `${agent}-${index + 1}`;
+  return { id, agent, label: workImages[agent][index], image: `/showcase/phase-3/orbit/${id}.webp` };
+}));
+
+function tileFromLocation() {
+  const { hash, search } = window.location;
+  if (hash && !['#dossier', '#agents'].includes(hash)) return null;
+  const params = new URLSearchParams(search);
+  const agent = params.get('agent');
+  const id = params.get('tile');
+  return workTiles.find(tile => tile.agent === agent && tile.id === id)
+    ?? workTiles.find(tile => tile.agent === agent)
+    ?? null;
 }
 
-export default function ConnectedDiscovery({ heading, explore, catalog, renderArtifact, backdrop }) {
-  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
-  const narrow = useMediaQuery('(max-width: 900px)');
-  const staticView = Boolean(reduced || narrow);
-  const track = useRef(null);
-  const stage = useRef(null);
-  const picker = useRef(null);
-  const fullResult = useRef(null);
-  const focusFrame = useRef(0);
-  const initialIndex = Math.max(0, indexFromLocation());
-  const [selected, setSelected] = useState(initialIndex);
-  const selectedRef = useRef(initialIndex);
-  const selectedIndex = useMotionValue(initialIndex);
-  const progress = useMotionValue(0);
-  const width = useMotionValue(1100);
-  const expand = useTransform(progress, expansionFor);
-  const introOpacity = useTransform(progress, [.08, .18], [1, 0]);
-  const introY = useTransform(progress, [0, .18], [0, -90]);
-  const [phase, setPhase] = useState('arrival');
-  const [introHidden, setIntroHidden] = useState(false);
-  const copy = AGENT_COPY[AGENTS[selected].id];
-
-  const setAgent = useCallback(index => {
-    selectedRef.current = index;
-    selectedIndex.set(index);
-    setSelected(index);
-  }, [selectedIndex]);
-
-  const writeLocation = useCallback((index, mode = 'replace', hash) => {
-    const url = new URL(window.location.href);
-    url.searchParams.set('agent', AGENTS[index].id);
-    if (hash !== undefined) url.hash = hash;
-    if (`${url.pathname}${url.search}${url.hash}` !== `${window.location.pathname}${window.location.search}${window.location.hash}`) {
-      window.history[mode === 'push' ? 'pushState' : 'replaceState'](window.history.state, '', `${url.pathname}${url.search}${url.hash}`);
-    }
-  }, []);
-
-  useMotionValueEvent(progress, 'change', value => {
-    if (staticView) return;
-    const index = agentForProgress(value, selectedRef.current);
-    if (index !== selectedRef.current) {
-      setAgent(index);
-      if (value >= GALLERY_START) writeLocation(index);
-    }
-    const nextPhase = value >= .76 ? 'expanded' : value >= .17 ? 'exploring' : 'arrival';
-    setPhase(previous => previous === nextPhase ? previous : nextPhase);
-    setIntroHidden(value >= .18);
-  });
-
-  const focusChoice = useCallback(index => {
-    cancelAnimationFrame(focusFrame.current);
-    focusFrame.current = requestAnimationFrame(() => {
-      picker.current?.querySelector(`[data-agent="${AGENTS[index].id}"]`)?.focus({ preventScroll: true });
-    });
-  }, []);
-
-  const moveToAgent = useCallback((index, { historyMode = 'push', focus = true } = {}) => {
-    setAgent(index);
-    writeLocation(index, historyMode, 'f03-agents');
-    if (staticView) {
-      picker.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
-    } else if (track.current) {
-      const value = progressForAgent(index);
-      progress.set(value);
-      const top = track.current.getBoundingClientRect().top + window.scrollY;
-      window.scrollTo({ top: top + value * Math.max(1, track.current.offsetHeight - window.innerHeight), behavior: 'instant' });
-    }
-    if (focus) focusChoice(index);
-  }, [focusChoice, progress, setAgent, staticView, writeLocation]);
-
-  const readFull = useCallback(event => {
-    if (!normalClick(event)) return;
-    event?.preventDefault();
-    writeLocation(selectedRef.current, 'push', 'f03-full-result');
-    fullResult.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
-    fullResult.current?.focus({ preventScroll: true });
-  }, [writeLocation]);
-
-  const onExplore = event => {
-    if (!normalClick(event)) return;
-    event?.preventDefault();
-    moveToAgent(selectedRef.current);
-  };
+function useArtReadiness(section, staticView) {
+  const [near, setNear] = useState(false);
+  const [attempt, setAttempt] = useState(0);
+  const [status, setStatus] = useState('pending');
+  const tiles = useMemo(() => attempt ? workTiles.map(tile => ({
+    ...tile,
+    image: `${tile.image}?retry=${attempt}`,
+  })) : workTiles, [attempt]);
 
   useEffect(() => {
-    let frame = 0;
-    let disposed = false;
-    const measure = () => {
-      frame = 0;
-      if (document.hidden || !track.current) return;
-      width.set(stage.current?.clientWidth || window.innerWidth);
-      if (staticView) return;
-      const value = clampProgress(-track.current.getBoundingClientRect().top / Math.max(1, track.current.offsetHeight - window.innerHeight));
-      track.current.dataset.progress = value.toFixed(4);
-      progress.set(value);
-    };
-    const schedule = () => { if (!disposed && !frame) frame = requestAnimationFrame(measure); };
-    const resize = () => {
-      if (!staticView && track.current) {
-        const rect = track.current.getBoundingClientRect();
-        if (rect.top <= 0 && rect.bottom >= window.innerHeight) {
-          const top = rect.top + window.scrollY;
-          window.scrollTo({ top: top + progress.get() * Math.max(1, track.current.offsetHeight - window.innerHeight), behavior: 'instant' });
-        }
+    if (staticView || near) return;
+    if (!window.IntersectionObserver) {
+      setNear(true);
+      return;
+    }
+    const observer = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) {
+        setNear(true);
+        observer.disconnect();
       }
-      schedule();
-    };
-    const restore = () => {
-      const index = indexFromLocation();
-      const { hash } = window.location;
-      if (index >= 0) setAgent(index);
-      if (hash === '#f03-full-result') {
-        fullResult.current?.scrollIntoView({ block: 'start', behavior: 'instant' });
-      } else if (hash === '#f03-agents' || (!hash && index >= 0)) {
-        moveToAgent(Math.max(0, index), { historyMode: 'replace', focus: false });
-      } else {
-        schedule();
-      }
-    };
-    const interrupt = () => cancelAnimationFrame(focusFrame.current);
-    window.addEventListener('scroll', schedule, { passive: true });
-    window.addEventListener('resize', resize);
-    window.addEventListener('popstate', restore);
-    window.addEventListener('hashchange', restore);
-    window.addEventListener('wheel', interrupt, { passive: true });
-    window.addEventListener('touchstart', interrupt, { passive: true });
-    document.addEventListener('visibilitychange', schedule);
-    const observer = typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(schedule);
-    if (track.current) observer?.observe(track.current);
-    if (stage.current) observer?.observe(stage.current);
-    document.fonts?.ready.then(schedule);
-    restore();
-    schedule();
-    return () => {
-      disposed = true;
-      observer?.disconnect();
-      cancelAnimationFrame(frame);
-      cancelAnimationFrame(focusFrame.current);
-      window.removeEventListener('scroll', schedule);
-      window.removeEventListener('resize', resize);
-      window.removeEventListener('popstate', restore);
-      window.removeEventListener('hashchange', restore);
-      window.removeEventListener('wheel', interrupt);
-      window.removeEventListener('touchstart', interrupt);
-      document.removeEventListener('visibilitychange', schedule);
-    };
-  }, [moveToAgent, progress, setAgent, staticView, width]);
+    }, { rootMargin: '220px' });
+    observer.observe(section.current);
+    return () => observer.disconnect();
+  }, [near, section, staticView]);
 
-  const exploring = staticView || phase !== 'arrival';
-  const hideIntro = !staticView && introHidden;
+  useEffect(() => {
+    if (!near || staticView) return;
+    let active = true;
+    let remaining = tiles.length;
+    let failed = false;
+    setStatus('pending');
+
+    function settle(loaded) {
+      if (!active) return;
+      remaining -= 1;
+      failed ||= !loaded;
+      if (!remaining) setStatus(failed ? 'unavailable' : 'ready');
+    }
+
+    const images = tiles.map(tile => {
+      const image = new Image();
+      image.onload = () => settle(true);
+      image.onerror = () => settle(false);
+      image.src = tile.image;
+      return image;
+    });
+    return () => {
+      active = false;
+      images.forEach(image => {
+        image.onload = null;
+        image.onerror = null;
+      });
+    };
+  }, [near, staticView, tiles]);
+
+  return { tiles, near, status, retry: () => setAttempt(previous => previous + 1) };
+}
+
+export default function ConnectedDiscovery({ catalog }) {
+  const narrow = useMediaQuery('(max-width: 860px)');
+  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const staticView = narrow || reduced;
+  const gallery = useRef(null);
+  const dialog = useRef(null);
+  const opener = useRef(null);
+  const restoreFocus = useRef(false);
+  const revealDirectEntry = useRef(true);
+  const [selected, setSelected] = useState(tileFromLocation);
+  const [featured, setFeatured] = useState(() => tileFromLocation()?.agent ?? AGENTS[0].id);
+  const { tiles, near, status, retry } = useArtReadiness(gallery, staticView);
+  const activeTile = selected && tiles.find(tile => tile.id === selected.id);
+  const activeAgent = activeTile?.agent;
+  const activeCopy = activeAgent && AGENT_COPY[activeAgent];
+
+  useEffect(() => {
+    function syncSelection() {
+      const next = tileFromLocation();
+      revealDirectEntry.current = Boolean(next);
+      setSelected(next);
+      if (next) setFeatured(next.agent);
+    }
+    window.addEventListener('popstate', syncSelection);
+    window.addEventListener('hashchange', syncSelection);
+    return () => {
+      window.removeEventListener('popstate', syncSelection);
+      window.removeEventListener('hashchange', syncSelection);
+    };
+  }, []);
+
+  useLayoutEffect(() => {
+    const panel = dialog.current;
+    if (selected) {
+      if (revealDirectEntry.current) gallery.current.scrollIntoView();
+      revealDirectEntry.current = false;
+      restoreFocus.current = true;
+      if (!panel.open) panel.showModal();
+      return;
+    }
+    if (panel.open) panel.close();
+    if (restoreFocus.current) {
+      restoreFocus.current = false;
+      const target = opener.current;
+      opener.current = null;
+      // A runtime motion or viewport change may have removed the original tile.
+      const frame = requestAnimationFrame(() => {
+        (target?.isConnected && target.getClientRects().length
+          ? target : gallery.current?.querySelector(`.connected-picker [data-agent="${featured}"]`))?.focus({ preventScroll: true });
+      });
+      return () => cancelAnimationFrame(frame);
+    }
+  }, [featured, selected]);
+
+  function selectTile(tile, event) {
+    const url = new URL(window.location.href);
+    url.searchParams.set('agent', tile.agent);
+    url.searchParams.set('tile', tile.id);
+    url.hash = 'dossier';
+    opener.current = event?.currentTarget ?? null;
+    revealDirectEntry.current = false;
+    window.history.pushState({ ...window.history.state, showcaseDossier: true }, '', url);
+    setSelected(tile);
+    setFeatured(tile.agent);
+  }
+
+  function closeDossier() {
+    if (window.history.state?.showcaseDossier) {
+      window.history.back();
+      return;
+    }
+    const url = new URL(window.location.href);
+    url.searchParams.delete('agent');
+    url.searchParams.delete('tile');
+    url.hash = 'agents';
+    window.history.replaceState(window.history.state, '', url);
+    setSelected(null);
+  }
+
   return <>
-    <motion.section ref={track} className={`connected-track ${staticView ? 'connected-static is-static' : ''} is-${phase} ${hideIntro ? 'is-intro-hidden' : ''}`}
-      aria-label="Meet the marketing specialists" data-agent={AGENTS[selected].id} data-progress="0"
-      style={{ '--discovery-progress': progress, '--discovery-expand': expand }}>
-      <div ref={stage} className="connected-stage">
-        {backdrop}
-        <motion.div className="connected-intro" aria-hidden={hideIntro || undefined} inert={hideIntro || undefined}
-          style={staticView ? undefined : { opacity: introOpacity, y: introY }}>
-          {heading}<div>{explore(onExplore)}</div>
-        </motion.div>
-        {!staticView && <div className="connected-orbit" aria-label="Agent artwork" inert={!exploring || undefined}>
-          {AGENTS.map(({ id }, index) => <SpatialCard key={id} index={index} progress={progress} width={width}
-            selectedIndex={selectedIndex} selected={selected === index} renderArtifact={renderArtifact}
-            onSelect={moveToAgent} />)}
-        </div>}
-        <section id="f03-agents" className="connected-exploration" hidden={!exploring} inert={!exploring || undefined}
-          aria-label="Explore the specialists">
-          <div ref={picker} className="connected-picker" role="group" aria-label="Choose a specialist">
-            {AGENTS.map(({ id }, index) => <button key={id} type="button" data-agent={id} aria-pressed={selected === index}
-              onClick={() => moveToAgent(index)}>{AGENT_COPY[id].name}</button>)}
-          </div>
-          <div className="connected-brief"><p className="connected-role">{copy.name}</p>
-            <h2>{copy.purpose}</h2><p>{copy.brief}</p></div>
-          <div className="connected-result"><AgentExample agent={AGENTS[selected].id} catalog={catalog} compact onReadFull={readFull} /></div>
-        </section>
+    <section id="agents" ref={gallery} className="connected-gallery" aria-labelledby="agents-title" tabIndex={-1}>
+      <div className="connected-gallery-heading">
+        <h2 id="agents-title">Explore the agents</h2>
+        <p>{staticView
+          ? 'Choose a specialist to see their brief and recommendation.'
+          : 'Drag to turn the sphere. Choose an image to open its agent’s dossier.'}</p>
       </div>
-    </motion.section>
-    <section id="f03-full-result" ref={fullResult} tabIndex={-1} className="connected-full-result" aria-label="Complete selected example">
-      <h2>The complete recommendation</h2>
-      <AgentExample agent={AGENTS[selected].id} catalog={catalog} />
-      <a href="#f03-agents" className="f03-text-button" onClick={event => {
-        if (!normalClick(event)) return;
-        event.preventDefault();
-        moveToAgent(selectedRef.current);
-      }}>Back to {copy.name}</a>
+      {!staticView && <div className="connected-gallery-stage">
+        <OrbitSphere tiles={tiles} selectedId={activeTile?.id ?? null} onSelect={selectTile}
+          reduced={reduced} hidden={!near} />
+        {near && status === 'pending' && <p className="connected-art-status" role="status">
+          <span className="connected-pixels" aria-hidden="true" />Loading agent artwork…
+        </p>}
+        {near && status === 'unavailable' && <div className="connected-art-status">
+          <span role="status">Artwork unavailable.</span>{' '}
+          <button className="f03-text-button" type="button" onClick={retry}>Retry artwork</button>
+        </div>}
+      </div>}
+      <div className="connected-picker" role="group" aria-label="Choose a specialist">
+        {AGENTS.map(({ id }) => <button key={id} type="button" data-agent={id}
+          aria-pressed={activeAgent === id} onClick={event => selectTile(tiles.find(tile => tile.agent === id), event)}>
+          {AGENT_COPY[id].name}
+        </button>)}
+      </div>
+    </section>
+
+    <dialog id="dossier" ref={dialog} className="connected-dossier" aria-labelledby="dossier-title"
+      onCancel={event => { event.preventDefault(); closeDossier(); }}>
+      {activeTile && <div key={activeTile.id} className="connected-dossier-content">
+        <div className="connected-dossier-toolbar">
+          <button className="f03-text-button" type="button" onClick={closeDossier}>Close dossier</button>
+        </div>
+        <h2 id="dossier-title">{activeCopy.name}</h2>
+        <figure className="connected-selected-art">
+          <img key={activeTile.image} src={activeTile.image} alt="" width="360" height="260" decoding="async"
+            onError={event => { event.currentTarget.hidden = true; }} />
+          <figcaption>{activeTile.label}</figcaption>
+        </figure>
+        <AgentExample agent={activeAgent} catalog={catalog} inDossier />
+        <details className="connected-explanation">
+          <summary>How it works</summary>
+          <ol>{activeCopy.steps.map(step => <li key={step}>{step}</li>)}</ol>
+        </details>
+      </div>}
+    </dialog>
+
+    <section id="results" className="connected-results" aria-labelledby="results-title" tabIndex={-1}>
+      <div className="connected-results-lead">
+        <h2 id="results-title">See what each specialist recommends</h2>
+        <p>Read a saved recommendation and trace it back to its brief and sources.</p>
+        <a className="f03-text-button" href="#agents">Back to agents</a>
+      </div>
+      <AgentExample agent={featured} catalog={catalog} />
     </section>
   </>;
 }
