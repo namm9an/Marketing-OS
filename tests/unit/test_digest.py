@@ -3,7 +3,7 @@ Unit tests for the Milestone 5 CMO Weekly Digest fan-out graph.
 
 The load-bearing guarantees here are (a) every active agent actually contributes — this is
 a real fan-out, not one agent wearing several hats — and (b) the competitor filter and
-citation path never leak internal E2E rows or model output into "grounded sources".
+citation path never leak the operator’s own records or model output into "grounded sources".
 """
 
 import sys
@@ -26,9 +26,13 @@ class TestCompetitorFilter(unittest.TestCase):
         init_db()
         seed_grounded_knowledge()
 
-    def test_excludes_internal_e2e_noise(self):
+    def test_excludes_operator_organization(self):
+        save_knowledge_unit(
+            id_str=new_id(), organization=settings.TARGET_ORGANIZATION,
+            k_class="positioning", confidence="high", content="The operator's own positioning.",
+            source_url="https://example.com/operator", enriched_by="grounded_crawler",
+        )
         for f in get_competitor_facts():
-            self.assertNotIn("E2E", f["organization"])
             self.assertNotIn(settings.TARGET_ORGANIZATION, f["organization"])
 
     def test_excludes_agent_enriched_rows(self):
@@ -79,7 +83,7 @@ class TestDigestGraph(unittest.TestCase):
         out = run_digest()
         self.assertTrue(out["citations"])
         for c in out["citations"]:
-            self.assertNotIn("E2E", c["organization"])
+            self.assertNotIn(settings.TARGET_ORGANIZATION, c["organization"])
             self.assertTrue(c["source_url"])
 
     def test_digest_worker_exception_resilience(self):

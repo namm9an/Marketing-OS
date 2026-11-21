@@ -207,16 +207,11 @@ class LLMService:
     def _fallback_mock_response(prompt: str, notice: Optional[str] = None) -> str:
         industry = (settings.TARGET_INDUSTRY or "Enterprise AI & GPU Cloud").strip()
         strategy_title = industry if industry.lower().startswith("enterprise") else f"Enterprise {industry}"
-        infra_industry = (
-            industry[len("enterprise"):].strip()
-            if industry.lower().startswith("enterprise")
-            else industry
-        ).lower()
         data = {
             "selected_option": f"{strategy_title} Strategy",
-            "statement": f"{settings.TARGET_ORGANIZATION} delivers enterprise {infra_industry} infrastructure with sub-50ms latency.",
-            "rationale": f"Positioning around certified compliance, B200 availability, and high-performance SLA for {settings.TARGET_ORGANIZATION}.",
-            "risks": "Hyperscaler pricing pressure on standard compute instances.",
+            "statement": f"For {settings.TARGET_ORGANIZATION}, start with the intended audience and the outcome they need to see.",
+            "rationale": "Use public competitor positioning to frame the comparison and collect proof for any claims about your own offering.",
+            "risks": "Validate comparisons and claims with current sources before using them externally.",
             "confidence": "High",
             "evidence_ids": [],
         }

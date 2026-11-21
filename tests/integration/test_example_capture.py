@@ -21,6 +21,15 @@ def test_missing_key_blocks_before_capture_files_or_api_calls(tmp_path, monkeypa
     assert not destination.exists()
 
 
+@pytest.mark.parametrize("folder", ["public", "dist"])
+def test_raw_capture_cannot_be_written_to_public_assets(tmp_path, monkeypatch, folder):
+    monkeypatch.setattr(settings, "BASE_DIR", tmp_path)
+    destination = tmp_path / "frontend" / folder / "examples"
+    with pytest.raises(CaptureBlocked, match="choose-a-private-output-directory"):
+        capture_examples(destination, mode="controlled")
+    assert not destination.exists()
+
+
 def test_controlled_capture_preserves_actual_saved_response_and_exact_retrieval(tmp_path, monkeypatch):
     import app.agents.base as agent_module
     import app.graph.workflow as workflow_module

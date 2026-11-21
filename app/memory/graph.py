@@ -33,9 +33,8 @@ import logging
 import re
 from typing import Any, Dict, List, Optional
 
-from app.core.config import settings
 from app.core.primitives import new_id
-from app.db.database import get_connection, init_db, search_knowledge_units, retry_on_locked
+from app.db.database import get_connection, init_db, retry_on_locked
 from app.memory.store import CORPUS_NS, validate_ns
 
 log = logging.getLogger(__name__)
@@ -43,13 +42,11 @@ log = logging.getLogger(__name__)
 # The tracked taxonomy. Aliases map to the canonical entity name so "Yotta" and
 # "Yotta Data Services" are one node.
 _ORG_ALIASES = {
-    "e2e": "E2E Networks", "yotta": "Yotta Data Services", "neysa": "Neysa AI",
+    "yotta": "Yotta Data Services", "neysa": "Neysa AI",
     "coreweave": "CoreWeave", "nebius": "Nebius", "lambda labs": "Lambda Labs",
     "runpod": "RunPod", "together ai": "Together AI", "crusoe": "Crusoe Cloud",
     "vast data": "VAST Data", "voltage park": "Voltage Park",
     "hyperstack": "Hyperstack", "foundry": "Foundry",
-    "vanguard": settings.TARGET_ORGANIZATION,
-    "vanguard cloud": settings.TARGET_ORGANIZATION,
 }
 _SKUS = ("B200", "H200", "H100", "A100", "L40S", "HGX")
 
@@ -85,55 +82,56 @@ def _add_edge(conn, src: str, rel: str, dst: str, namespace: str, provenance: st
     )
 
 
+def replace_corpus_edges(conn) -> int:
+    """Rebuild source-derived edges inside the caller's write transaction."""
+    facts = conn.execute(
+        "SELECT id, organization, knowledge_class, content FROM knowledge_units "
+        "WHERE is_grounded_source(enriched_by, source_url) ORDER BY created_at DESC LIMIT 10000"
+    ).fetchall()
+    conn.execute("DELETE FROM edges WHERE namespace = ?", (CORPUS_NS,))
+    for fact in facts:
+        org = (fact["organization"] or "").strip()
+        if not org:
+            continue
+        k_class = fact["knowledge_class"]
+        rel = _REL_FOR_CLASS.get(k_class, _DEFAULT_REL)
+        content = fact["content"]
+        fact_id = fact["id"]
+        for sku in extract_entities(content):
+            if sku in _SKUS:
+                provenance = f"knowledge_unit:{fact_id}"
+                if k_class == "pricing":
+                    rate_part = content.split(":", 1)[1] if ":" in content else content
+                    rates = re.findall(r"([$₹€£]?\s*\d+(?:\.\d+)?\s*(?:/[a-zA-Z]+)?)", rate_part)
+                    clean_rates = [r.strip() for r in rates if r.strip() and any(c.isdigit() for c in r)]
+                    currency = "$" if "$" in content else ("₹" if ("₹" in content or "inr" in content.lower()) else "USD")
+                    rate_meta = {
+                        "knowledge_unit_id": fact_id,
+                        "source_fact_id": fact_id,
+                        "amount": clean_rates[0] if clean_rates else None,
+                        "rates": clean_rates[:4],
+                        "currency": currency,
+                        "unit": "/hr" if "/hr" in content.lower() else "on-demand",
+                    }
+                    provenance = json.dumps(rate_meta)
+                _add_edge(conn, org, rel, sku, CORPUS_NS, provenance=provenance)
+
+    total = conn.execute(
+        "SELECT COUNT(*) AS n FROM edges WHERE namespace = ?", (CORPUS_NS,)
+    ).fetchone()["n"]
+    log.info(f"[Graph] corpus graph holds {total} edges over {len(facts)} sourced facts")
+    return total
+
+
 @retry_on_locked()
 def rebuild_corpus_graph() -> int:
-    """Re-derive corpus:global edges from the grounded facts. Idempotent — safe on every boot.
-
-    Organisation is taken from the row's own column rather than matched out of the prose,
-    so the `org --offers/prices--> SKU` edge is as sourced as the fact it came from.
-
-    Replace all corpus edges. A reseed can remove facts, so edges from the old corpus
-    could cite rows that no longer exist. Only `corpus:global` is cleared to preserve
-    agent and triage memory anchors.
-    """
+    """Replace the shared graph while preserving private memory anchors."""
     init_db()
-    facts = search_knowledge_units(limit=10_000, sourced_only=True)
     conn = get_connection()
     try:
         with conn:
-            conn.execute("DELETE FROM edges WHERE namespace = ?", (CORPUS_NS,))
-            for fact in facts:
-                org = (fact.get("organization") or "").strip()
-                if not org:
-                    continue
-                k_class = fact.get("knowledge_class")
-                rel = _REL_FOR_CLASS.get(k_class, _DEFAULT_REL)
-                content = fact.get("content", "")
-                fact_id = fact.get("id", "")
-                for sku in extract_entities(content):
-                    if sku in _SKUS:
-                        provenance = f"knowledge_unit:{fact_id}"
-                        if k_class == "pricing":
-                            rate_part = content.split(":", 1)[1] if ":" in content else content
-                            rates = re.findall(r"([$₹€£]?\s*\d+(?:\.\d+)?\s*(?:/[a-zA-Z]+)?)", rate_part)
-                            clean_rates = [r.strip() for r in rates if r.strip() and any(c.isdigit() for c in r)]
-                            currency = "$" if "$" in content else ("₹" if ("₹" in content or "inr" in content.lower()) else "USD")
-                            rate_meta = {
-                                "knowledge_unit_id": fact_id,
-                                "source_fact_id": fact_id,
-                                "amount": clean_rates[0] if clean_rates else None,
-                                "rates": clean_rates[:4],
-                                "currency": currency,
-                                "unit": "/hr" if "/hr" in content.lower() else "on-demand",
-                            }
-                            provenance = json.dumps(rate_meta)
-                        _add_edge(conn, org, rel, sku, CORPUS_NS, provenance=provenance)
-
-            total = conn.execute(
-                "SELECT COUNT(*) AS n FROM edges WHERE namespace = ?", (CORPUS_NS,)
-            ).fetchone()["n"]
-        log.info(f"[Graph] corpus graph holds {total} edges over {len(facts)} sourced facts")
-        return total
+            conn.execute("BEGIN IMMEDIATE")
+            return replace_corpus_edges(conn)
     finally:
         conn.close()
 

@@ -9,7 +9,7 @@ from app.core.config import Settings, settings
 
 
 def test_default_enterprise_identity():
-    assert settings.TARGET_ORGANIZATION == "Vanguard Cloud"
+    assert settings.TARGET_ORGANIZATION == "Your organization"
     assert settings.TARGET_INDUSTRY == "Enterprise AI & GPU Cloud"
     assert settings.PROJECT_NAME == "Marketing OS v2.0"
     assert settings.VERSION == "2.0.0"

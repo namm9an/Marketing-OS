@@ -1,0 +1,128 @@
+[
+  {
+    "organization": "Yotta Data Services",
+    "knowledge_class": "positioning",
+    "source_url": "https://yotta.com/",
+    "content": "Yotta describes Shakti Cloud as a sovereign AI cloud and GPU computing platform for AI work in India."
+  },
+  {
+    "organization": "Yotta Data Services",
+    "knowledge_class": "hardware",
+    "source_url": "https://yotta.com/",
+    "content": "Yotta's AI Lab description mentions NVIDIA H100 and L40S for managed notebooks."
+  },
+  {
+    "organization": "Neysa AI",
+    "knowledge_class": "positioning",
+    "source_url": "https://neysa.ai/",
+    "content": "Neysa presents Velocis as an AI acceleration cloud for building, deploying and scaling AI."
+  },
+  {
+    "organization": "Together AI",
+    "knowledge_class": "hardware",
+    "source_url": "https://www.together.ai/",
+    "content": "Together AI's cloud overview identifies B200, GB200, GB300, H100 and H200 hardware."
+  },
+  {
+    "organization": "Together AI",
+    "knowledge_class": "pricing",
+    "source_url": "https://www.together.ai/pricing",
+    "content": "Together AI publishes separate pricing sections for serverless inference and provisioned throughput."
+  },
+  {
+    "organization": "RunPod",
+    "knowledge_class": "positioning",
+    "source_url": "https://www.runpod.io/",
+    "content": "RunPod addresses AI developers and presents Pods, Serverless, Clusters and Hub as different ways to build and deploy workloads."
+  },
+  {
+    "organization": "RunPod",
+    "knowledge_class": "hardware",
+    "source_url": "https://www.runpod.io/pricing",
+    "content": "RunPod's GPU Cloud Pricing page mentions A100, B200, H100, H200, L40S and RTX 4090."
+  },
+  {
+    "organization": "RunPod",
+    "knowledge_class": "pricing",
+    "source_url": "https://www.runpod.io/pricing",
+    "content": "RunPod publishes separate pricing categories for Pods, Serverless, Clusters and Reserved Clusters."
+  },
+  {
+    "organization": "RunPod",
+    "knowledge_class": "documentation",
+    "source_url": "https://www.runpod.io/serverless",
+    "content": "RunPod describes dedicated Serverless GPU API endpoints with bring-your-container deployment and network storage."
+  },
+  {
+    "organization": "Lambda Labs",
+    "knowledge_class": "positioning",
+    "source_url": "https://lambdalabs.com/",
+    "content": "Lambda positions its cloud offering around supercomputers for training and inference."
+  },
+  {
+    "organization": "Nebius",
+    "knowledge_class": "positioning",
+    "source_url": "https://nebius.com/",
+    "content": "Nebius presents a cloud spanning AI training and inference, and emphasizes repeatable self-service cluster setup."
+  },
+  {
+    "organization": "Nebius",
+    "knowledge_class": "hardware",
+    "source_url": "https://nebius.com/",
+    "content": "The Nebius cloud overview mentions NVIDIA H100 hardware."
+  },
+  {
+    "organization": "CoreWeave",
+    "knowledge_class": "positioning",
+    "source_url": "https://www.coreweave.com/",
+    "content": "CoreWeave positions its cloud platform as purpose-built for demanding AI workloads."
+  },
+  {
+    "organization": "Crusoe Cloud",
+    "knowledge_class": "hardware",
+    "source_url": "https://crusoe.ai/cloud/",
+    "content": "Crusoe Cloud lists NVIDIA GB200, B200, H200 and H100 among its GPU options."
+  },
+  {
+    "organization": "Crusoe Cloud",
+    "knowledge_class": "positioning",
+    "source_url": "https://crusoe.ai/cloud/",
+    "content": "Crusoe Cloud highlights building, training and serving models within one cloud."
+  },
+  {
+    "organization": "VAST Data",
+    "knowledge_class": "positioning",
+    "source_url": "https://www.vastdata.com/platform",
+    "content": "VAST Data positions its platform as AI-era data infrastructure and invites prospects to a weekly live demo."
+  },
+  {
+    "organization": "Voltage Park",
+    "knowledge_class": "positioning",
+    "source_url": "https://www.voltagepark.com/",
+    "content": "Voltage Park positions its service as foundational AI infrastructure for demanding workloads."
+  },
+  {
+    "organization": "Voltage Park",
+    "knowledge_class": "hardware",
+    "source_url": "https://www.voltagepark.com/",
+    "content": "Voltage Park's site highlights NVIDIA HGX H100 GPUs."
+  },
+  {
+    "organization": "Hyperstack",
+    "knowledge_class": "hardware",
+    "source_url": "https://www.hyperstack.cloud/pricing",
+    "content": "Hyperstack's pricing page references A100, B200, GB200, GB300, H100, H200 and L40 GPU options."
+  },
+  {
+    "organization": "Hyperstack",
+    "knowledge_class": "pricing",
+    "source_url": "https://www.hyperstack.cloud/pricing",
+    "content": "Hyperstack distinguishes on-demand, reserved and spot GPU VM pricing."
+  },
+  {
+    "organization": "Foundry",
+    "knowledge_class": "positioning",
+    "source_url": "https://mlfoundry.com/",
+    "content": "The Foundry domain presents Mithril as an AI compute platform for businesses and research organizations."
+  }
+]
