@@ -3054,11 +3054,9 @@ still belongs to F10.
 The five original F02 files and manifest are unchanged. Corrected, genuine
 `gemini-3.5-flash-lite` results live separately in
 `frontend/public/examples/f03-reviewed/`, with their own checksums and original
-request/response/source evidence. The first corrected set is retained in
-`docs/recordings/f03-first-correction/`; one later PMM response suggesting
-unsupported immediate availability/waitlist implications is retained with a
-rejection record in `docs/recordings/f03-rejected-product-marketing/`. It was
-genuinely recaptured after tightening the goal, not rewritten by hand.
+request/response/source evidence. An earlier Product Marketing response implied
+immediate availability and waitlist options without supporting evidence. The
+accepted response came from a new capture with a tighter goal.
 
 F03 used eleven deliberate provider attempts: five first-pass corrections,
 five second-pass captures including the rejected PMM record, and one PMM
