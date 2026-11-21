@@ -143,7 +143,7 @@ test('slow artwork keeps navigation usable and recovers through the local retry'
   let releaseArt;
   const artworkResponse = new Promise(resolve => { releaseArt = resolve; });
   let remainingInitialFailures = 1;
-  await page.route('**/showcase/phase-3/orbit/branding-1.webp*', async route => {
+  await page.route('**/assets/agent-gallery/branding-1.webp*', async route => {
     if (remainingInitialFailures === 0) return route.continue();
     remainingInitialFailures -= 1;
     await artworkResponse;

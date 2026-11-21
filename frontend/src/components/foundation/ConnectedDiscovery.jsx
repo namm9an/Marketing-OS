@@ -16,7 +16,7 @@ const workImages = {
 // Interleave roles so the presentation offers different kinds of work at its front.
 const workTiles = workImages.branding.flatMap((_, index) => AGENTS.map(({ id: agent }) => {
   const id = `${agent}-${index + 1}`;
-  return { id, agent, label: workImages[agent][index], image: `/showcase/phase-3/orbit/${id}.webp` };
+  return { id, agent, label: workImages[agent][index], image: `/assets/agent-gallery/${id}.webp` };
 }));
 
 function tileFromLocation() {
