@@ -45,8 +45,8 @@ flowchart TD
 
     subgraph Memory ["Four-Tier Memory Hierarchy"]
         direction TB
-        L0[("L0: Grounded Corpus (75 facts with source URLs | FTS5 BM25)")]
-        L05[("L0.5: Entity Graph (50 deterministic relationship edges)")]
+        L0[("L0: Grounded Corpus (source-linked observations | FTS5 BM25)")]
+        L05[("L0.5: Entity Graph (source-derived relationship edges)")]
         L1[("L1: Private Memory (5 isolated namespaces: agent_type in ns)")]
         L2[("L2: Joint Triage Memory (Order-stable pair namespaces)")]
     end
@@ -65,17 +65,9 @@ flowchart TD
 
 ## Retrieval Benchmarks
 
-Evaluated against a golden set of domain queries comparing standard full-text search against deterministic taxonomy-expanded search:
-
-| Metric | Baseline Search | Taxonomy-Expanded Search | Impact |
-|---|:---:|:---:|:---:|
-| **Overall Recall@5** | 0.726 | **0.943** | +21.7% |
-| **Paraphrase Recall@5** | 0.283 | **0.900** | +61.7% (Resolves vocabulary mismatch) |
-| **Lexical Recall@5** | 0.967 | **0.967** | Exact keyword precision |
-| **Mean Reciprocal Rank (MRR)** | 0.771 | **0.985** | Top-ranked evidence retrieval |
-| **Zero-Hit Queries** | 5 | **0** | Complete candidate coverage |
-
----
+Run `python -m app.eval.retrieval` against a fresh database to compare
+standard full-text search with taxonomy expansion on the bundled starter
+sources. Both the corpus and the judged questions affect the results.
 
 ## API Reference
 
@@ -114,25 +106,19 @@ source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-### 2. Seed Database
+### Start the API
 
-Populate the local SQLite database with verified competitor facts and derive the initial entity graph:
-
-```bash
-python -m app.db.grounded_seed
-```
-
-### 3. Start Application Server
+Configure `ADMIN_USER` and `ADMIN_PASSWORD` in your local environment.
+Set `TARGET_ORGANIZATION` and `TARGET_INDUSTRY` when running for a specific
+organization. Leave `GEMINI_API_KEY` unset for controlled responses.
 
 ```bash
 python -m app.main
 ```
 
-The application server binds to `http://localhost:5000`. You can verify it is healthy via:
-
-```bash
-curl http://localhost:5000/api/health
-```
+The server listens on <http://localhost:10000> by default. Check `/api/health`.
+Startup installs the bundled source observations and updates the search index
+and graph. Operator records and memory are preserved.
 
 ---
 
