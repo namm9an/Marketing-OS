@@ -149,7 +149,7 @@ GOVERNANCE_SCENARIOS: List[GovernanceScenario] = [
     ),
     GovernanceScenario(
         id="gov_neg_04_clusters",
-        prompt="What cluster sizes does Vanguard Cloud provide for distributed training?",
+        prompt="What cluster sizes could we offer for distributed training?",
         expected_escalated=False,
         trigger_term=None,
         description="Cluster capability query",

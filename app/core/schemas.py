@@ -18,7 +18,7 @@ class KnowledgeUnitSchema(SchemaBase):
     """L0 Grounded knowledge unit scraped from competitor and market sources."""
 
     id: str = Field(..., description="Unique 128-bit hex UUID4 or deterministic SHA-256 identifier")
-    organization: str = Field(..., description="Entity or competitor name (e.g. Vanguard Cloud, Nebius)")
+    organization: str = Field(..., description="Entity or competitor name")
     knowledge_class: str = Field(
         ...,
         description="Fact taxonomy class: pricing, hardware fleet, positioning, compliance, etc.",

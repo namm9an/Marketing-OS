@@ -32,8 +32,8 @@ class Settings(BaseSettings):
 
     # Enterprise Identity & Industry Vertical (Parameterizable)
     TARGET_ORGANIZATION: str = Field(
-        default="Vanguard Cloud",
-        description="Enterprise name for target organization (de-identified default)",
+        default="Your organization",
+        description="Name of the operator's organization",
     )
     TARGET_INDUSTRY: str = Field(
         default="Enterprise AI & GPU Cloud",

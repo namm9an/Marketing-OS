@@ -3,15 +3,17 @@ import json
 import pytest
 
 from app.core.config import settings
+from app.core.primitives import content_hash
 from app.db import database, grounded_seed
+from app.memory.graph import rebuild_corpus_graph
 from app.agents.base import run_agent
 from app.services.llm_service import LLMService
 
 
 @pytest.mark.parametrize("snippet", [
     "Hyperstack GPU cloud pricing. This website stores cookies on your computer. These cookies are used to collect information about how you interact with our website.",
-    "TIR Platform: AI/ML Model Deployment. Company Partner Investor Resources Careers Contact Sign In GPU Pricing Company Blog Latest News.",
-    "E2E Cloud Skip to main content MyAccount TIR Search docs or Ask AI Sign Up Explore All Products and documentation pages.",
+    "AI Platform: Model Deployment. Company Partner Investor Resources Careers Contact Sign In GPU Pricing Company Blog Latest News.",
+    "Example Cloud Skip to main content Dashboard Search docs or Ask AI Sign Up Explore All Products and documentation pages.",
     "The Ultimate AI Cloud. Products Solutions Resources Pricing Company Investors Contact sales Log in. Build and scale AI faster.",
 ])
 def test_page_chrome_is_not_accepted_as_documentation_evidence(snippet):
@@ -27,20 +29,20 @@ def test_useful_privacy_content_is_not_rejected_for_mentioning_cookies():
 def test_seed_keeps_observations_without_claiming_a_complete_fleet_or_price_mapping(tmp_path, monkeypatch):
     monkeypatch.setattr(settings, "DB_PATH", tmp_path / "source.db")
     database.reset_db_state()
-    source = tmp_path / "scrape.json"
-    source.write_text(json.dumps([{"name": "Example Cloud", "region": "global", "subpages": [{
-        "status": "success", "url": "https://example.com/gpu", "gpus": ["H100"],
-        "pricing": ["$1.20/hr"], "headings": ["GPU compute"],
-        "snippet": "GPU compute. This website stores cookies on your computer to collect information about how you interact with our website.",
-    }]}]))
-    monkeypatch.setattr(grounded_seed, "DEEP_SCRAPE_PATH", source)
+    source = tmp_path / "sources.json"
+    hardware = "The cloud overview mentions H100, without listing its complete fleet."
+    pricing = "The vendor publishes a rate that is not attributed to a specific SKU."
+    source.write_text(json.dumps([
+        {"organization": "Example Cloud", "knowledge_class": kind, "content": content,
+         "source_url": "https://example.com/gpu"}
+        for kind, content in (("hardware", hardware), ("pricing", pricing))
+    ]))
+    monkeypatch.setattr(grounded_seed, "STARTER_SOURCES", source)
     grounded_seed.seed_grounded_knowledge()
     rows = database.search_knowledge_units(limit=20, sourced_only=True)
-    assert {row["knowledge_class"] for row in rows} == {"hardware", "pricing", "positioning"}
-    hardware = next(row for row in rows if row["knowledge_class"] == "hardware")
-    pricing = next(row for row in rows if row["knowledge_class"] == "pricing")
-    assert "snapshot" in hardware["content"].lower() and "not a complete fleet" in hardware["content"].lower()
-    assert "H100" not in pricing["content"] and "$1.20/hr" in pricing["content"]
+    assert {row["knowledge_class"]: row["content"] for row in rows} == {
+        "hardware": hardware, "pricing": pricing,
+    }
     assert all(row["source_url"] == "https://example.com/gpu" for row in rows)
     connection = database.get_connection()
     try:
@@ -70,20 +72,67 @@ def test_reseed_failure_preserves_existing_corpus_and_search_index(tmp_path, mon
     original = database.search_knowledge_units("H100", limit=20, sourced_only=True)
     assert original
 
-    source = tmp_path / "invalid-scrape.json"
+    source = tmp_path / "replacement-sources.json"
     source.write_text(json.dumps([{
-        "name": "RollbackSentinel", "region": "global", "subpages": [{
-            "status": "success", "url": "https://example.com/gpu", "gpus": ["L40S"],
-        }],
-    }, {"name": "Missing region"}]))
-    monkeypatch.setattr(grounded_seed, "DEEP_SCRAPE_PATH", source)
+        "organization": "RollbackSentinel", "knowledge_class": "hardware",
+        "source_url": "https://example.com/gpu", "content": "The vendor mentions L40S without claiming a complete fleet.",
+    }]))
+    monkeypatch.setattr(grounded_seed, "STARTER_SOURCES", source)
 
-    grounded_seed.seed_grounded_knowledge(only_if_empty=True)
-    with pytest.raises(KeyError, match="region"):
-        grounded_seed.seed_grounded_knowledge()
+    def graph_failure(conn):
+        conn.execute("DELETE FROM edges WHERE namespace = 'corpus:global'")
+        raise RuntimeError("could not refresh graph")
+
+    monkeypatch.setattr(grounded_seed, "replace_corpus_edges", graph_failure)
+    with pytest.raises(RuntimeError, match="could not refresh graph"):
+        grounded_seed.seed_grounded_knowledge(only_if_empty=True)
 
     assert database.search_knowledge_units("H100", limit=20, sourced_only=True) == original
     assert not database.search_knowledge_units("RollbackSentinel")
+    with database.get_connection() as conn:
+        assert conn.execute("SELECT COUNT(*) FROM edges WHERE namespace = 'corpus:global'").fetchone()[0] > 0
+
+
+def test_startup_replaces_legacy_sources_and_preserves_other_records(tmp_path, monkeypatch):
+    monkeypatch.setattr(settings, "DB_PATH", tmp_path / "existing.db")
+    database.reset_db_state()
+    organization = "Retired Cloud"
+    url = "https://retired.example/gpus"
+    content = "Hardware fleet observations in a source snapshot for Retired Cloud: H100."
+    legacy_id = content_hash(f"{organization}|hardware|{url}|{content}")
+    database.save_knowledge_unit(
+        id_str=legacy_id, organization=organization, k_class="hardware", confidence="high",
+        content=content, source_url=url, enriched_by="grounded_crawler",
+    )
+    older_id = "a" * 32
+    database.save_knowledge_unit(
+        id_str=older_id, organization=organization, k_class="hardware", confidence="high",
+        content="Verified GPU Hardware Fleet on Retired Cloud: A100.", source_url=url,
+        enriched_by="grounded_crawler",
+    )
+    database.save_knowledge_unit(
+        id_str="operator-source", organization="Operator reference", k_class="hardware",
+        confidence="high", content="Custom H100 source reference.",
+        source_url="https://operator.example/gpus", enriched_by="grounded_crawler",
+    )
+    rebuild_corpus_graph()
+    with database.get_connection() as conn:
+        conn.execute(
+            "INSERT INTO edges (id, src, rel, dst, namespace) VALUES (?, ?, ?, ?, ?)",
+            ("private-edge", "mem:1", "anchored_to", "H100", "agent:branding"),
+        )
+
+    grounded_seed.seed_grounded_knowledge(only_if_empty=True)
+    after_migration = database.search_knowledge_units(limit=100, sourced_only=True)
+    grounded_seed.seed_grounded_knowledge(only_if_empty=True)
+    assert database.search_knowledge_units(limit=100, sourced_only=True) == after_migration
+    assert any(row["id"] == "operator-source" for row in after_migration)
+    assert any(row["id"].startswith("starter:") for row in after_migration)
+    assert all(row["id"] not in {legacy_id, older_id} for row in after_migration)
+    with database.get_connection() as conn:
+        assert not conn.execute("SELECT 1 FROM knowledge_units_fts WHERE id = ?", (legacy_id,)).fetchone()
+        assert not conn.execute("SELECT 1 FROM edges WHERE src = ?", (organization,)).fetchone()
+        assert conn.execute("SELECT 1 FROM edges WHERE id = 'private-edge'").fetchone()
 
 
 @pytest.mark.parametrize("query,skus", [
@@ -94,5 +143,13 @@ def test_specific_hardware_queries_prioritize_matching_observations(tmp_path, mo
     monkeypatch.setattr(settings, "DB_PATH", tmp_path / "hardware.db")
     database.reset_db_state()
     grounded_seed.seed_grounded_knowledge()
+    corpus = database.search_knowledge_units(limit=100, sourced_only=True)
+    matching = {
+        row["id"] for row in corpus
+        if row["knowledge_class"] == "hardware" and any(sku in row["content"] for sku in skus)
+    }
+    assert matching
     rows = database.search_knowledge_units(query, limit=5, sourced_only=True, expand_taxonomy=True)
-    assert rows and all(any(sku in row["content"] for sku in skus) for row in rows)
+    top = rows[:min(5, len(matching))]
+    assert len(top) == min(5, len(matching))
+    assert all(row["id"] in matching for row in top)

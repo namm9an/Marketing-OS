@@ -111,7 +111,7 @@ class TestChatLayer(unittest.TestCase):
         save_knowledge_unit(
             id_str=new_id(), k_class="positioning", confidence="high",
             content="Nebius is beatable on sovereignty messaging", organization="Nebius",
-            source_url="https://www.e2enetworks.com/", enriched_by="branding_agent",
+            source_url="https://example.com/agent-output", enriched_by="branding_agent",
         )
         result = chat.run_chat("pr", "what do we know about Nebius sovereignty messaging?")
         self.assertEqual(result["recall"]["facts"], [])

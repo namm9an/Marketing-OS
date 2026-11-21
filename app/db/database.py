@@ -46,6 +46,8 @@ _TAXONOMY_EXPANSIONS = {
     "hourly": ["hr", '"/hr"', "pricing", "rate"],
     "hour": ["hr", '"/hr"', "pricing", "rate"],
     "cost": ["pricing", "rate", "rate card"],
+    "billing": ["pricing", "rate"],
+    "pitch": ["positioning"],
     "cheapest": ["pricing", "rate", "rate card"],
     "rental": ["pricing", "cloud", "instance"],
     "capacity": ["pricing", "cloud"],
@@ -196,7 +198,7 @@ CREATE INDEX IF NOT EXISTS idx_login_failures_ip ON login_failures(ip, attempted
 
 CREATE TABLE IF NOT EXISTS knowledge_units (
     id TEXT PRIMARY KEY,
-    organization TEXT NOT NULL DEFAULT 'Vanguard Cloud',
+    organization TEXT NOT NULL DEFAULT 'Your organization',
     knowledge_class TEXT NOT NULL,
     confidence TEXT NOT NULL,
     content TEXT NOT NULL,
@@ -701,7 +703,6 @@ def get_competitor_facts(limit: int = 200, target_org: Optional[str] = None) -> 
             SELECT * FROM knowledge_units
             WHERE organization != ?
               AND organization NOT LIKE ?
-              AND organization NOT LIKE '%E2E%'
               AND organization NOT LIKE '%(Us)%'
               AND is_grounded_source(enriched_by, source_url)
             ORDER BY organization, knowledge_class

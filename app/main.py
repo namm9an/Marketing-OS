@@ -46,8 +46,7 @@ from app.memory.graph import rebuild_corpus_graph
 
 seed_grounded_knowledge(only_if_empty=True)
 
-# Deterministic and idempotent, so re-deriving on every boot keeps the graph in step with
-# the corpus without a migration step. Cheap: one pass over ~94 sourced rows.
+# Rebuild on boot to pick up any operator-added sources.
 rebuild_corpus_graph()
 
 

@@ -348,13 +348,13 @@ def run_digest(
 
 
 if __name__ == "__main__":
-    # ponytail self-check: every active agent fans out, digest is populated, nothing cites E2E.
+    # Check that every active specialist contributes and citations concern competitors.
     out = run_digest()
     assert len(out["agent_briefs"]) == len(ACTIVE_AGENTS), out["agent_briefs"]
     assert out["headline"] and out["executive_summary"]
     assert out["network"]["total_facts"] > 0
     assert all(
-        "E2E" not in c["organization"] and settings.TARGET_ORGANIZATION not in c["organization"]
+        settings.TARGET_ORGANIZATION not in c["organization"]
         for c in out["citations"]
     )
     print("digest.py self-check OK:", out["headline"])

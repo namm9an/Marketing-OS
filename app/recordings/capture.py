@@ -21,8 +21,9 @@ from app.core.config import settings
 from app.core.evidence_capture import capture_retrievals
 
 AGENTS = ("branding", "pr", "social", "product_marketing", "events")
-SCENARIO_ID = "fictional-vanguard-b200-launch-v2"
-BRIEF = "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. "
+SCENARIO_ID = "competitor-positioning-example"
+CLIENT = "Example Cloud"
+BRIEF = f"{CLIENT} is planning a positioning review. Compare its proposed offer with the available public competitor evidence. This is a fictional brief. "
 GOALS = {
     "branding": BRIEF + "Write a concise two-sentence positioning recommendation for ML teams considering this launch. Give the audience a clear proposed value and next step.",
     "pr": BRIEF + "A price war narrative has been proposed. Recommend an alternative launch message: include the suggested message itself and the communication risk that needs human review.",
@@ -69,7 +70,7 @@ def _isolated_runtime(mode):
     with TemporaryDirectory(prefix="marketing-os-capture-") as directory:
         try:
             settings.DB_PATH = Path(directory) / "capture.db"
-            settings.TARGET_ORGANIZATION = "Vanguard Cloud"
+            settings.TARGET_ORGANIZATION = CLIENT
             settings.TARGET_INDUSTRY = "Enterprise AI & GPU Cloud"
             settings.ENVIRONMENT = "test"
             settings.SESSION_COOKIE_SECURE = False
@@ -135,7 +136,10 @@ def capture_examples(output, mode="live", resume=False):
         raise CaptureBlocked("unknown-capture-mode")
     if mode == "live" and not settings.GEMINI_API_KEY.strip():
         raise CaptureBlocked("missing-provider-key")
-    output = Path(output)
+    output = Path(output).resolve()
+    if any(output.is_relative_to((settings.BASE_DIR / "frontend" / folder).resolve())
+           for folder in ("public", "dist")):
+        raise CaptureBlocked("choose-a-private-output-directory")
     output.mkdir(parents=True, exist_ok=True)
     manifest_path = output / "manifest.json"
     entries = []
@@ -155,7 +159,7 @@ def capture_examples(output, mode="live", resume=False):
         except (ValueError, TypeError):
             raise CaptureBlocked("invalid-existing-manifest") from None
     manifest = {"schema_version": 1, "status": "blocked", "mode": f"{mode}-recordings",
-                "scenario_id": scenario, "fictional_client": "Vanguard Cloud", "examples": list(entries)}
+                "scenario_id": scenario, "fictional_client": CLIENT, "examples": list(entries)}
     try:
         with _isolated_runtime(mode):
             from app.main import app
@@ -185,7 +189,7 @@ def capture_examples(output, mode="live", resume=False):
                               "recording": {"kind": "live-recording" if mode == "live" else "controlled-fixture",
                                             "captured_at": datetime.now(timezone.utc).isoformat(),
                                             "repository_revision": _revision(), "transport": "flask-test-client",
-                                            "fictional_client": "Vanguard Cloud", "signal_kind": "supplied-simulated"},
+                                            "fictional_client": CLIENT, "signal_kind": "supplied-simulated"},
                               "request": {"workflow": "run", "agent_type": agent, "goal": GOALS[agent]},
                               "response": response.get_json(), "evidence": {"retrievals": retrievals}}
                     validate_recording(bundle, mode, agent)
