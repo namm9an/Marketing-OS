@@ -1,34 +1,32 @@
 {
-  "schema_version": 1,
+  "schema_version": 2,
   "status": "ready",
-  "mode": "live-recordings",
-  "scenario_id": "fictional-vanguard-b200-launch-v1",
-  "fictional_client": "Vanguard Cloud",
+  "mode": "reviewed-demo",
   "examples": [
     {
       "agent": "branding",
       "path": "branding.json",
-      "sha256": "dad76b4b6c9c018dcce77d20c5a0a2665422e84a4bee8fc80bc4e81375e01e46"
+      "sha256": "cc64d4c1159703355fa7eee78283ecd9c833b6b283adf4096185f0670ed91a2c"
     },
     {
       "agent": "pr",
       "path": "pr.json",
-      "sha256": "793dee1040f70e78e32f4561edec26f7750d131dd62f4ac6cab297e592ef98a4"
+      "sha256": "c3918c328191c581bdbd8fe43fb52685be590063916732882c223e4ca650cfad"
     },
     {
       "agent": "social",
       "path": "social.json",
-      "sha256": "8067d2e3490506fa6f67a99bcf87e06a5dbc11b07056868d2e530e18da3c689f"
+      "sha256": "a8eb1763419e7e834453ddce2cff7e9c2d26a48c919526890ff9f1fc6390eb34"
     },
     {
       "agent": "product_marketing",
-      "path": "product_marketing.json",
-      "sha256": "a69a8373fd3355edb241ca18bb510e2df6b76da09194d16b058bb50185ad2c45"
+      "path": "product-marketing.json",
+      "sha256": "2dbf8b01725df8bbb6e77c0d3e83ff236c2d81c441fc52a4ab0c8b1cbea4d4c2"
     },
     {
       "agent": "events",
       "path": "events.json",
-      "sha256": "fe97736e9643916064e6fb1f0737a2a4c1a1c4247fb5899449e0d147d3bf5ba9"
+      "sha256": "3a2d5051f68eb68d3cfcd2a503c07e42b1a99a6ca9a842f01c33e76c585e567a"
     }
   ]
 }

@@ -1,153 +1,18 @@
 {
-  "schema_version": 1,
-  "recording": {
-    "kind": "live-recording",
-    "captured_at": "2026-11-16T09:21:32.882234+00:00",
-    "repository_revision": "bea1e7f6534408702ef1c05505a5890f755a5fef",
-    "transport": "flask-test-client",
-    "fictional_client": "Vanguard Cloud",
-    "signal_kind": "supplied-simulated"
-  },
-  "request": {
-    "workflow": "run",
-    "agent_type": "pr",
-    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Review a proposed price war narrative and recommend a communication response with explicit risks; do not imply legal clearance."
-  },
-  "response": {
-    "decision": {
-      "attempts": 1,
-      "completion_tokens": 468,
-      "confidence": "High",
-      "escalated": true,
-      "escalation_reason": "High-risk factor detected ('legal') — requires CMO ratification.",
-      "evidence_ids": [
-        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-        "53574d1f8046ec91449f826ab09f194f6faa1063738e4f0292ccce28f56b9502",
-        "1bc8f534deccf2c2a8405fcb4cb9ad594c522e709562f82755b5268bbfce1fa0",
-        "7cc3b773f65453757834b3978dfd6e6bec858831a1e8be1f44a94b8ea8fec5c5"
-      ],
-      "facts_retrieved": 5,
-      "fallback_used": false,
-      "finish_reason": "STOP",
-      "id": "dfdac559b1b041f199a540a685977eec",
-      "invalid_evidence_ids_count": 0,
-      "latency_ms": 5544.74,
-      "model": "gemini-3.5-flash-lite",
-      "prompt_tokens": 1048,
-      "rationale": "Nebius's verified fleet is currently anchored to H100 hardware, whereas Vanguard Cloud features empirical rate card support for next-generation architectures like the B200. Rather than engaging in a destructive margin-eroding price war, Vanguard should emphasize superior hardware generation value (B200 rate efficiencies) and integrated deployment platforms (TIR platform) to justify enterprise pricing.",
-      "reasoning_source": "langgraph:pr:gemini-3.5-flash-lite",
-      "requested_model": "gemini-3.5-flash-lite",
-      "retrieval_ms": 1.6,
-      "risks": "Risk of price-sensitive customers temporarily opting for heavily discounted legacy H100 instances elsewhere; potential enterprise skepticism regarding day-one stability of new architecture deployments.",
-      "selected_option": "Total Cost of Ownership (TCO) and Architectural Efficiency Over Price Wars",
-      "served_model_verified": true,
-      "source": "live",
-      "thoughts_tokens": null,
-      "total_tokens": 1516,
-      "total_wall_ms": 5546.45
-    },
-    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Review a proposed price war narrative and recommend a communication response with explicit risks; do not imply legal clearance.",
-    "knowledge_units": [
-      {
-        "class": "fact",
-        "confidence": "high",
-        "content": "pr agent decision: Total Cost of Ownership (TCO) and Architectural Efficiency Over Price Wars"
-      }
-    ],
-    "metrics": {
-      "attempts": 1,
-      "completion_tokens": 468,
-      "evidence_ids": [
-        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-        "53574d1f8046ec91449f826ab09f194f6faa1063738e4f0292ccce28f56b9502",
-        "1bc8f534deccf2c2a8405fcb4cb9ad594c522e709562f82755b5268bbfce1fa0",
-        "7cc3b773f65453757834b3978dfd6e6bec858831a1e8be1f44a94b8ea8fec5c5"
-      ],
-      "facts_retrieved": 5,
-      "fallback_used": false,
-      "finish_reason": "STOP",
-      "invalid_evidence_ids_count": 0,
-      "latency_ms": 5544.74,
-      "model": "gemini-3.5-flash-lite",
-      "prompt_tokens": 1048,
-      "requested_model": "gemini-3.5-flash-lite",
-      "retrieval_ms": 1.6,
-      "served_model_verified": true,
-      "source": "live",
-      "thoughts_tokens": null,
-      "total_tokens": 1516,
-      "total_wall_ms": 5546.45
-    },
-    "positioning": {
-      "differentiation_basis": "Sovereign Neo-Cloud Platform",
-      "state": "ACTIVE",
-      "statement": "Position Vanguard Cloud's upcoming B200 deployment around verified enterprise-grade reliability and cost-performance efficiency rather than entering a race-to-the-bottom pricing war against legacy H100-bound competitors like Nebius."
-    },
-    "success": true
-  },
-  "evidence": {
-    "retrievals": [
-      {
-        "agent": "pr",
-        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Review a proposed price war narrative and recommend a communication response with explicit risks; do not imply legal clearance.",
-        "facts": [
-          {
-            "id": "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-            "organization": "Nebius",
-            "knowledge_class": "hardware",
-            "confidence": "high",
-            "content": "Verified GPU Hardware Fleet on Nebius: H100.",
-            "source_url": "https://nebius.com/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.6978021290602765
-          },
-          {
-            "id": "0f6a3b902ce6fa36351433a415df321091f9e32b021c4a98c86a0c36149eb9d9",
-            "organization": "Hyperstack",
-            "knowledge_class": "documentation",
-            "confidence": "high",
-            "content": "Verified Subpage Documentation: Hyperstack AI Cloud Pricing | On-Demand, Reserved and Spot GPU VMs This website stores cookies on your computer. These cookies are used to collect information about how you interact with our website and allow us to remember you. We use this information in order to improve and customize your browsing",
-            "source_url": "https://www.hyperstack.cloud/pricing",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.369555635847897
-          },
-          {
-            "id": "53574d1f8046ec91449f826ab09f194f6faa1063738e4f0292ccce28f56b9502",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "pricing",
-            "confidence": "high",
-            "content": "Empirical Pricing & Rate Card Terms for A100, B200, H100, H200: ₹436.00 /hr, ₹671.00 /hr, ₹362.00 /hr.",
-            "source_url": "https://www.e2enetworks.com/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.241113714882006
-          },
-          {
-            "id": "1bc8f534deccf2c2a8405fcb4cb9ad594c522e709562f82755b5268bbfce1fa0",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "pricing",
-            "confidence": "high",
-            "content": "Empirical Pricing & Rate Card Terms for A100, B200, H100, H200, L40S: ₹200.40/hr, ₹0.70/hr, ₹49/hr, ₹54.80/hr.",
-            "source_url": "https://www.e2enetworks.com/pricing",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.003028720969419
-          },
-          {
-            "id": "7cc3b773f65453757834b3978dfd6e6bec858831a1e8be1f44a94b8ea8fec5c5",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "documentation",
-            "confidence": "high",
-            "content": "Verified Subpage Documentation: TIR Platform: AI/ML Model Deployment & Training Platform | E2E Networks E2E Networks GPUs TIR Pricing Company Partner Investors Resources Careers Contact Sign In GPUs TIR Pricing Company Partner Investors Careers Contact Resources Blog Latest news & tutorials Events Workshops & meetups Ecosystem Ena",
-            "source_url": "https://www.e2enetworks.com/tir",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -5.947913408607739
-          }
-        ]
-      }
-    ]
-  }
+  "schema_version": 2,
+  "kind": "illustrative-demo",
+  "agent": "pr",
+  "brief": "Review the fictional service’s proposed headline: “Every trade-in is a zero-waste upgrade.”",
+  "result": "Replace the absolute claim with “Explore repair and trade-in options for your device.” Ask a human reviewer to check any environmental claim against documented collection, reuse and recycling practices before publication.",
+  "rationale": "An absolute zero-waste claim needs evidence this demonstration does not have. FTC guidance supports specific, qualified wording.",
+  "considerations": "This is a communication example, not legal clearance or proof of environmental performance.",
+  "review_required": true,
+  "sources": [
+    {
+      "id": "ftc-green-guides",
+      "title": "FTC: Environmental Claims — Summary of the Green Guides",
+      "url": "https://www.ftc.gov/business-guidance/resources/environmental-claims-summary-green-guides",
+      "statement": "The FTC advises against broad, unqualified environmental-benefit claims and calls for clear, specific qualifications."
+    }
+  ]
 }

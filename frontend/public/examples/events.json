@@ -1,153 +1,24 @@
 {
-  "schema_version": 1,
-  "recording": {
-    "kind": "live-recording",
-    "captured_at": "2026-11-16T09:21:50.015344+00:00",
-    "repository_revision": "bea1e7f6534408702ef1c05505a5890f755a5fef",
-    "transport": "flask-test-client",
-    "fictional_client": "Vanguard Cloud",
-    "signal_kind": "supplied-simulated"
-  },
-  "request": {
-    "workflow": "run",
-    "agent_type": "events",
-    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend a field-event theme for ML engineers using available context; no booking, scheduling or invented budget optimization."
-  },
-  "response": {
-    "decision": {
-      "attempts": 2,
-      "completion_tokens": 428,
-      "confidence": "High",
-      "escalated": false,
-      "escalation_reason": null,
-      "evidence_ids": [
-        "bc27b571dc1f83531a43a55f1255891436a512c01ef816829e246b9139014a0a",
-        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-        "7cc3b773f65453757834b3978dfd6e6bec858831a1e8be1f44a94b8ea8fec5c5",
-        "4a7584ab0608219cd3f232135ab86fb093a0958c5e417154e9ca7a303a2e04cd"
-      ],
-      "facts_retrieved": 5,
-      "fallback_used": false,
-      "finish_reason": "STOP",
-      "id": "cf29ef67a7844e409c0b624d5118378e",
-      "invalid_evidence_ids_count": 0,
-      "latency_ms": 2946.55,
-      "model": "gemini-3.5-flash-lite",
-      "prompt_tokens": 1031,
-      "rationale": "Leveraging our advanced platform capabilities against Nebius's H100-centric fleet allows ML engineers to experience next-generation B200 performance firsthand through high-impact developer hackathons and technical briefing sessions.",
-      "reasoning_source": "langgraph:events:gemini-3.5-flash-lite",
-      "requested_model": "gemini-3.5-flash-lite",
-      "retrieval_ms": 2.34,
-      "risks": "Risk of over-promising hardware availability prior to general release; mitigated by focusing field demos strictly on validated sandbox environments and benchmark previews.",
-      "selected_option": "Silicon-to-API Enterprise Performance Showdown",
-      "served_model_verified": true,
-      "source": "live",
-      "thoughts_tokens": null,
-      "total_tokens": 1459,
-      "total_wall_ms": 7420.82
+  "schema_version": 2,
+  "kind": "illustrative-demo",
+  "agent": "events",
+  "brief": "Outline a small device-care information event for a fictional local repair and trade-in service.",
+  "result": "Run a short device-care Q&A with a preparation checklist and separate optional assessment appointments. Publish a clear event description with the real date, location and booking conditions once those details are confirmed.",
+  "rationale": "EPA guidance supports the preparation topic. Google Business Profile supports event posts; neither source establishes demand or promises attendance.",
+  "considerations": "Keep the example unscheduled. Confirm capacity, accessibility and battery-handling arrangements before announcing an event.",
+  "review_required": false,
+  "sources": [
+    {
+      "id": "epa-electronics",
+      "title": "EPA: Electronics Donation and Recycling",
+      "url": "https://www.epa.gov/recycle/electronics-donation-and-recycling",
+      "statement": "EPA guidance recommends deleting personal information before donating or recycling electronics and handling batteries separately when appropriate."
     },
-    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend a field-event theme for ML engineers using available context; no booking, scheduling or invented budget optimization.",
-    "knowledge_units": [
-      {
-        "class": "fact",
-        "confidence": "high",
-        "content": "events agent decision: Silicon-to-API Enterprise Performance Showdown"
-      }
-    ],
-    "metrics": {
-      "attempts": 2,
-      "completion_tokens": 428,
-      "evidence_ids": [
-        "bc27b571dc1f83531a43a55f1255891436a512c01ef816829e246b9139014a0a",
-        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-        "7cc3b773f65453757834b3978dfd6e6bec858831a1e8be1f44a94b8ea8fec5c5",
-        "4a7584ab0608219cd3f232135ab86fb093a0958c5e417154e9ca7a303a2e04cd"
-      ],
-      "facts_retrieved": 5,
-      "fallback_used": false,
-      "finish_reason": "STOP",
-      "invalid_evidence_ids_count": 0,
-      "latency_ms": 2946.55,
-      "model": "gemini-3.5-flash-lite",
-      "prompt_tokens": 1031,
-      "requested_model": "gemini-3.5-flash-lite",
-      "retrieval_ms": 2.34,
-      "served_model_verified": true,
-      "source": "live",
-      "thoughts_tokens": null,
-      "total_tokens": 1459,
-      "total_wall_ms": 7420.82
-    },
-    "positioning": {
-      "differentiation_basis": "Sovereign Neo-Cloud Platform",
-      "state": "ACTIVE",
-      "statement": "Position Vanguard Cloud's upcoming B200 infrastructure launch around architectural supremacy and developer accessibility, directly contrasting our end-to-end platform capabilities against competitors like Nebius whose current verified fleet centers on H100 hardware."
-    },
-    "success": true
-  },
-  "evidence": {
-    "retrievals": [
-      {
-        "agent": "events",
-        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend a field-event theme for ML engineers using available context; no booking, scheduling or invented budget optimization.",
-        "facts": [
-          {
-            "id": "bc27b571dc1f83531a43a55f1255891436a512c01ef816829e246b9139014a0a",
-            "organization": "Nebius",
-            "knowledge_class": "documentation",
-            "confidence": "high",
-            "content": "Verified Subpage Documentation: The Ultimate AI Cloud Nebius Certification is live –– get your special offer! Products Solutions Why Nebius Resources Pricing Company Investors Contact sales Log in The Ultimate AI Cloud Build and scale AI faster on a cloud engineered from silicon to API. Start building now Talk to an expert From tr",
-            "source_url": "https://nebius.com/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -7.148276015089003
-          },
-          {
-            "id": "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-            "organization": "Nebius",
-            "knowledge_class": "hardware",
-            "confidence": "high",
-            "content": "Verified GPU Hardware Fleet on Nebius: H100.",
-            "source_url": "https://nebius.com/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.6978021290602765
-          },
-          {
-            "id": "7cc3b773f65453757834b3978dfd6e6bec858831a1e8be1f44a94b8ea8fec5c5",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "documentation",
-            "confidence": "high",
-            "content": "Verified Subpage Documentation: TIR Platform: AI/ML Model Deployment & Training Platform | E2E Networks E2E Networks GPUs TIR Pricing Company Partner Investors Resources Careers Contact Sign In GPUs TIR Pricing Company Partner Investors Careers Contact Resources Blog Latest news & tutorials Events Workshops & meetups Ecosystem Ena",
-            "source_url": "https://www.e2enetworks.com/tir",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.6068982408461485
-          },
-          {
-            "id": "e4a4a6540116e2bfd9c476dff2aa988d7260bf4e84cb4c2cde89b29ffedb7406",
-            "organization": "Hyperstack",
-            "knowledge_class": "documentation",
-            "confidence": "high",
-            "content": "Verified Subpage Documentation: Fast, On-Demand Cloud GPU Solutions for AI & ML | Hyperstack This website stores cookies on your computer. These cookies are used to collect information about how you interact with our website and allow us to remember you. We use this information in order to improve and customize your browsing exper",
-            "source_url": "https://www.hyperstack.cloud/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.509682940105488
-          },
-          {
-            "id": "4a7584ab0608219cd3f232135ab86fb093a0958c5e417154e9ca7a303a2e04cd",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "documentation",
-            "confidence": "high",
-            "content": "Verified Subpage Documentation: E2E Networks | India's GPU Cloud for AI & ML E2E Networks GPUs TIR Pricing Company Partner Investors Resources Careers Contact Sign In GPUs TIR Pricing Company Partner Investors Careers Contact Resources Blog Latest news & tutorials Events Workshops & meetups Ecosystem Enablers Sign In to Dashboard ",
-            "source_url": "https://www.e2enetworks.com/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.395886698694006
-          }
-        ]
-      }
-    ]
-  }
+    {
+      "id": "google-business-posts",
+      "title": "Google Business Profile: Create and manage posts",
+      "url": "https://support.google.com/business/answer/7342169?hl=en",
+      "statement": "Business Profile posts can communicate updates, offers and events to customers on Google."
+    }
+  ]
 }

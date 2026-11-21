@@ -1,4 +1,3 @@
-/* Hallmark · custom Phase 3 · a brief carried through five kinds of work */
 .connected-page {
   --page-gutter: clamp(20px, 4.6vw, 76px);
   --hero-measure: min(1440px, 100%);
@@ -31,7 +30,7 @@
   gap: clamp(16px, 3vw, 44px);
 }
 .connected-header > .connected-console { justify-self: end; }
-.connected-page .f03-text-button { min-height: 44px; }
+.connected-page .text-action { min-height: 44px; }
 .connected-header a, .connected-footer a { text-decoration: none; }
 .connected-header :is(nav a, .connected-brand):is(:hover, :focus-visible),
 .connected-footer > a:is(:hover, :focus-visible) { text-decoration: underline; text-underline-offset: 5px; }
@@ -251,9 +250,9 @@ html:has(.connected-dossier[open]) { overflow: hidden; }
 .connected-selected-art img { display: block; width: 100%; height: auto; max-height: 190px; object-fit: contain; object-position: left center; }
 .connected-selected-art img[hidden] { display: none; }
 .connected-selected-art figcaption { margin-top: 8px; color: var(--brown); font-size: 14px; }
-.connected-dossier .f03-example { padding: 0; border: 0; }
-.connected-dossier .f03-example::before { content: none; }
-.connected-dossier .f03-result > p { font-size: 17px; }
+.connected-dossier .agent-example { padding: 0; border: 0; }
+.connected-dossier .agent-example::before { content: none; }
+.connected-dossier .agent-result > p { font-size: 17px; }
 .connected-explanation { border-top: 1px solid var(--rule); margin-top: 24px; padding-top: 12px; }
 .connected-explanation summary { cursor: pointer; font-weight: 600; }
 .connected-explanation ol { margin-top: 12px; padding-inline-start: 1.4em; }
@@ -267,7 +266,7 @@ html:has(.connected-dossier[open]) { overflow: hidden; }
   border-top: 1px solid var(--rule);
   padding-block: clamp(60px, 8vw, 120px);
 }
-.connected-results .f03-text-button { margin-top: 20px; }
+.connected-results .text-action { margin-top: 20px; }
 .connected-engineering { border-top: 1px solid var(--rule); padding-block: clamp(60px, 7vw, 100px); }
 .connected-engineering dl { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px 48px; margin: 36px 0 24px; }
 .connected-engineering dt { font-size: 19px; font-weight: 600; line-height: 1.3; margin-bottom: 12px; }

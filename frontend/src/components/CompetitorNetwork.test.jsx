@@ -5,7 +5,7 @@ import CompetitorNetwork from './CompetitorNetwork';
 
 it('opens and closes a competitor source disclosure from the keyboard', () => {
   render(<CompetitorNetwork network={{ nodes: [
-    { id: 'Vanguard Cloud', group: 'us' },
+    { id: 'Example service', group: 'us' },
     { id: 'Nebius', group: 'competitor', fact_count: 1, classes: ['pricing'], citations: [
       { content: 'The stored pricing source.', source_url: 'https://nebius.com/prices' },
     ] },

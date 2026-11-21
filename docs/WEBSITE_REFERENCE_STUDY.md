@@ -829,19 +829,16 @@ pages and announcements give the agent evidence to compare formats and
 positioning. Use “researches published competitor events” for the current saved
 demonstration. A live tracking claim requires an actual monitoring workflow.
 
-**Ground seed status.** The same blob for `app/data/deep_scrape_results.json`
-remains on the overhaul branch and `origin/main`, including E2E Networks
-references. Phase 3 improved filtering,
-fact qualification and atomic startup seeding, and captured a corrected set of
-five agent examples from that corpus. Replacement, migration of existing data
-and fresh capture against vetted real-company sources are open. [Phase 3 data work](/workspace/Marketing-OS/docs/MARKETING_OS_BLUEPRINT_PLAN.md#sourceoutput-correction-and-genuine-recording-provenance)
+**Ground seed status.** The bundled starter corpus now contains concise
+observations attributed to public source pages. Startup replaces the managed
+legacy corpus and its search and graph data. Saved decisions and operator
+memory are retained. The public agent gallery uses clearly labeled
+illustrative briefs and reviewed citations.
 
-Before a new
-case ships, agree on its real-company profile and brief, validate public sources,
-retire E2E Networks material from active data, verify migration on an existing
-database and recapture the five agents against the new corpus. Preserve historical
-recordings as evidence. [Seeder](/workspace/Marketing-OS/app/db/grounded_seed.py)
-· [Phase 10 contract](/workspace/Marketing-OS/docs/MARKETING_OS_BLUEPRINT_PLAN.md#phase-10-completion-contract)
+Before publishing separate real-company case studies, agree on the profile
+and brief, check current primary evidence, and capture fresh genuine examples
+privately. Keep raw capture data outside the public build.
+[Phase 10 contract](MARKETING_OS_BLUEPRINT_PLAN.md#phase-10-completion-contract)
 
 ### Put the findings into the phases
 

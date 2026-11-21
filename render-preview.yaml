@@ -3,9 +3,9 @@
 services:
   - type: web
     name: marketing-os-review
-    env: docker
+    runtime: docker
     plan: free
-    branch: feat/frontend-page-foundation
+    branch: feat/frontend-overhaul
     dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
     autoDeploy: false
@@ -22,11 +22,9 @@ services:
         value: "reviewer"
       - key: ADMIN_PASSWORD
         generateValue: true
-      - key: DEFAULT_MODEL
-        value: "gemini-3.5-flash-lite"
+      - key: SESSION_SECRET_KEY
+        generateValue: true
       - key: DB_PATH
         value: "/tmp/marketing-os-review.db"
       - key: ALLOWED_ORIGINS
-        sync: false
-      - key: GEMINI_API_KEY
         sync: false

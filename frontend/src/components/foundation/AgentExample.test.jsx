@@ -2,11 +2,17 @@ import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 import { AgentExample } from './AgentExample';
-import { adaptWorkflow } from '../../lib/presentation';
-import { runFixture, factFixture } from '../../test/workflowFixtures';
+import { exampleFixture } from '../../test/exampleFixtures';
 
-const available = agent => ({ state: 'available', recording: { captured_at: '2026-11-16T00:00:00Z' },
-  presentation: adaptWorkflow('run', runFixture(agent), { capturedRetrievals: [{ agent, facts: [factFixture] }] }) });
+const available = agent => {
+  const example = exampleFixture(agent);
+  return { state: 'available', presentation: {
+    input: { text: example.brief },
+    output: { text: example.result, rationale: example.rationale, risks: example.considerations },
+    governance: { escalated: example.review_required },
+    evidence: { facts: example.sources.map(source => ({ id: source.id, title: source.title, content: source.statement, sourceUrl: source.url })) },
+  } };
+};
 
 it('renders template and HTML-like model text as data without creating executable elements', async () => {
   const result = available('pr');
@@ -19,7 +25,7 @@ it('renders template and HTML-like model text as data without creating executabl
   expect(Object.prototype.polluted).toBeUndefined();
 });
 
-it('shows the task and untouched recommendation with optional support, without capture/operational metadata', async () => {
+it('shows an honestly labelled demo brief, recommendation and titled source without operational metadata', async () => {
   const result = available('pr');
   const original = structuredClone(result);
   const catalog = { load: vi.fn(async () => result) };
@@ -27,6 +33,8 @@ it('shows the task and untouched recommendation with optional support, without c
   await screen.findByText(result.presentation.output.text);
   expect(screen.getByRole('heading', { name: 'The brief' })).toBeInTheDocument();
   expect(screen.getByText('Flagged for human review')).toBeInTheDocument();
+  expect(screen.getByText(/Illustrative demo/)).toBeInTheDocument();
+  expect(screen.getByText(result.presentation.input.text)).toBeInTheDocument();
   expect(container.querySelector('time')).toBeNull();
   expect(screen.queryByText(/Captured|Execution:|quota|2026-11-16/)).not.toBeInTheDocument();
   fireEvent.click(screen.getByText('Sources and rationale'));
@@ -55,18 +63,12 @@ it('can retry a failed static read without submitting a model request', async ()
   expect(catalog.load.mock.calls).toEqual([['pr'], ['pr']]);
 });
 
-it('keeps archived source data intact while omitting retired sources from the public dossier', async () => {
+it('shows the reviewed primary-source title and does not mutate the view', async () => {
   const result = available('pr');
-  result.presentation.evidence.facts.push({
-    id: 'retired-source',
-    content: 'Retired source row',
-    sourceUrl: 'https://www.e2enetworks.com/',
-  });
   const original = structuredClone(result);
-  const catalog = { load: vi.fn(async () => result) };
-  render(<AgentExample agent="pr" catalog={catalog} inDossier />);
+  render(<AgentExample agent="pr" catalog={{ load: vi.fn(async () => result) }} inDossier />);
   fireEvent.click(await screen.findByText('Sources and rationale'));
-  expect(screen.queryByText('Retired source row')).not.toBeInTheDocument();
-  expect(screen.queryByRole('link', {name: 'www.e2enetworks.com'})).not.toBeInTheDocument();
+  const source = result.presentation.evidence.facts[0];
+  expect(screen.getByRole('link', { name: source.title })).toHaveAttribute('href', source.sourceUrl);
   expect(result).toEqual(original);
 });

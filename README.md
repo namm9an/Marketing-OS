@@ -1,351 +1,84 @@
 # Marketing OS
 
-[![Python](https://img.shields.io/badge/Python-3.10+-3776AB?logo=python&logoColor=white)](https://www.python.org/)
-[![React](https://img.shields.io/badge/React-18%2F19-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-5+-646CFF?logo=vite&logoColor=white)](https://vitejs.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4+-06B6D4?logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
-[![Three.js](https://img.shields.io/badge/Three.js-WebGL-black?logo=three.js&logoColor=white)](https://threejs.org/)
-[![SQLite](https://img.shields.io/badge/SQLite-WAL_%2B_FTS5-003B57?logo=sqlite&logoColor=white)](https://www.sqlite.org/)
-[![LangGraph](https://img.shields.io/badge/LangGraph-Multi--Agent-orange)](https://github.com/langchain-ai/langgraph)
-[![LangFuse](https://img.shields.io/badge/LangFuse-Tracing-blue)](https://langfuse.com/)
-[![Docker](https://img.shields.io/badge/Docker-Containerized-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
+Marketing OS is a competitive research workspace for branding, PR and policy,
+community, product marketing, and field events. Browse the agent gallery for
+examples or open the operator console to run a brief, compare two specialists,
+review recommendations, and export the result.
 
-A governed multi-agent competitive intelligence platform for enterprise marketing teams.
+The public site and console use React and Vite. Flask serves the API and the
+production build. SQLite stores decisions, reviews, and scoped memory. A small
+starter corpus links competitor observations to their source pages. The public
+examples are illustrative briefs and recommendations with selected citations.
 
-Marketing OS deploys five specialized AI agents—Branding, PR, Social Media, Product Marketing, and Events—to analyze competitor intelligence, track market shifts, and formulate strategic positioning. The system enforces strict memory isolation so agents reason independently without cross-contaminating their memories, and routes high-risk recommendations through an executive governance review.
+## Run locally
 
----
-
-## Architecture
-
-```mermaid
-flowchart TD
-    CMO["CMO Executive<br/>(Strategic Inquiries & Triage Routing)"]
-    Gov["Universal Governance<br/>(Risk & Policy Evaluation: Confidence Gate)"]
-    
-    CMO --> Gov
-
-    subgraph Swarm ["Five Specialized Agent Swarm"]
-        direction TB
-        subgraph Col1 ["Narrative & Communications"]
-            direction TB
-            A1["Branding Specialist<br/>Memory: [agent:branding]"]
-            A2["PR & Policy Specialist<br/>Memory: [agent:pr]"]
-            A3["Social Media Specialist<br/>Memory: [agent:social]"]
-        end
-        subgraph Col2 ["Commercial & Field Strategy"]
-            direction TB
-            A4["Product Marketing (PMM)<br/>Memory: [agent:product_marketing]"]
-            A5["Field Events Specialist<br/>Memory: [agent:events]"]
-        end
-    end
-
-    Gov --> Swarm
-    Swarm --> Gate["Promotion Gate<br/>Filter: role == 'user' (Blocks model prose)<br/>Promotes to semantic at hit_count >= 3"]
-
-    subgraph Memory ["Four-Tier Memory Hierarchy"]
-        direction TB
-        L0[("L0: Grounded Corpus (75 facts with source URLs | FTS5 BM25)")]
-        L05[("L0.5: Entity Graph (50 deterministic relationship edges)")]
-        L1[("L1: Private Memory (5 isolated namespaces: agent_type in ns)")]
-        L2[("L2: Joint Triage Memory (Order-stable pair namespaces)")]
-    end
-
-    Gate --> Memory
-```
-
-### Core Components
-
-- **5 Specialized Personas:** Branding (narrative & positioning), PR (strategic communications & compliance), Social (advocacy & developer community), Product Marketing (competitive battlecards & rate card analysis), and Events (field marketing & keynote abstracts).
-- **Universal Governance:** Reviews agent proposals for commercial, regulatory, or positioning risks, flagging high-risk actions for executive CMO sign-off.
-- **Triage Collaboration (`/api/triage`):** Dynamically pairs any two specialists on a single strategic inquiry. The agents reason independently from their distinct perspectives, and only their synthesized conclusions are merged into a shared pair namespace without contaminating either agent's private memory.
-- **Promotion Gate:** Enforces that only explicit user decisions, preferences, and corrections are admitted into memory. Generated assistant prose is discarded from long-term memory, preventing circular hallucination feedback loops.
-
----
-
-## Retrieval Benchmarks
-
-Evaluated against a golden set of domain queries comparing standard full-text search against deterministic taxonomy-expanded search:
-
-| Metric | Baseline Search | Taxonomy-Expanded Search | Impact |
-|---|:---:|:---:|:---:|
-| **Overall Recall@5** | 0.726 | **0.943** | +21.7% |
-| **Paraphrase Recall@5** | 0.283 | **0.900** | +61.7% (Resolves vocabulary mismatch) |
-| **Lexical Recall@5** | 0.967 | **0.967** | Exact keyword precision |
-| **Mean Reciprocal Rank (MRR)** | 0.771 | **0.985** | Top-ranked evidence retrieval |
-| **Zero-Hit Queries** | 5 | **0** | Complete candidate coverage |
-
----
-
-## API Reference
-
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/api/health` | Health check verifying database and application status |
-| `POST` | `/api/login` / `/api/logout` | Session authentication for the executive console |
-| `GET` | `/api/me` | Validates active session state |
-| `POST` | `/api/run` | Executes one-shot supervisor agent graph with governance review |
-| `POST` | `/api/chat` | Multi-turn chat with an isolated specialist, returning citation recall |
-| `GET` | `/api/chat/threads` | Lists conversation threads scoped by namespace (`?agent=` or `?agents=a,b`) |
-| `GET` | `/api/chat/thread/<id>` | Retrieves ordered turns and recalled memory IDs for a thread |
-| `POST` | `/api/triage` | Bridges two specialists on one question with isolated joint memory |
-| `GET` | `/api/memory` | Inspects stored memories scoped to an agent or joint pair |
-| `POST` | `/api/digest` | Generates weekly 5-agent competitive intelligence synthesis |
-| `GET` | `/api/digest/network` | Returns competitor entity network projection |
-| `POST` | `/api/export/markdown` | Exports structured positioning brief with citations |
-| `GET` | `/api/history` | Paginated decision history (`?limit=50&offset=0`) |
-| `GET` | `/api/decisions/<id>` | Complete saved result, current review status, and review history |
-| `POST` | `/api/decisions/<id>/review` | Record an authenticated operator's approval or rejection |
-
-### Result, review, and provider contracts
-
-New one-shot, chat, and triage results are stored in full. History rows and decision
-detail include `workflow_type`, `result_available`, and `result`. Clients should reopen
-the saved `result`, which contains the original statement, recall/knowledge payload,
-governance, and metrics. Older rows keep `workflow_type: "legacy"`,
-`result_available: false`, and `result: null`; their missing output cannot be recovered
-from a strategy title. A result-storage failure returns HTTP 503 rather than a success
-with an unusable audit ID. Digests remain on-demand results without decision history.
-
-Review example (requires the session cookie from login):
-
-```json
-{"status": "approved", "reason": "Reviewed the evidence and risks"}
-```
-
-Use `approved` or `rejected`. The server records the authenticated username, UTC time,
-and reason in a new review entry, and updates that decision's current review status.
-New escalated decisions start `pending`; other decisions start `unreviewed`. Reviews
-do not transfer to another decision, alter the original output, erase its risk flag,
-or admit a memory. This records a human review; it does not execute or authorize an
-external marketing action. The application appends reviews, but the SQLite database
-is not tamper-proof storage. The console loads review state from this endpoint and
-waits for a successful save before showing approval/rejection. Reopening a saved
-result restores its original payload and its current decision-specific review state.
-
-All four generation workflows expose `metrics`. `source` identifies `live`, `mock`,
-or an explicitly unknown/mixed execution. `requested_model` is the server-configured
-model; `model` is the provider-reported version, or `unknown` if omitted.
-`served_model_verified` means the provider supplied the identifier, not an independent
-attestation. A versioned model name does not mean a fallback occurred.
-
-Missing token measurements remain `null`. `total_tokens` comes from upstream
-`totalTokenCount`, rather than a possibly incomplete sum. Mock calls have zero outbound
-attempts, no provider latency, and no fabricated usage. For each live call,
-`latency_ms` measures the final successful HTTP request and `total_wall_ms` includes
-its retries/waits. Multi-call workflows expose individual `calls` and aggregate known
-counts; parallel-call latency/wall time is not added into a misleading workflow total.
-Usage describes successful provider responses; a failed attempt's unreported token
-usage remains unknown even though every outbound attempt counts against call quota.
-
-There is no automatic model downgrade or live-to-mock fallback. HTTP 503 and connection
-failures get at most three attempts against the same configured model, with 2s/4s waits.
-Each outbound attempt consumes a quota unit; parallel workers share the workflow's
-reservation. HTTP 429 stops immediately and propagates a retry delay. Incomplete,
-blocked, empty, and invalid structured outputs fail visibly. Live responses must report
-`finishReason: "STOP"`; thought parts are excluded from public text. A configured model's
-availability and its generation options still require verification with actual provider
-credentials; controlled offline responses do not establish that availability.
-
-Product retrieval enables deterministic taxonomy expansion by default through
-`RETRIEVAL_EXPAND_TAXONOMY`; raw search retains an unexpanded baseline. Sourced retrieval,
-competitor digests, corpus graph derivation, and the citation grader accept only
-`grounded_crawler` rows with a well-formed HTTP(S) source URL. This eligibility check
-does not prove that a source supports every generated claim, is fresh, or is still
-reachable. Reusing a chat thread under another agent's namespace is rejected before
-transcript writes or model calls. These are specialist boundaries within the shared
-operator workspace, not separate tenants for users.
-
-Malformed JSON shapes and wrong field types return HTTP 400. Existing authentication,
-prompt-size, injection, and quota checks still apply. Build the frontend and serve it
-through Flask/Gunicorn for same-origin API access; direct `/console` navigation is
-supported. Standalone Vite development still needs an API proxy/base configuration.
-
----
-
-## Instructions to Build & Run
-
-### 1. Installation
+Use Python 3.11+ and Node.js 22.12+.
 
 ```bash
-# Clone the repository
-git clone https://github.com/namm9an/Marketing-OS.git
+git clone --branch feat/frontend-overhaul https://github.com/namm9an/Marketing-OS.git
 cd Marketing-OS
-
-# Set up virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: .\venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -r requirements.txt
+npm --prefix frontend ci
 ```
 
-### 2. Seed Database
+On Windows PowerShell, activate the virtual environment with
+`.venv\Scripts\Activate.ps1`.
 
-Populate the local SQLite database with verified competitor facts and derive the initial entity graph:
+For console access, put `ADMIN_USER` and `ADMIN_PASSWORD` in a local `.env`.
+You can set `TARGET_ORGANIZATION` and `TARGET_INDUSTRY` to provide the agents
+with your organization and market context. Test locally with controlled
+responses by leaving `GEMINI_API_KEY` unset. Live runs need a server-side key and
+an explicit `DEFAULT_MODEL` supported by your provider account.
 
-```bash
-python -m app.db.grounded_seed
-```
-
-### 3. Start Application Server
+Run the API and Vite in separate terminals from the repository root.
 
 ```bash
 python -m app.main
 ```
 
-The application server defaults to `http://localhost:10000` (override with `PORT`). You can verify it is healthy via:
-
 ```bash
-curl http://localhost:10000/api/health
+npm --prefix frontend run dev
 ```
 
-For frontend development, run `npm ci` and `npm run dev` in `frontend/` while Flask
-is running. Vite proxies `/api` to `http://127.0.0.1:10000`, keeping API requests and
-session cookies on the browser's frontend origin. Set `MARKETING_OS_API_TARGET` in
-the Vite process environment if Flask uses another address. Build with
-`npm run build`; Flask serves `frontend/dist`, including direct `/console` routes.
-The console shows the execution mode reported by each response. The server owns
-model configuration; there is no client model switch or file-upload capability.
+Open the URL printed by Vite, normally <http://localhost:5173>. `/` is the
+showcase and `/console` is the operator entry. Vite proxies `/api` to
+`http://127.0.0.1:10000`. Set `MARKETING_OS_API_TARGET` if the API uses a
+different address.
 
----
+For a single-port preview, run `npm --prefix frontend run build` and open
+<http://localhost:10000> with Flask running. Check `/api/health` for API and
+database health.
 
-## Instructions to Run Test Suites
-
-Run the automated test suite offline against a temporary database:
+## Verify a change
 
 ```bash
-test_db_dir="$(mktemp -d)"
-DB_PATH="$test_db_dir/tests.db" python -m pytest -q
+python -m pytest -q tests/unit tests/integration
+npm --prefix frontend run test:unit
+npm --prefix frontend run lint
+npm --prefix frontend run build
+npm --prefix frontend run test:integration
+npm --prefix frontend run test:integration:built
 ```
 
-The backend repair regressions are in `tests/integration/test_backend_repairs.py`.
-They cover the eight repair groups and a ninth combined workflow. Provider responses
-are controlled fixtures; the suite makes no paid provider calls. Frontend browser
-integration is a separate required check; backend test-client success alone does
-not establish a working browser product.
+Browser tests use Chromium and start the API with isolated SQLite data and
+controlled provider responses. Install Chromium with `npx playwright install
+chromium` from `frontend/` if the system browser is unavailable.
 
-From `frontend/` (Node 24 was used for the F01 verification):
+To measure retrieval against the starter corpus, run `python -m app.eval.retrieval`
+against a newly initialized SQLite database. Source URLs describe the evidence
+scope. Availability, prices, and other time-sensitive claims require a fresh
+check before publication.
 
-```bash
-npm ci
-npm run test:unit
-npm run lint
-npm run build
-npm run test:integration
-npm run test:integration:built
-```
+## Deployment configuration
 
-The browser harness starts its own API with a temporary SQLite database, synthetic
-operator credentials and mock inference; it does not use production credentials or
-spend provider tokens. The development suite uses Vite on port 5179 and the API on
-5120. The built suite serves the compiled SPA directly through two Gunicorn workers
-on Linux; native Windows uses Flask for that local route check. Run the two suites
-sequentially because they share the test API port. Python dependencies must be
-installed first; the launcher finds `.venv` or falls back to `python`, or use
-`MARKETING_OS_TEST_PYTHON` to select the interpreter explicitly.
+`render.yaml` and `render-preview.yaml` target `feat/frontend-overhaul` and
+check `/api/health`. Both are configured for manual deployment. Supply operator
+credentials and a strong session secret through Render settings. Use persistent
+storage for `DB_PATH` when decisions and reviews must survive restarts. The
+preview uses temporary storage and is intended for disposable review data.
 
-Playwright uses `/usr/bin/chromium` when available, otherwise its managed browser.
-Use `npx playwright install chromium` when needed, or set
-`PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` for another installed compatible browser.
-Screenshots, traces and accessibility attachments go to the ignored
-`frontend/test-results/` directory. These controlled tests do not establish genuine
-live-provider recordings, final visual acceptance, production deployment or a
-complete accessibility/performance audit; see the phase record in
-[the build plan](docs/MARKETING_OS_BLUEPRINT_PLAN.md).
-
-### Saved public agent examples
-
-F02 separates controlled test fixtures from genuine public recordings. The static
-catalog in `frontend/public/examples/manifest.json` stays blocked until all five
-specialists have captured live responses. The public-recording browser test
-requires that complete catalog; it deliberately fails while capture is blocked.
-The other browser tests use controlled inference and do not require paid access.
-
-The checked-in set was captured on 16 November 2026 with
-`gemini-3.5-flash-lite`: five original responses and their same-request source
-rows. Some outputs infer competitor hardware limits from incomplete coverage;
-those claims remain unverified and the inspector says so. Genuine capture does
-not establish claim accuracy or a model-quality benchmark.
-
-When the configured provider has generation access, capture from the repository
-root using the project Python environment:
-
-```bash
-DEFAULT_MODEL=gemini-3.5-flash-lite python -m app.recordings.capture --output frontend/public/examples --mode live --resume
-```
-
-This deliberate preparation step makes provider calls. Keep `GEMINI_API_KEY` in
-secure environment settings. Set `DEFAULT_MODEL` explicitly for capture; resume
-checks existing recordings against that model. This command sets it only for the
-capture process. The interactive server's configured model is separate and is
-not automatically switched by selecting or inspecting recordings. Capture
-uses a temporary, seeded database and the authenticated Flask handler. Each bundle
-keeps the original response, supplied fictional scenario, observed metrics and
-source rows collected during that same request. It does not search again after
-generation. Resume reuses checksum-validated successes instead of generating them
-again. A provider or evidence-validation failure leaves the catalog blocked.
-
-For offline capture-tool checks, use `--mode controlled` with a separate temporary
-output directory. Its `controlled-only` catalog is rejected by the public loader;
-do not copy those fixtures into the public recording directory.
-
-The optional recorded-example viewer appears only for a complete live catalog.
-Selecting an example performs anonymous static-file reads, with no generation,
-review or memory request. It verifies exact-file SHA-256 checksums, agent/mode
-metadata and citation membership in the captured rows. Checksums detect changed
-bytes; they do not independently authenticate provider origin or prove every
-generated claim. Scene bindings are data only; comparison and physical animation
-remain later phases.
-
-Run the retrieval benchmark suite:
-
-```bash
-python -m app.eval.retrieval --expand-taxonomy
-```
-
-## Desktop review site (proposed, not deployed)
-
-The cloud machine's loopback URL is not a URL on the owner's laptop. A separate
-Render service can serve the compiled React pages and Flask API from one HTTPS
-origin, without moving development to the desktop or merging into `main`.
-[render-preview.yaml](render-preview.yaml) describes a proposed review service;
-it leaves the existing `render.yaml` untouched and automatic deployment off.
-
-One-time owner setup in Render:
-
-1. Connect the GitHub repository to a **new Web Service**, select branch
-   `feat/frontend-page-foundation`, Docker runtime, repository root and
-   `./Dockerfile`. Use `/api/health` as the health check. These same settings
-   can be used through a Blueprint if the dashboard supports selecting the
-   custom `render-preview.yaml` file.
-2. Apply the variables in that file. Use username `reviewer` and a generated,
-   unique `ADMIN_PASSWORD`; retain that password in Render, not chat/Git.
-   Set `SESSION_COOKIE_SECURE=true` and `TRUST_FORWARDED_FOR=false`.
-   The old config's forwarded-trust setting requires real trusted proxy
-   addresses; do not replace that with a wildcard merely to get startup working.
-3. Set `ALLOWED_ORIGINS` to the **actual HTTPS origin Render assigns**, without
-   a trailing slash/path. If the URL is only assigned after initial creation,
-   update this field and redeploy before trying browser login. This is needed
-   because TLS terminates at Render and untrusted forwarded headers stay ignored.
-4. For real interactive generation, add `GEMINI_API_KEY` securely in Render and
-   keep `DEFAULT_MODEL` explicit. The proposed model is the Flash-Lite model
-   used for the genuine recordings; current live availability needs its own
-   check. Without a key, console generation is explicitly mock mode. The five
-   genuine saved public examples require no generation/key to inspect.
-5. Deploy and share the actual URL. Check `/api/health`, `/preview/f03`, direct
-   `/console` login/run/history/export/logout, and rejection of an unapproved
-   Origin. Use one deliberate live request to verify provider access when enabled;
-   routine tests remain controlled. A passing local gate is not a deployed check.
-
-The new review site initially shows the current branch, including the unapproved
-F03 candidate at `/preview/f03`. Neither Originkit reference is integrated yet.
-The landing pages are publicly reachable; console/API data actions require the
-operator login. This is not whole-site password protection. The review SQLite
-database is deliberately disposable and may reset on restart/redeploy; production
-persistence, edge/HTTP2 checks and release approval remain F14 work. Current
-dependency advisories remain documented in [the checklist](docs/BACKEND_PHASE_CHECKLIST.md).
-
-After creation, keep development here and use deliberate manual deployments of
-review commits. No deployment, account connection or secret transfer has been
-performed by adding this configuration.
+On startup, the API installs or updates the bundled observations and rebuilds
+the source-derived graph. Saved decisions, reviews, operator facts, and scoped
+memory stay in the existing database.

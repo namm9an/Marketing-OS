@@ -22,7 +22,7 @@ owner instruction. These edits change no app, capture, dependency or environment
 Read with [the blueprint](MARKETING_OS_BLUEPRINT_PLAN.md), [design/layout](DESIGN_AND_LAYOUT.md)
 and the local [website study](/workspace/reviews/WEBSITE_REFERENCE_STUDY.md).
 Original Claude text stays verbatim in the
-[historical archive](FRONTEND_DESIGN_WORKING.md#16-original-claude-documents--verbatim-snapshots).
+historical archive.
 
 **Phase correspondence:** these 16 sections, M01–M21, P01–P21 and A01–A24 are
 requirements for the one Phase 0–Phase 14 roadmap. Read blueprint §6/§10/§11 before work

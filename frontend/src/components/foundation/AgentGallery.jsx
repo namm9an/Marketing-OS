@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { dragRotation, projectTile, spherePoints } from './orbitGeometry';
-import './orbit-sphere.css';
+import { dragRotation, projectTile, spherePoints } from './galleryGeometry';
+import './agent-gallery.css';
 
-export default function OrbitSphere({ tiles, selectedId, onSelect, reduced = false, hidden = false }) {
+export default function AgentGallery({ tiles, selectedId, onSelect, reduced = false, hidden = false }) {
   const [rotation, setRotation] = useState({ yaw: .15, pitch: -.12 });
   const [dragging, setDragging] = useState(false);
   const drag = useRef(null);

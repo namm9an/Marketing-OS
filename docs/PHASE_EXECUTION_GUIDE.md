@@ -268,7 +268,7 @@ opening the next phase.
 
 1. **Log it in the discovery phase immediately.** Add a named extra repair step
    to that phase's blueprint contract and assign a stable ID in the
-   [backend checklist](BACKEND_PHASE_CHECKLIST.md#backend-gap-register).
+   backend checklist.
    Record the phase and date found, affected contracts and earlier phases, and
    the observed failure. Keep the discovery phase even if the defect is older.
 2. **Audit and review the cause.** Use read-only Ponytail Audit to trace the
@@ -441,12 +441,12 @@ Next-phase eligibility and why:
   The compiled gate found a two-worker seed race. The startup empty check and
   replacement now run together inside a SQLite transaction. The retest is recorded
   in the [six-lane report](/workspace/reviews/phase-3-connected/final-verification/report.json) and
-  [backend checklist](BACKEND_PHASE_CHECKLIST.md). All technical lanes passed
+  backend checklist. All technical lanes passed
   after the fix.
 - **Backend gap:** `P3-GAP-01` was found in Phase 3 compiled-app verification.
   The repair is in the [Phase 3 contract](MARKETING_OS_BLUEPRINT_PLAN.md#phase-3-backend-gap-p3-gap-01).
   Targeted and cumulative Phase 1 through Phase 3 checks passed, and the
-  [backend gap register](BACKEND_PHASE_CHECKLIST.md#backend-gap-register) records
+  backend gap register records
   the gap as verified.
 - **M1 evidence on the current baseline:** Four connected-foundation
   development browser tests and nine targeted geometry/agent-example unit
@@ -458,6 +458,11 @@ Next-phase eligibility and why:
   each of development and compiled Flask modes passed. Build and lint
   completed with existing warnings. The wheel geometry and saved catalog
   stay as the baseline for M3.
+- **Repository cleanup:** Gallery components and assets are named by feature.
+  The public catalog contains five illustrative examples. The starter corpus
+  replaces the managed scrape in both fresh and existing installations.
+  Historical working notes and raw captures are in the private workspace
+  archive at `/workspace/reviews/marketing-os-private/`.
 - **Resume:** Review the actual walkthrough for the quiet section glide,
   drag, selected-image pull-forward, dossier, return and results release.
   Resolve owner visual feedback in Phase 3 and repeat the affected checks.

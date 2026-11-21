@@ -40,7 +40,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
   const [showPassword, setShowPassword] = useState(false);
   const [activeTab, setActiveTab] = useState('workbench');
   const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 768);
-  const [goal, setGoal] = useState('Position B200 against Nebius using available reliability evidence');
+  const [goal, setGoal] = useState('Recommend a positioning direction using the available evidence');
   const [selectedAgent, setSelectedAgent] = useState('branding');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -286,7 +286,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
   if (authChecking) {
     return (
       <div className="bg-[#FBF9F5] min-h-screen flex items-center justify-center text-xs text-[#44403C]">
-        Loading Marketing OS...
+        Loading Marketing Helper...
       </div>
     );
   }
@@ -303,7 +303,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
                 Governed Intelligence Workbench
               </span>
               <h1 className="text-xl font-display font-bold tracking-tight text-[#111315]">
-                Marketing OS
+                Marketing Helper
               </h1>
             </div>
             {onBackToCaseStudy && (
@@ -419,7 +419,7 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
           <div className="flex items-center justify-between">
             {sidebarOpen ? (
               <div className="flex items-center gap-2.5">
-                <span className="font-bold text-base tracking-tight text-[#1C1917]">Marketing OS</span>
+                <span className="font-bold text-base tracking-tight text-[#1C1917]">Marketing Helper</span>
                 <span className="text-[10px] font-mono text-[#44403C] border border-[#E0DACE] px-1.5 py-0.5 rounded bg-[#F2EEE7]">v1.0</span>
               </div>
             ) : (
@@ -652,57 +652,57 @@ export default function InteractiveConsole({ onBackToCaseStudy }) {
 
             {loading && <p role="status" className="p-4 text-xs text-[#44403C]">Waiting for the selected agent to return. Progress details are unavailable.</p>}
 
-            {/* Empty Screen Purposely Built CMO Suggestions */}
+            {/* Example task prompts */}
             {!currentData && !loading && (
               <div className="space-y-4 pt-2">
                 <div className="flex items-center justify-between">
-                  <span className="text-xs font-mono uppercase tracking-wider text-[#44403C]">Purposely Built CMO Executive Scenarios</span>
-                  <span className="text-[10px] text-[#44403C]">Click any scenario to load into prompt workbench</span>
+                  <span className="text-xs font-mono uppercase tracking-wider text-[#44403C]">Try a brief</span>
+                  <span className="text-[10px] text-[#44403C]">Choose a starting point, then edit the brief</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <button
-                    onClick={() => setGoal("Position our GPU cloud compute infrastructure against AWS/Azure without engaging in destructive price wars")}
+                    onClick={() => setGoal("Recommend a positioning direction using the available audience and competitor evidence")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
                       <Sparkles className="w-4 h-4 text-[#44403C]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Hyperscaler Market Entry</h4>
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Positioning direction</h4>
                     </div>
-                    <p className="text-xs text-[#44403C] leading-relaxed">Position against AWS/Azure by focusing on AI training capacity without hyperscaler lock-in.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Find a position grounded in the supplied audience and competitor context.</p>
                   </button>
 
                   <button
-                    onClick={() => setGoal("Formulate brand positioning for enterprise SaaS CRM platform targeting Fortune 500 financial institutions requiring strict compliance")}
+                    onClick={() => setGoal("Review the proposed product claims and identify assumptions that need human review")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
                       <ShieldCheck className="w-4 h-4 text-[#44403C]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Enterprise Compliance & SOC2</h4>
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Claim review</h4>
                     </div>
-                    <p className="text-xs text-[#44403C] leading-relaxed">Establish credibility for high-security CRM platforms targeting regulated financial enterprises.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Identify claims that need evidence before a team publishes them.</p>
                   </button>
 
                   <button
-                    onClick={() => setGoal("Position developer API infrastructure for autonomous AI agent developers demanding sub-50ms latencies")}
+                    onClick={() => setGoal("Recommend product messaging using confirmed features and clearly state missing evidence")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
                       <Database className="w-4 h-4 text-[#44403C]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Sub-50ms Developer Speed</h4>
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Product messaging</h4>
                     </div>
-                    <p className="text-xs text-[#44403C] leading-relaxed">Capture developer mindshare by emphasizing ultra-low latency execution for agentic loops.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Connect confirmed product features to a customer problem without inventing performance.</p>
                   </button>
 
                   <button
-                    onClick={() => setGoal("Establish market leadership for real-time payment fraud prevention API targeting high-volume e-commerce payment processors")}
+                    onClick={() => setGoal("Suggest a useful customer information event using the supplied goals and constraints")}
                     className="p-4 text-left rounded-2xl bg-white/80 hover:bg-white border border-[#E7E2D8] hover:border-[#D97757]/50 transition-all space-y-2 group shadow-xs hover:shadow-md"
                   >
                     <div className="flex items-center gap-2">
                       <Lock className="w-4 h-4 text-[#44403C]" />
-                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Fintech Fraud Prevention</h4>
+                      <h4 className="text-xs font-bold text-[#1C1917] group-hover:text-[#44403C] transition-colors">Event planning</h4>
                     </div>
-                    <p className="text-xs text-[#44403C] leading-relaxed">Explore payment-fraud positioning while making unsupported performance claims explicit.</p>
+                    <p className="text-xs text-[#44403C] leading-relaxed">Choose an audience and format, with assumptions kept visible.</p>
                   </button>
                 </div>
               </div>

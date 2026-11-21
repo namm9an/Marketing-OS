@@ -3,7 +3,7 @@ import { AGENTS } from '../../lib/agents';
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { AGENT_COPY } from './agentCopy';
 import { AgentExample } from './AgentExample';
-import OrbitSphere from './OrbitSphere';
+import AgentGallery from './AgentGallery';
 
 const workImages = {
   branding: ['Positioning map', 'Brand system', 'Audience segments', 'Message hierarchy', 'Brand applications'],
@@ -170,20 +170,20 @@ export default function ConnectedDiscovery({ catalog }) {
   return <>
     <section id="agents" ref={gallery} className="connected-gallery" aria-labelledby="agents-title" tabIndex={-1}>
       <div className="connected-gallery-heading">
-        <h2 id="agents-title">Explore the agents</h2>
+        <h2 id="agents-title">Agent gallery</h2>
         <p>{staticView
           ? 'Choose a specialist to see their brief and recommendation.'
-          : 'Drag to turn the sphere. Choose an image to open its agent’s dossier.'}</p>
+          : 'Drag to explore the gallery. Choose an image to open its agent’s dossier.'}</p>
       </div>
       {!staticView && <div className="connected-gallery-stage">
-        <OrbitSphere tiles={tiles} selectedId={activeTile?.id ?? null} onSelect={selectTile}
+        <AgentGallery tiles={tiles} selectedId={activeTile?.id ?? null} onSelect={selectTile}
           reduced={reduced} hidden={!near} />
         {near && status === 'pending' && <p className="connected-art-status" role="status">
           <span className="connected-pixels" aria-hidden="true" />Loading agent artwork…
         </p>}
         {near && status === 'unavailable' && <div className="connected-art-status">
           <span role="status">Artwork unavailable.</span>{' '}
-          <button className="f03-text-button" type="button" onClick={retry}>Retry artwork</button>
+          <button className="text-action" type="button" onClick={retry}>Retry artwork</button>
         </div>}
       </div>}
       <div className="connected-picker" role="group" aria-label="Choose a specialist">
@@ -198,7 +198,7 @@ export default function ConnectedDiscovery({ catalog }) {
       onCancel={event => { event.preventDefault(); closeDossier(); }}>
       {activeTile && <div key={activeTile.id} className="connected-dossier-content">
         <div className="connected-dossier-toolbar">
-          <button className="f03-text-button" type="button" onClick={closeDossier}>Close dossier</button>
+          <button className="text-action" type="button" onClick={closeDossier}>Close dossier</button>
         </div>
         <h2 id="dossier-title">{activeCopy.name}</h2>
         <figure className="connected-selected-art">
@@ -217,8 +217,8 @@ export default function ConnectedDiscovery({ catalog }) {
     <section id="results" className="connected-results" aria-labelledby="results-title" tabIndex={-1}>
       <div className="connected-results-lead">
         <h2 id="results-title">See what each specialist recommends</h2>
-        <p>Read a saved recommendation and trace it back to its brief and sources.</p>
-        <a className="f03-text-button" href="#agents">Back to agents</a>
+        <p>Explore an illustrative recommendation, its brief and supporting sources.</p>
+        <a className="text-action" href="#agents">Back to agents</a>
       </div>
       <AgentExample agent={featured} catalog={catalog} />
     </section>

@@ -138,3 +138,20 @@ it('clears the previous operator result when logging out and authenticating agai
   expect(screen.queryByText(result.positioning.statement)).not.toBeInTheDocument();
   expect(screen.queryByRole('button', { name: /Saved strategy title/ })).not.toBeInTheDocument();
 });
+
+it('loads editable starter briefs without making performance or compliance claims', async () => {
+  installApi([]);
+  render(<InteractiveConsole />);
+  const prompts = [
+    ['Positioning direction', 'Recommend a positioning direction using the available audience and competitor evidence'],
+    ['Claim review', 'Review the proposed product claims and identify assumptions that need human review'],
+    ['Product messaging', 'Recommend product messaging using confirmed features and clearly state missing evidence'],
+    ['Event planning', 'Suggest a useful customer information event using the supplied goals and constraints'],
+  ];
+  for (const [name, goal] of prompts) {
+    fireEvent.click(await screen.findByRole('button', { name: new RegExp(name) }));
+    expect(screen.getByRole('textbox', { name: 'Business Goal' })).toHaveValue(goal);
+  }
+  expect(screen.queryByText(/sub-50ms|SOC2|hyperscaler|GPU cloud/i)).not.toBeInTheDocument();
+  expect(fetch.mock.calls.some(([url]) => url === '/api/run')).toBe(false);
+});

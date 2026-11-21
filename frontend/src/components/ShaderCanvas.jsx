@@ -1,19 +1,7 @@
 import React from 'react';
 import { ShaderGradientCanvas, ShaderGradient } from '@shadergradient/react';
 
-/**
- * Ambient background (Phase 9, M9.6) — design_doc.md §9.12.
- *
- * Replaces 149 lines of hand-written three.js: a full simplex-noise GLSL implementation,
- * a manual render loop, a resize handler and four dispose() calls, all to draw a moving
- * gradient. `@shadergradient/react` is that, declaratively, with the animation loop and
- * teardown as its problem.
- *
- * `agents` tints it. Phase 9 puts five agents behind one layout, and the strongest signal
- * that you are talking to a *different* agent with a *different* memory is ambient rather
- * than a label you have to read. Triage blends the pair's own two accents, so the bridge
- * looks like neither agent alone.
- */
+/** Ambient gradient tinted for the active specialist or comparison pair. */
 
 // Keyed to the app's warm palette (#FBF9F5 / #D97757). c1 is the wash, c3 the accent.
 const AGENT_GRADIENTS = {

@@ -16,7 +16,7 @@ test('all five specialists, chat memory, triage, digest, saved reviews, export a
     ['product_marketing', 'Product Marketing Agent'], ['events', 'Field Events Agent'],
   ]) {
     await page.getByRole('button', { name, exact: true }).click();
-    const result = await runAgent(page, `Position B200 against Nebius using reliability evidence for ${agent}`);
+    const result = await runAgent(page, `Position product against competitors using reliability evidence for ${agent}`);
     expect(result.decision.reasoning_source).toContain(agent);
     expect(result.metrics.source).toBe('mock');
     await expect(page.getByText(result.positioning.statement, { exact: true })).toBeVisible();
@@ -42,17 +42,20 @@ test('all five specialists, chat memory, triage, digest, saved reviews, export a
     expect(response.status()).toBe(200);
     return response.json();
   };
-  const first = await send('Always lead B200 messaging with reliability');
+  const preference = 'Always lead product messaging for Nebius comparisons with reliability';
+  const first = await send(preference);
   expect(first.memory.admitted).toBe(true);
   await expect(page.getByText(first.reply, { exact: true })).toBeVisible();
-  const second = await send('What B200 messaging should we use for reliability?');
+  const second = await send('How should we compare our messaging with Nebius given that reliability preference?');
   expect(second.thread_id).toBe(first.thread_id);
-  expect(second.recall.memories.some((m) => m.content.includes('Always lead B200 messaging with reliability'))).toBe(true);
+  expect(second.recall.memories.some((m) => m.content.includes(preference))).toBe(true);
   const thread = await (await page.request.get(`/api/chat/thread/${first.thread_id}`)).json();
   expect(thread.turns).toHaveLength(4);
   await page.getByRole('button', { name: /built from/ }).last().click();
-  await expect(page.getByText(second.recall.facts[0].content, { exact: true }).first()).toBeVisible();
-  const triage = await send('/triage branding pr Compare B200 positioning with Nebius', '/api/triage');
+  const source = second.recall.facts.find((fact) => fact.organization === 'Nebius');
+  expect(source).toBeDefined();
+  await expect(page.getByText(source.content, { exact: true }).first()).toBeVisible();
+  const triage = await send('/triage branding pr Compare product positioning with competitors', '/api/triage');
   expect(triage.namespace).toBe('triage:branding+pr');
   expect(triage.views.map((v) => v.agent).sort()).toEqual(['branding', 'pr']);
   await expect(page.getByText(triage.answer, { exact: true })).toBeVisible();

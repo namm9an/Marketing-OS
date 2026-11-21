@@ -24,7 +24,7 @@ Read with [the blueprint](MARKETING_OS_BLUEPRINT_PLAN.md), [animation](ANIMATION
 and the local [website study](/workspace/reviews/WEBSITE_REFERENCE_STUDY.md).
 The owner's decisions govern. Reference prompts describe other sites; they are
 not build instructions. Original Claude text remains verbatim in the
-[historical archive](FRONTEND_DESIGN_WORKING.md#16-original-claude-documents--verbatim-snapshots).
+historical archive.
 
 **Phase correspondence rule:** these 16 sections support the single Phase 0–Phase 14
 roadmap, not extra phases. Consult blueprint §6, §10 and §11 before changes and
@@ -690,7 +690,7 @@ review. Show the company, a decision-led headline and one or two short lines
 of recommendation. Provide one clear link to the profile, brief, result,
 evidence and limits. Use the real company profile and brief to provide audience,
 constraints and goals, including for Events. [Case writing research](/workspace/reviews/WEBSITE_REFERENCE_STUDY.md#phase-motion-and-case-study-research) Replace the old
-seed corpus and remove E2E Networks material from active use with a tested
+case-specific source corpus and verify any changes with a tested
 migration. Preserve historical captures and recapture the five genuine examples
 from the validated company profile and researched evidence. The visual review
 can use labelled storyboard fixtures while the separate source work is open.

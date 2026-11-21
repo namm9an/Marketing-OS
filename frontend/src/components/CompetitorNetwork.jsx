@@ -2,9 +2,9 @@ import React, { useState, useMemo } from 'react';
 import { ExternalLink, Circle } from 'lucide-react';
 
 /**
- * Interactive competitor link-network (Milestone 5).
+ * Interactive competitor link network.
  *
- * Hub-and-spoke SVG: E2E at the centre, one node per rival, radius and edge weight
+ * Hub-and-spoke SVG: the configured organization at the centre, one node per rival, radius and edge weight
  * driven by how many *grounded* facts we hold. Clicking a node reveals that rival's
  * citations (rate cards, docs, positioning) with their source URLs.
  *
@@ -32,7 +32,7 @@ export default function CompetitorNetwork({ network, onSelect }) {
     () => (network?.nodes || []).find((n) => n.group === 'us'),
     [network]
   );
-  const hubLabel = (hubNode?.id || 'Vanguard Cloud').toUpperCase();
+  const hubLabel = (hubNode?.id || 'Your organization').toUpperCase();
   const [hubMain, hubSub] = hubLabel.includes(' ')
     ? [hubLabel.split(' ')[0], hubLabel.split(' ').slice(1).join(' ')]
     : [hubLabel, ''];

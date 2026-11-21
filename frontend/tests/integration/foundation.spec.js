@@ -38,7 +38,7 @@ test('the homepage console entry authenticates and runs the real Flask workflow'
   await page.getByPlaceholder('admin', { exact: true }).fill('e2e-operator');
   await page.locator('input[type=password]').fill('e2e-local-test-password');
   await page.getByRole('button', { name: 'Authenticate Operator' }).click();
-  await page.getByLabel('Business Goal', { exact: true }).fill('Recommend a B200 launch position using the available evidence');
+  await page.getByLabel('Business Goal', { exact: true }).fill('Recommend a product launch position using the available evidence');
   const response = page.waitForResponse(r => r.url().endsWith('/api/run') && r.request().method() === 'POST');
   await page.getByRole('button', { name: 'Run Agent', exact: true }).click();
   const result = await response;

@@ -1,153 +1,18 @@
 {
-  "schema_version": 1,
-  "recording": {
-    "kind": "live-recording",
-    "captured_at": "2026-11-16T09:21:27.319703+00:00",
-    "repository_revision": "bea1e7f6534408702ef1c05505a5890f755a5fef",
-    "transport": "flask-test-client",
-    "fictional_client": "Vanguard Cloud",
-    "signal_kind": "supplied-simulated"
-  },
-  "request": {
-    "workflow": "run",
-    "agent_type": "branding",
-    "goal": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend a positioning brief and explain unknowns without invented guarantees."
-  },
-  "response": {
-    "decision": {
-      "attempts": 1,
-      "completion_tokens": 459,
-      "confidence": "High",
-      "escalated": false,
-      "escalation_reason": null,
-      "evidence_ids": [
-        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-        "d05af5c30c62363c11cedae89cfb9f32123cd272f0ea16d299efdb52b40f82cd",
-        "49d2aa8bb550963753692174679860223a1056360b8da57db6be26d1a9ae1e0a",
-        "3e5431d603770ee8e75006c601249c77aad8b8aa6408740cb2696c763b430cff"
-      ],
-      "facts_retrieved": 5,
-      "fallback_used": false,
-      "finish_reason": "STOP",
-      "id": "275806c1ce734da69f27be34a8cbfd91",
-      "invalid_evidence_ids_count": 0,
-      "latency_ms": 2155.79,
-      "model": "gemini-3.5-flash-lite",
-      "prompt_tokens": 991,
-      "rationale": "Market intelligence confirms that Nebius is anchored to an H100 hardware fleet, whereas Vanguard Cloud features cutting-edge B200 alongside H200 and H100 GPUs. By leading with our B200 deployment capability, we outpace competitors limited to older architectures while maintaining enterprise-grade trust.",
-      "reasoning_source": "langgraph:branding:gemini-3.5-flash-lite",
-      "requested_model": "gemini-3.5-flash-lite",
-      "retrieval_ms": 1.97,
-      "risks": "Potential supply chain constraints on B200 availability and competitor price-matching on legacy hardware.",
-      "selected_option": "Next-Gen Enterprise Infrastructure: B200 Superiority Over Legacy H100 Fleets",
-      "served_model_verified": true,
-      "source": "live",
-      "thoughts_tokens": null,
-      "total_tokens": 1450,
-      "total_wall_ms": 2158.06
-    },
-    "goalStatement": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend a positioning brief and explain unknowns without invented guarantees.",
-    "knowledge_units": [
-      {
-        "class": "fact",
-        "confidence": "high",
-        "content": "branding agent decision: Next-Gen Enterprise Infrastructure: B200 Superiority Over Legacy H100 Fleets"
-      }
-    ],
-    "metrics": {
-      "attempts": 1,
-      "completion_tokens": 459,
-      "evidence_ids": [
-        "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-        "d05af5c30c62363c11cedae89cfb9f32123cd272f0ea16d299efdb52b40f82cd",
-        "49d2aa8bb550963753692174679860223a1056360b8da57db6be26d1a9ae1e0a",
-        "3e5431d603770ee8e75006c601249c77aad8b8aa6408740cb2696c763b430cff"
-      ],
-      "facts_retrieved": 5,
-      "fallback_used": false,
-      "finish_reason": "STOP",
-      "invalid_evidence_ids_count": 0,
-      "latency_ms": 2155.79,
-      "model": "gemini-3.5-flash-lite",
-      "prompt_tokens": 991,
-      "requested_model": "gemini-3.5-flash-lite",
-      "retrieval_ms": 1.97,
-      "served_model_verified": true,
-      "source": "live",
-      "thoughts_tokens": null,
-      "total_tokens": 1450,
-      "total_wall_ms": 2158.06
-    },
-    "positioning": {
-      "differentiation_basis": "Sovereign Neo-Cloud Platform",
-      "state": "ACTIVE",
-      "statement": "Position Vanguard Cloud's B200 infrastructure directly against Nebius's H100-bound fleet by emphasizing generational hardware leadership, enterprise compliance (SOC2, 99.95% SLA), and aggressive price-performance starting at Rs671/hr."
-    },
-    "success": true
-  },
-  "evidence": {
-    "retrievals": [
-      {
-        "agent": "branding",
-        "query": "Fictional Vanguard Cloud is preparing a B200 launch against Nebius. Use stored pricing, hardware and reliability evidence. This is supplied scenario context, not a detected market event. Recommend a positioning brief and explain unknowns without invented guarantees.",
-        "facts": [
-          {
-            "id": "82202e9585d9f63c64dc2389e58f48cac15fcf92c0a7cd80100269a62c392576",
-            "organization": "Nebius",
-            "knowledge_class": "hardware",
-            "confidence": "high",
-            "content": "Verified GPU Hardware Fleet on Nebius: H100.",
-            "source_url": "https://nebius.com/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -6.6978021290602765
-          },
-          {
-            "id": "0f6a3b902ce6fa36351433a415df321091f9e32b021c4a98c86a0c36149eb9d9",
-            "organization": "Hyperstack",
-            "knowledge_class": "documentation",
-            "confidence": "high",
-            "content": "Verified Subpage Documentation: Hyperstack AI Cloud Pricing | On-Demand, Reserved and Spot GPU VMs This website stores cookies on your computer. These cookies are used to collect information about how you interact with our website and allow us to remember you. We use this information in order to improve and customize your browsing",
-            "source_url": "https://www.hyperstack.cloud/pricing",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -5.472648920796998
-          },
-          {
-            "id": "d05af5c30c62363c11cedae89cfb9f32123cd272f0ea16d299efdb52b40f82cd",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "hardware",
-            "confidence": "high",
-            "content": "Verified GPU Hardware Fleet on Vanguard Cloud: A100, B200, H100, H200.",
-            "source_url": "https://www.e2enetworks.com/",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -4.804152463948762
-          },
-          {
-            "id": "49d2aa8bb550963753692174679860223a1056360b8da57db6be26d1a9ae1e0a",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "hardware",
-            "confidence": "high",
-            "content": "Verified GPU Hardware Fleet on Vanguard Cloud: A100, B200, H100, H200.",
-            "source_url": "https://www.e2enetworks.com/tir",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -4.804152463948762
-          },
-          {
-            "id": "3e5431d603770ee8e75006c601249c77aad8b8aa6408740cb2696c763b430cff",
-            "organization": "Vanguard Cloud",
-            "knowledge_class": "hardware",
-            "confidence": "high",
-            "content": "Verified GPU Hardware Fleet on Vanguard Cloud: A100, B200, H100, H200.",
-            "source_url": "https://www.e2enetworks.com/company",
-            "enriched_by": "grounded_crawler",
-            "created_at": "2026-11-16 09:21:24",
-            "rank": -4.804152463948762
-          }
-        ]
-      }
-    ]
-  }
+  "schema_version": 2,
+  "kind": "illustrative-demo",
+  "agent": "branding",
+  "brief": "Position a fictional local device-repair and trade-in service for people deciding whether to repair or replace a phone.",
+  "result": "Lead with “Understand your options before you replace your phone.” Explain the assessment, repair estimate and trade-in offer as separate steps. Avoid promising that every repair is cheaper or better for the environment.",
+  "rationale": "A clear service process gives customers something concrete to evaluate. The environmental guidance supports careful claim wording; it does not establish this fictional service’s quality or savings.",
+  "considerations": "Confirm the actual assessment process and prices before publishing.",
+  "review_required": false,
+  "sources": [
+    {
+      "id": "ftc-green-guides",
+      "title": "FTC: Environmental Claims — Summary of the Green Guides",
+      "url": "https://www.ftc.gov/business-guidance/resources/environmental-claims-summary-green-guides",
+      "statement": "The FTC advises against broad, unqualified environmental-benefit claims and calls for clear, specific qualifications."
+    }
+  ]
 }

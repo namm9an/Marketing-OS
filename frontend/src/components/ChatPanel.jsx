@@ -8,24 +8,7 @@ import {
   Users, AlertTriangle, Check, X,
 } from 'lucide-react';
 
-/**
- * M9.6 — the Phase 9 UI.
- *
- * Until this existed, five committed backend milestones were unreachable from the
- * product: the frontend made zero calls to /api/chat, /api/triage or /api/memory.
- *
- * Three things this deliberately shows rather than hides, because they are the
- * product rather than debug output:
- *
- *   1. RECALL. Every answer carries what it was built from — remembered notes and
- *      sourced facts with their URLs. An answer you cannot audit is a claim.
- *   2. DISAGREEMENT. /triage surfaces tensions between the two agents in their own
- *      block rather than averaging them away. Two specialists pulling against each
- *      other is information the CMO needs.
- *   3. ISOLATION. The memory inspector flips between agent:branding, agent:pr and
- *      triage:branding+pr, so "neither private memory was touched" is something you
- *      can look at instead of something the README asserts.
- */
+/** Specialist chat, source recall, pair comparison, and scoped memory. */
 
 const label = (id) => AGENTS.find((a) => a.id === id)?.label ?? id;
 

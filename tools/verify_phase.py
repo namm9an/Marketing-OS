@@ -41,7 +41,6 @@ def main():
         'tracked_diff_sha256': hashlib.sha256(diff).hexdigest(),
         'technical_status': 'running', 'visual_review': 'requires separate owner evidence',
         'paid_model_calls': 0, 'lanes': [],
-        'security_checklist': 'docs/BACKEND_PHASE_CHECKLIST.md',
         'security_scope': 'Application and pinned HTTP/1 parser; deployed HTTP/2/proxy/TLS checks are separate',
         'dependency_audit': 'Requires separate current scan/disposition; functional success is not advisory clearance',
     }

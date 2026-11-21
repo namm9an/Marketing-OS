@@ -1,0 +1,18 @@
+{
+  "schema_version": 2,
+  "kind": "illustrative-demo",
+  "agent": "product_marketing",
+  "brief": "Explain the fictional service’s repair and trade-in options without invented savings or turnaround promises.",
+  "result": "Present two paths: repair assessment for a device the customer wants to keep, or a trade-in assessment when replacement is being considered. Show the quote and conditions before asking the customer to choose.",
+  "rationale": "The two-path explanation makes the offer easier to compare. EPA guidance informs the data-preparation reminder; it does not validate prices, repair outcomes or trade-in values.",
+  "considerations": "Use only confirmed service terms. Keep backup and personal-data preparation visible before device handover.",
+  "review_required": false,
+  "sources": [
+    {
+      "id": "epa-electronics",
+      "title": "EPA: Electronics Donation and Recycling",
+      "url": "https://www.epa.gov/recycle/electronics-donation-and-recycling",
+      "statement": "EPA guidance recommends deleting personal information before donating or recycling electronics and handling batteries separately when appropriate."
+    }
+  ]
+}

@@ -1,8 +1,8 @@
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import OrbitSphere from './OrbitSphere';
-import { dragRotation, projectTile, spherePoints } from './orbitGeometry';
+import AgentGallery from './AgentGallery';
+import { dragRotation, projectTile, spherePoints } from './galleryGeometry';
 
 describe('spherical image projection', () => {
   it('distributes distinct image points on a finite unit shell', () => {
@@ -43,7 +43,7 @@ const tiles = Array.from({ length: 5 }, (_, index) => ({ id: `work-${index}`, ag
 describe('sphere activation is separate from rotation', () => {
   it('explicit foreground activation preserves tile identity and the original event', () => {
     const onSelect = vi.fn();
-    render(React.createElement(OrbitSphere, { tiles, onSelect }));
+    render(React.createElement(AgentGallery, { tiles, onSelect }));
     const tile = screen.getByRole('button', { name: 'Explore Role 0' });
     fireEvent.click(tile);
     expect(onSelect.mock.calls[0][0]).toBe(tiles[0]);
@@ -53,7 +53,7 @@ describe('sphere activation is separate from rotation', () => {
   it('drag changes rotation without activating a tile, then a new plain click works', () => {
     vi.stubGlobal('PointerEvent', MouseEvent);
     const onSelect = vi.fn();
-    const { container } = render(React.createElement(OrbitSphere, { tiles, onSelect }));
+    const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const shell = container.querySelector('.connected-orbit-shell');
     const before = shell.dataset.yaw;
     fireEvent.pointerDown(shell, { clientX: 100, clientY: 100, button: 0 });
@@ -71,25 +71,25 @@ describe('sphere activation is separate from rotation', () => {
 
   it('leaves native wheel input alone and suppresses interactive graphics in static paths', () => {
     const onSelect = vi.fn();
-    const { container, rerender } = render(React.createElement(OrbitSphere, { tiles, onSelect }));
+    const { container, rerender } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     expect(fireEvent.wheel(container.firstElementChild, { deltaY: 100, cancelable: true })).toBe(true);
     expect(onSelect).not.toHaveBeenCalled();
-    rerender(React.createElement(OrbitSphere, { tiles, onSelect, reduced: true }));
+    rerender(React.createElement(AgentGallery, { tiles, onSelect, reduced: true }));
     expect(container).toBeEmptyDOMElement();
-    rerender(React.createElement(OrbitSphere, { tiles, onSelect, hidden: true }));
+    rerender(React.createElement(AgentGallery, { tiles, onSelect, hidden: true }));
     expect(container).toBeEmptyDOMElement();
   });
 
   it('keeps the shell pose through selecting and closing a dossier', () => {
     const onSelect = vi.fn();
-    const { container, rerender } = render(React.createElement(OrbitSphere, { tiles, onSelect }));
+    const { container, rerender } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const tile = container.querySelector('[data-tile-id="work-3"]');
     const before = tile.style.transform;
-    rerender(React.createElement(OrbitSphere, { tiles, onSelect, selectedId: 'work-3' }));
+    rerender(React.createElement(AgentGallery, { tiles, onSelect, selectedId: 'work-3' }));
     expect(tile).toHaveClass('is-selected');
     expect(tile).toBeEnabled();
     expect(tile.style.transform).not.toBe(before);
-    rerender(React.createElement(OrbitSphere, { tiles, onSelect, selectedId: null }));
+    rerender(React.createElement(AgentGallery, { tiles, onSelect, selectedId: null }));
     expect(tile.style.transform).toBe(before);
     expect(onSelect).not.toHaveBeenCalled();
   });
@@ -97,7 +97,7 @@ describe('sphere activation is separate from rotation', () => {
   it('cancels drag without blocking a later keyboard or assistive activation', () => {
     vi.stubGlobal('PointerEvent', MouseEvent);
     const onSelect = vi.fn();
-    const { container } = render(React.createElement(OrbitSphere, { tiles, onSelect }));
+    const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const shell = container.querySelector('.connected-orbit-shell');
     fireEvent.pointerDown(shell, { clientX: 100, clientY: 100, button: 0 });
     fireEvent.pointerMove(shell, { clientX: 130, clientY: 110 });
@@ -113,7 +113,7 @@ describe('sphere activation is separate from rotation', () => {
   it('disarms an uncaptured press that leaves before the drag threshold', () => {
     vi.stubGlobal('PointerEvent', MouseEvent);
     const onSelect = vi.fn();
-    const { container } = render(React.createElement(OrbitSphere, { tiles, onSelect }));
+    const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const shell = container.querySelector('.connected-orbit-shell');
     const yaw = shell.dataset.yaw;
     fireEvent.pointerDown(shell, { clientX: 100, clientY: 100, button: 0 });
@@ -131,13 +131,13 @@ describe('sphere activation is separate from rotation', () => {
 
   it('retains role text on image failure and resets the failed image for a new URL', () => {
     const onSelect = vi.fn();
-    const { container, rerender } = render(React.createElement(OrbitSphere, { tiles, onSelect }));
+    const { container, rerender } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const tile = container.querySelector('[data-tile-id="work-0"]');
     const image = tile.querySelector('img');
     fireEvent.error(image);
     expect(image.style.visibility).toBe('hidden');
     expect(tile).toHaveTextContent('Role 0');
-    rerender(React.createElement(OrbitSphere, { tiles: tiles.map(item => ({ ...item, image: `${item.image}?retry=1` })), onSelect }));
+    rerender(React.createElement(AgentGallery, { tiles: tiles.map(item => ({ ...item, image: `${item.image}?retry=1` })), onSelect }));
     expect(tile.querySelector('img')).not.toBe(image);
     expect(tile.querySelector('img').style.visibility).toBe('');
   });

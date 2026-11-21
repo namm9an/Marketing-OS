@@ -20,7 +20,7 @@ test('mobile console preserves usable goal, chat and navigation without horizont
   await page.getByRole('button', { name: 'Agent Chat', exact: true }).click();
   await expect(page.getByRole('textbox', { name: 'Message to agent or triage command' })).toBeVisible();
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
-  await page.getByRole('textbox', { name: 'Message to agent or triage command' }).fill('/triage branding pr Compare B200 reliability');
+  await page.getByRole('textbox', { name: 'Message to agent or triage command' }).fill('/triage branding pr Compare product reliability');
   await expect(page.getByRole('button', { name: 'Send message' })).toBeInViewport();
   await page.screenshot({ path: testInfo.outputPath('console-mobile.png'), fullPage: true });
   for (const width of [360, 768]) {

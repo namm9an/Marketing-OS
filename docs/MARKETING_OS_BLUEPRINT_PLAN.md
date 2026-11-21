@@ -36,7 +36,7 @@ Read these three current documents together:
 
 The owner's latest instructions govern. Confirmed decisions are requirements. Research shortlists and proposed scene ideas are not final selections. Resolve a relevant open choice before implementing the part that depends on it; independent work may continue.
 
-The original three Claude documents remain unchanged in section 16 of [the historical working record](FRONTEND_DESIGN_WORKING.md). Their old phase prompts, copy, counts, and flat-SVG constraints do not override this blueprint or the owner's newer decisions. Anti Gravity's reports are background evidence. This document does not authorize deployment or automatic publication.
+The original three Claude documents remain unchanged in section 16 of the historical working record. Their old phase prompts, copy, counts, and flat-SVG constraints do not override this blueprint or the owner's newer decisions. Anti Gravity's reports are background evidence. This document does not authorize deployment or automatic publication.
 
 ### Standing instructions for every phase — owner clarification, 18 November
 
@@ -162,8 +162,8 @@ Dated command/test counts are historical evidence, not reusable phase PASS.
 Owner interaction uses a GitHub checkout locally in Anti Gravity when reviewing
 application changes. Cloud loopback is not the laptop's localhost. No hosting
 setup is required for that route and no existing deployment is assumed.
-Keep [backend repair](BACKEND_REPAIR_TRACKER.md) and
-[phase security checklist](BACKEND_PHASE_CHECKLIST.md) limitations visible.
+Keep backend repair and
+phase security checklist limitations visible.
 
 ## 4. Product and evidence boundaries
 
@@ -178,7 +178,7 @@ Keep [backend repair](BACKEND_REPAIR_TRACKER.md) and
 8. Use prepared art and CSS projection for depth. Keep actual results and controls in semantic DOM.
 9. Scroll, hover and playback change presentation only. A foreground card counter is not selected workflow state; stable IDs must coordinate the actual brief/result.
 10. Loading reports real asset/request readiness, not fake progress or hidden reasoning. Semantic content cannot depend on a timer overlay, zero-opacity initialization or graphics initialization.
-11. New case studies use real companies and independently reviewed public sources. Mark the submitted brief and agent recommendations as such. Retire the old corpus and E2E Networks material from active use, migrate existing databases and recapture genuine examples before promoting replacements. Q19 and Phase 10 own this source data boundary.
+11. New case studies use real companies and independently reviewed public sources. Mark the submitted brief and agent recommendations as such. Use vetted case-specific sources and capture genuine examples privately before promoting replacements. Q19 and Phase 10 own this source data boundary.
 
 ## 5. Mandatory gate for every implementation phase
 
@@ -199,7 +199,7 @@ milestone, then repeat the applicable audit, review and final tests.
 | Design review | Apply D U/S/V/C and A acceptance/M/P criteria; inspect actual normal-motion composition, art quality, clocks/interruptions and static fallback. Mark PASS/FAIL/BLOCKED/N/A with evidence; owner acceptance is separate from green tests |
 
 The owner subsequently required a repeatable backend/API/security loop at every
-phase. Use [the backend phase checklist](BACKEND_PHASE_CHECKLIST.md) and
+phase. Use the backend phase checklist and
 `tools/verify_phase.py`; its technical report supplements these six lanes and
 never closes an unapproved visual gate. Every registered API needs explicit
 healthy-contract/auth tests. Record threat applicability, dependency findings
@@ -208,7 +208,7 @@ and deployment-layer limits rather than claiming universal security.
 No “done” or “next phase” while a required lane fails or is untested. A skipped required check is not a pass. A phase that reveals a shared integration defect must fix it or explicitly revise scope with the owner before closing.
 
 When any backend gap is found, add it as an extra repair step in the discovery
-phase's own contract and enter it in the [backend gap register](BACKEND_PHASE_CHECKLIST.md#backend-gap-register).
+phase's own contract and enter it in the backend gap register.
 Follow the [gap repair loop](PHASE_EXECUTION_GUIDE.md#backend-gap-discovered-during-any-phase):
 Ponytail Audit and Review of the cause, Ponytail repair and targeted checks,
 independent re-audit and code review, then cumulative verification from Phase 1
@@ -762,7 +762,7 @@ Repair the shared seeder so the empty check and write happen in one transaction,
 preserve the search index on failure, and verify the two-worker app startup.
 Re-run the Phase 1 console/API, Phase 2 data/recording, and Phase 3 showcase and
 integration contracts on the repaired code. See the
-[backend gap register](BACKEND_PHASE_CHECKLIST.md#backend-gap-register) for the
+backend gap register for the
 cause review and targeted checks. **Verified:** Phase 1 through Phase 3 passed
 their cumulative technical regression checks on the repaired candidate.
 [Cumulative report](/workspace/reviews/phase-3-backend-gap/cumulative/report.json)
@@ -1689,7 +1689,7 @@ or a concrete N/A reason. Absence of required work is not N/A.
   outcome. Draft a few short lines per case and judge the rendered hierarchy.
   [Case writing research](/workspace/reviews/WEBSITE_REFERENCE_STUDY.md#phase-motion-and-case-study-research)
 - Approve a company profile, decision brief and independently researched public
-  sources. Replace the old corpus/seed and E2E Networks references, migrate
+  sources. Review the starter corpus for the selected case and migrate
   affected existing records while protecting unrelated data, then genuinely
   recapture the five examples; preserve captures as historical evidence. Scope
   the data work separately with the Phase 2 contracts and earlier if needed to
@@ -1719,7 +1719,7 @@ reverification. Each required item needs current evidence before a new closure.
 | ID | Concrete phase requirement | Corresponding design / animation requirement | Required evidence | Status |
 |---|---|---|---|---|
 | P10-01 | Design normal readable How it's built content in the same visual system: accurate one/two/five-agent workflows, memory scopes, schema/governance/review and persistence. Diagrams reveal real relationships rather than fake success stages, oversized decorative graphs or inherited six-panel debug chrome. | D §3, §6, §11–§15; A §1, §3, §6, §10–§12 | Exact implementation and targeted observation/test, then full phase loop | OPEN |
-| P10-02 | Write short previews of real-company cases and link the profile, brief, evidence, recommendation and limits. Retire the old corpus and E2E Networks material from active data, migrate existing stores and capture five new examples with Phase 2 provenance. | D §§3/6/12; A §§1/3/6/10–12 | Verified sources, existing-store migration and five genuine captures, independently attributable brief/result, concise copy and full-detail path | OPEN |
+| P10-02 | Write short previews of real-company cases and link the profile, brief, evidence, recommendation and limits. Review the starter sources for the case, add vetted observations as needed, and capture five examples privately with Phase 2 provenance. | D §§3/6/12; A §§1/3/6/10–12 | Verified sources, existing-store migration and five genuine captures, independently attributable brief/result, concise copy and full-detail path | OPEN |
 | P10-03 | Counts/benchmarks require actual methodology/evidence. The historical 75 rows include target plus competitor records; tuned retrieval is not held-out proof. No fake agency clients/awards/stats or operating UI represented by screenshots. | D §3, §6, §11–§15; A §1, §3, §6, §10–§12 | Exact implementation and targeted observation/test, then full phase loop | OPEN |
 | P10-04 | Keep optional evidence accessible, public operational capture/quotas/debug metadata out and console errors useful. No hidden-reasoning/zero-hallucination or unsupported monitoring/rewriting/scheduling claims. | D §3, §6, §11–§15; A §1, §3, §6, §10–§12 | Exact implementation and targeted observation/test, then full phase loop | OPEN |
 | P10-05 | Exit: both audiences can navigate understandable value and inspectable evidence; real source links/content/long-value cases and full phase gate pass. | D §3, §6, §11–§15; A §1, §3, §6, §10–§12 | Exact implementation and targeted observation/test, then full phase loop | OPEN |
@@ -2587,7 +2587,7 @@ Silence is not approval. Current doc reconciliation needs no new owner answer.
 | Q16 | Website dithering scope | CONFIRMED reuse the existing Phase 3 dithering across the entire website. Keep text, sources and controls crisp |
 | Q17 | Landing section order | CONFIRMED opening, quiet two-tone introduction, and clockwise gallery. After gallery, continue to workflow/results, concise case previews and a console close with our dot wordmark. Pricing omitted |
 | Q18 | Dossier and role animations | CONFIRMED scroll focuses; a card click opens information; separate How it works action starts a distinct explanation for each of five agents. Research components for their actual jobs |
-| Q19 | Case studies and corpus | CONFIRMED real companies, short landing copy then complete results/sources on demand. XTL was illustrative. Retire old E2E Networks material, migrate vetted public sources and recapture the five examples |
+| Q19 | Case studies and corpus | CONFIRMED real companies, short landing copy then complete results/sources on demand. XTL was illustrative. Review current public sources for the case and capture the five genuine examples privately |
 | Q20 | Landing glides, navigation, hover and render scope | Trial native same-page glides, accessible animated nav and bounded hover. Keep pointer-only hero guides, dither and scroll-linked orbit. Defer dedicated SVG animation, slider, WebGL shaders, physics and live 3D |
 
 The references are sufficient for the intended direction. Remaining decisions
@@ -3051,12 +3051,10 @@ were kept intact. Tests cover actual privacy text, page chrome, price mapping,
 persona assumptions and hardware relevance; broader retrieval/quality evaluation
 still belongs to F10.
 
-The five original F02 files and manifest are unchanged. Corrected, genuine
-`gemini-3.5-flash-lite` results live separately in
-`frontend/public/examples/f03-reviewed/`, with their own checksums and original
-request/response/source evidence. An earlier Product Marketing response implied
-immediate availability and waitlist options without supporting evidence. The
-accepted response came from a new capture with a tighter goal.
+The original and corrected recordings are archived privately. The public
+catalog at `frontend/public/examples/` contains illustrative briefs, results
+and source links. Its data contract exposes the example presentation only.
+The operator console still runs and saves actual workflows.
 
 F03 used eleven deliberate provider attempts: five first-pass corrections,
 five second-pass captures including the rejected PMM record, and one PMM
@@ -3346,7 +3344,7 @@ loop and a security checklist at every phase. Work continues on
   isolated state, controlled inference, logs and a JSON report. API inventory
   and security regressions are included in every backend run; visual acceptance,
   dependency findings and deployed edge checks remain separately recorded.
-- [Backend phase checklist](BACKEND_PHASE_CHECKLIST.md) retains all 20 requested
+- Backend phase checklist retains all 20 requested
   threat classes with actual applicability. The owner clarified SAML bypass and
   regex ReDoS; there is no instruction to add SAML/Redis/GraphQL/JWT/2FA features.
 - `a4104a2` `feat: add isolated F03 composition review frames`: new original

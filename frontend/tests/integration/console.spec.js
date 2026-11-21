@@ -12,7 +12,7 @@ test('history restores the original result through Vite and Flask after a reload
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await login(page);
-  const response = await page.request.post('/api/run', { data: { goal: 'Position B200 against Nebius', agent_type: 'branding' } });
+  const response = await page.request.post('/api/run', { data: { goal: 'Position product against competitors', agent_type: 'branding' } });
   expect(response.status()).toBe(200);
   const run = await response.json();
   await page.reload();
@@ -37,7 +37,7 @@ test('operator approval persists after reload and does not transfer to the next 
     expect(result.status()).toBe(200);
     return result.json();
   };
-  const first = await run('Position B200 while avoiding a price war');
+  const first = await run('Position product while avoiding a price war');
   await expect(page.getByText('Review status: pending', { exact: true })).toBeVisible();
   await page.getByRole('textbox', { name: 'Review reason (optional)' }).fill('Reviewed the sources and risks');
   await page.getByRole('button', { name: 'Approve decision', exact: true }).click();
@@ -45,7 +45,7 @@ test('operator approval persists after reload and does not transfer to the next 
   await page.reload();
   await page.getByRole('button', { name: new RegExp(`decision ${first.decision.id}$`) }).click();
   await expect(page.getByText('Review status: approved', { exact: true })).toBeVisible();
-  const second = await run('Position B200 against Nebius using reliability');
+  const second = await run('Position product against competitors using reliability');
   await expect(page.getByText('Review status: unreviewed', { exact: true })).toBeVisible();
   const savedFirst = (await (await page.request.get(`/api/decisions/${first.decision.id}`)).json()).decision;
   const savedSecond = (await (await page.request.get(`/api/decisions/${second.decision.id}`)).json()).decision;
@@ -84,7 +84,7 @@ test('switching agents during a delayed chat never reuses the old response or th
   await oldReady;
   await page.getByRole('button', { name: 'PR', exact: true }).click();
   const firstResponse = page.waitForResponse((r) => r.url().endsWith('/api/chat') && r.request().postDataJSON().agent === 'pr');
-  await send('What should our PR response be about B200?');
+  await send('What should our PR response be about product?');
   const first = await (await firstResponse).json();
   await expect(page.getByText(first.reply, { exact: true })).toBeVisible();
   release();

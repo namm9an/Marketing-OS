@@ -119,7 +119,7 @@ function SpiderExplore() {
 }
 
 export default function ConnectedFoundation({ onOpenConsole }) {
-  const catalog = useMemo(() => createExampleCatalog({ basePath: '/examples/f03-reviewed' }), []);
+  const catalog = useMemo(() => createExampleCatalog(), []);
   useEffect(() => {
     const id = window.location.hash.slice(1);
     if (!['top', 'introduction', 'agents', 'results', 'how-its-built'].includes(id)) return;
@@ -128,7 +128,7 @@ export default function ConnectedFoundation({ onOpenConsole }) {
     });
     return () => cancelAnimationFrame(frame);
   }, []);
-  return <div className="f03-page connected-page with-grain" data-treatment="type" id="top">
+  return <div className="marketing-page connected-page with-grain" data-treatment="type" id="top">
     <header className="connected-header">
       <a className="connected-brand" href="#top">{workingName}</a>
       <nav aria-label="Showcase">
@@ -174,7 +174,7 @@ export default function ConnectedFoundation({ onOpenConsole }) {
           <div><dt>Separate specialist contexts</dt><dd>A single run uses one specialist. Triage combines two, and a digest brings together all five. Chat keeps each specialist’s permitted context.</dd></div>
           <div><dt>Human review</dt><dd>A risk flag can send a recommendation for review. That decision and admission to memory are separate steps.</dd></div>
         </dl>
-        <a className="f03-text-button" href="https://github.com/namm9an/Marketing-OS" rel="noreferrer" target="_blank">
+        <a className="text-action" href="https://github.com/namm9an/Marketing-OS" rel="noreferrer" target="_blank">
           View the code <ArrowUpRight size={16} aria-hidden="true" />
         </a>
       </section>

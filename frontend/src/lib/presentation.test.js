@@ -10,7 +10,7 @@ describe('workflow presentation contracts', () => {
     expect(summary.evidence.kind).toBe('generated-summary-only');
     expect(summary.evidence.facts).toEqual([]);
     const captured = adaptWorkflow('run', raw, { capturedRetrievals: [{ agent: 'branding', query: raw.goalStatement, facts: [factFixture] }] });
-    expect(captured.evidence.facts[0]).toMatchObject({ id: 'fact-b200', content: 'B200 from Rs671/hr; H100 from Rs334/hr.' });
+    expect(captured.evidence.facts[0]).toMatchObject({ id: 'fact-service', content: 'The example service offers assessment before a repair quote.' });
     captured.raw.positioning.statement = 'Changed view copy';
     expect(raw).toEqual(before);
   });
@@ -37,7 +37,7 @@ describe('workflow presentation contracts', () => {
 
   it('treats chat context as reported excerpts and retains a missing fact ID honestly', () => {
     const view = adaptWorkflow('chat', { success: true, agent: 'branding', reply: 'Reply', metrics: mockMetrics,
-      namespace: 'agent:branding', recall: { facts: [{ organization: 'Vanguard Cloud', content: 'An excerpt', source_url: 'https://example.com' }],
+      namespace: 'agent:branding', recall: { facts: [{ organization: 'Example service', content: 'An excerpt', source_url: 'https://example.com' }],
         memories: [{ id: 'private-note', namespace: 'agent:branding' }] } });
     expect(view.evidence.kind).toBe('reported-excerpts');
     expect(view.evidence.facts[0].id).toBeNull();
