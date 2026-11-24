@@ -1,8 +1,8 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentGallery from './AgentGallery';
-import { dragRotation, projectTile, spherePoints } from './galleryGeometry';
+import { cursorRotation, dragRotation, projectTile, spherePoints } from './galleryGeometry';
 
 describe('spherical image projection', () => {
   it('distributes distinct image points on a finite unit shell', () => {
@@ -36,11 +36,106 @@ describe('spherical image projection', () => {
     expect(projectTile(point, rotation, true)).toMatchObject({ x: 0, y: 0, scale: 1.65, front: true, zIndex: 300 });
     expect(projectTile(point, rotation)).toEqual(before);
   });
+
+  it('maps the viewport center to the starting pose and bounds local cursor movement', () => {
+    const start = { yaw: .15, pitch: -.12 };
+    const bounds = { left: 100, top: 50, width: 800, height: 500 };
+    expect(cursorRotation(start, 500, 300, bounds)).toEqual(start);
+    const right = cursorRotation(start, 900, 50, bounds);
+    expect(right.yaw).toBeGreaterThan(start.yaw);
+    expect(right.pitch).toBeGreaterThan(start.pitch);
+    expect(cursorRotation(start, 1100, -50, bounds)).toEqual(right);
+    expect(cursorRotation(start, 500, 300, { ...bounds, width: 0 })).toEqual(start);
+  });
 });
 
 const tiles = Array.from({ length: 5 }, (_, index) => ({ id: `work-${index}`, agent: `role-${index}`, label: `Role ${index}`, image: `/work-${index}.webp` }));
 
 describe('sphere activation is separate from rotation', () => {
+  beforeEach(() => {
+    vi.stubGlobal('PointerEvent', class extends MouseEvent {
+      constructor(type, init = {}) {
+        super(type, init);
+        this.pointerType = init.pointerType ?? 'touch';
+        this.pointerId = init.pointerId ?? 1;
+      }
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('follows desktop motion on both axes and settles without selecting a tile', () => {
+    vi.useFakeTimers();
+    const onSelect = vi.fn();
+    const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
+    const shell = container.querySelector('.connected-orbit-shell');
+    vi.spyOn(shell, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: 800, height: 500 });
+    const initial = { yaw: shell.dataset.yaw, pitch: shell.dataset.pitch };
+    fireEvent.pointerMove(shell, { pointerType: 'mouse', clientX: 650, clientY: 170 });
+    act(() => vi.advanceTimersByTime(20));
+    expect(shell.dataset.yaw).not.toBe(initial.yaw);
+    expect(shell.dataset.pitch).not.toBe(initial.pitch);
+    const firstFrame = shell.dataset.yaw;
+    act(() => vi.advanceTimersByTime(600));
+    const settled = shell.dataset.yaw;
+    expect(settled).not.toBe(firstFrame);
+    act(() => vi.advanceTimersByTime(1000));
+    expect(shell.dataset.yaw).toBe(settled);
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('freezes an unsettled cursor pose while a foreground tile is pressed and selected', () => {
+    vi.useFakeTimers();
+    const onSelect = vi.fn();
+    const { container, rerender } = render(React.createElement(AgentGallery, { tiles, onSelect }));
+    const shell = container.querySelector('.connected-orbit-shell');
+    vi.spyOn(shell, 'getBoundingClientRect').mockReturnValue({ left: 0, top: 0, width: 800, height: 500 });
+    fireEvent.pointerMove(shell, { pointerType: 'mouse', clientX: 630, clientY: 340 });
+    act(() => vi.advanceTimersByTime(20));
+    const tile = container.querySelector('[data-front=true]');
+    const pressedPose = shell.dataset.yaw;
+    fireEvent.pointerDown(tile, { pointerType: 'mouse', button: 0, buttons: 1 });
+    fireEvent.pointerMove(tile, { pointerType: 'mouse', buttons: 1, clientX: 710, clientY: 270 });
+    act(() => vi.advanceTimersByTime(500));
+    expect(shell.dataset.yaw).toBe(pressedPose);
+    fireEvent.pointerUp(tile, { pointerType: 'mouse' });
+    fireEvent.click(tile, { detail: 1 });
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(tiles.find(item => item.id === tile.dataset.tileId), expect.anything());
+    rerender(React.createElement(AgentGallery, { tiles, onSelect, selectedId: tile.dataset.tileId }));
+    fireEvent.pointerMove(shell, { pointerType: 'mouse', clientX: 100, clientY: 100 });
+    act(() => vi.advanceTimersByTime(500));
+    expect(shell.dataset.yaw).toBe(pressedPose);
+    expect(tile).toHaveClass('is-selected');
+  });
+
+  it('provides one keyboard entry and exposes each tile with the arrow keys', () => {
+    const work = Array.from({ length: 25 }, (_, index) => ({
+      id: `tile-${index}`, agent: `agent-${index % 5}`, label: `Work ${index}`, image: `/tile-${index}.webp`,
+    }));
+    const onSelect = vi.fn();
+    const { container } = render(React.createElement(AgentGallery, { tiles: work, onSelect }));
+    const entries = container.querySelectorAll('[data-tile-id][tabindex="0"]');
+    expect(entries).toHaveLength(1);
+    act(() => entries[0].focus());
+    const visited = new Set();
+    for (let index = 0; index < 25; index += 1) {
+      fireEvent.keyDown(document.activeElement, { key: 'ArrowRight' });
+      expect(document.activeElement).toHaveAttribute('data-front', 'true');
+      expect(document.activeElement).toHaveAttribute('tabindex', '0');
+      visited.add(document.activeElement.dataset.tileId);
+    }
+    expect(visited.size).toBe(work.length);
+    fireEvent.keyDown(document.activeElement, { key: 'ArrowLeft' });
+    expect(document.activeElement.dataset.tileId).not.toBe(entries[0].dataset.tileId);
+    expect(onSelect).not.toHaveBeenCalled();
+    const target = work.find(tile => tile.id === document.activeElement.dataset.tileId);
+    fireEvent.click(document.activeElement, { detail: 0 });
+    expect(onSelect).toHaveBeenCalledExactlyOnceWith(target, expect.anything());
+  });
+
   it('explicit foreground activation preserves tile identity and the original event', () => {
     const onSelect = vi.fn();
     render(React.createElement(AgentGallery, { tiles, onSelect }));
@@ -51,7 +146,6 @@ describe('sphere activation is separate from rotation', () => {
   });
 
   it('drag changes rotation without activating a tile, then a new plain click works', () => {
-    vi.stubGlobal('PointerEvent', MouseEvent);
     const onSelect = vi.fn();
     const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const shell = container.querySelector('.connected-orbit-shell');
@@ -95,7 +189,6 @@ describe('sphere activation is separate from rotation', () => {
   });
 
   it('cancels drag without blocking a later keyboard or assistive activation', () => {
-    vi.stubGlobal('PointerEvent', MouseEvent);
     const onSelect = vi.fn();
     const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const shell = container.querySelector('.connected-orbit-shell');
@@ -111,7 +204,6 @@ describe('sphere activation is separate from rotation', () => {
   });
 
   it('disarms an uncaptured press that leaves before the drag threshold', () => {
-    vi.stubGlobal('PointerEvent', MouseEvent);
     const onSelect = vi.fn();
     const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
     const shell = container.querySelector('.connected-orbit-shell');

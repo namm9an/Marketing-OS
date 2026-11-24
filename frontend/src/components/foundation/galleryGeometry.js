@@ -1,5 +1,6 @@
 const GOLDEN_ANGLE = Math.PI * (3 - Math.sqrt(5));
 const finite = value => Number.isFinite(value) ? value : 0;
+const clamp = (value, limit) => Math.max(-limit, Math.min(limit, value));
 
 export function spherePoints(count) {
   const length = Math.max(0, Math.floor(finite(count)));
@@ -14,7 +15,23 @@ export function spherePoints(count) {
 export function dragRotation(start, dx, dy) {
   return {
     yaw: finite(start.yaw) + finite(dx) * .006,
-    pitch: Math.max(-.85, Math.min(.85, finite(start.pitch) - finite(dy) * .004)),
+    pitch: clamp(finite(start.pitch) - finite(dy) * .004, .85),
+  };
+}
+
+export function cursorRotation(start, x, y, bounds) {
+  const localX = bounds.width > 0 ? clamp(2 * (x - bounds.left) / bounds.width - 1, 1) : 0;
+  const localY = bounds.height > 0 ? clamp(2 * (y - bounds.top) / bounds.height - 1, 1) : 0;
+  return {
+    yaw: finite(start.yaw) + finite(localX) * 1.8,
+    pitch: clamp(finite(start.pitch) - finite(localY) * .54, .85),
+  };
+}
+
+export function focusTileRotation(point) {
+  return {
+    yaw: -Math.atan2(point.x, point.z),
+    pitch: clamp(Math.atan2(point.y, Math.hypot(point.x, point.z)), .85),
   };
 }
 

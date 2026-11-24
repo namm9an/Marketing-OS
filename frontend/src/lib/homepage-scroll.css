@@ -1,0 +1,4 @@
+/* Keep the document scroll position while the open dialog owns its scroll. */
+html.lenis.lenis-stopped {
+  overflow: hidden;
+}

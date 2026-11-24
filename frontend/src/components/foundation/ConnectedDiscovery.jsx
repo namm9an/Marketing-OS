@@ -91,6 +91,7 @@ function useArtReadiness(section, staticView) {
 export default function ConnectedDiscovery({ catalog }) {
   const narrow = useMediaQuery('(max-width: 860px)');
   const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
+  const mouse = useMediaQuery('(hover: hover) and (pointer: fine)');
   const staticView = narrow || reduced;
   const gallery = useRef(null);
   const dialog = useRef(null);
@@ -131,10 +132,13 @@ export default function ConnectedDiscovery({ catalog }) {
     if (panel.open) panel.close();
     if (restoreFocus.current) {
       restoreFocus.current = false;
-      const target = opener.current;
+      const origin = opener.current;
+      const target = origin?.element;
       opener.current = null;
       // A runtime motion or viewport change may have removed the original tile.
       const frame = requestAnimationFrame(() => {
+        if (origin && window.location.href !== origin.href) return;
+        if (origin) window.scrollTo({ top: origin.y, behavior: 'instant' });
         (target?.isConnected && target.getClientRects().length
           ? target : gallery.current?.querySelector(`.connected-picker [data-agent="${featured}"]`))?.focus({ preventScroll: true });
       });
@@ -147,7 +151,7 @@ export default function ConnectedDiscovery({ catalog }) {
     url.searchParams.set('agent', tile.agent);
     url.searchParams.set('tile', tile.id);
     url.hash = 'dossier';
-    opener.current = event?.currentTarget ?? null;
+    opener.current = { element: event.currentTarget, href: window.location.href, y: window.scrollY };
     revealDirectEntry.current = false;
     window.history.pushState({ ...window.history.state, showcaseDossier: true }, '', url);
     setSelected(tile);
@@ -173,7 +177,9 @@ export default function ConnectedDiscovery({ catalog }) {
         <h2 id="agents-title">Agent gallery</h2>
         <p>{staticView
           ? 'Choose a specialist to see their brief and recommendation.'
-          : 'Drag to explore the gallery. Choose an image to open its agent’s dossier.'}</p>
+          : mouse
+            ? 'Move your pointer to turn the gallery. Choose an image to open its dossier.'
+            : 'Swipe to turn the gallery. Choose an image to open its dossier.'}</p>
       </div>
       {!staticView && <div className="connected-gallery-stage">
         <AgentGallery tiles={tiles} selectedId={activeTile?.id ?? null} onSelect={selectTile}

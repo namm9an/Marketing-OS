@@ -72,28 +72,12 @@
   display: inline-block;
   position: relative;
 }
-.connected-word [data-guide] { outline: 1px dashed var(--rule); outline-offset: 4px; }
-.connected-word [data-guide]::before {
-  content: attr(data-letter);
-  position: absolute;
-  inset: 0;
-  color: transparent;
-  -webkit-text-stroke: 1px var(--paper);
-  mask: radial-gradient(var(--ink) .9px, transparent 1.15px) 0 0 / 3px 3px;
-  pointer-events: none;
-}
-.connected-word [data-guide]::after {
-  content: attr(data-guide);
-  position: absolute;
-  inset: -12px auto auto 0;
-  border: 1px solid var(--brown);
-  background: var(--paper);
-  color: var(--brown);
-  padding: 4px;
-  font: 11px/1 var(--font-mono);
-  letter-spacing: normal;
-  pointer-events: none;
-}
+.vector-wordmark { position: relative; }
+.vector-wordmark-canvas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; opacity: 0; }
+.vector-wordmark-label { position: absolute; top: 0; left: 0; pointer-events: none; opacity: 0; color: var(--brown); font: 11px/1 var(--font-mono); letter-spacing: normal; white-space: nowrap; }
+.vector-wordmark[data-wordmark-state=active] > .connected-word { opacity: 0; }
+.vector-wordmark[data-wordmark-state=active] > .vector-wordmark-canvas { opacity: 1; }
+.vector-wordmark[data-wordmark-state=active] > .vector-wordmark-label { opacity: .85; }
 .connected-pitch > p {
   font-size: clamp(22px, 2.5vw, 36px);
   line-height: 1.15;
@@ -313,8 +297,8 @@ html:has(.connected-dossier[open]) { overflow: hidden; }
   .connected-hero-brief { justify-self: start; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .connected-word [data-guide] { outline: none; }
-  .connected-word [data-guide]::before, .connected-word [data-guide]::after { display: none; }
+  .vector-wordmark[data-wordmark-state] > .connected-word { opacity: 1; }
+  .vector-wordmark-canvas, .vector-wordmark-label { display: none; }
   .connected-spider canvas { display: none; }
   .connected-pixels { animation: none; }
 }

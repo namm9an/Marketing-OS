@@ -1,58 +1,13 @@
-import { Fragment, useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { ArrowDown, ArrowUpRight } from 'lucide-react';
 import { createExampleCatalog } from '../../lib/exampleCatalog';
-import { useMediaQuery } from '../../lib/useMediaQuery';
+import { useHomepageScroll } from '../../lib/useHomepageScroll';
+import VectorWordmark from './VectorWordmark';
 import ConnectedDiscovery from './ConnectedDiscovery';
 import './foundation.css';
 import './connected.css';
 
 const workingName = 'Marketing Helper';
-
-function clearGuides(heading) {
-  heading?.querySelectorAll('[data-guide]').forEach(letter => letter.removeAttribute('data-guide'));
-}
-
-function VectorIdentity() {
-  const heading = useRef(null);
-  const reduced = useMediaQuery('(prefers-reduced-motion: reduce)');
-
-  useEffect(() => {
-    if (reduced) clearGuides(heading.current);
-  }, [reduced]);
-
-  function showGuides(event) {
-    if (event.pointerType !== 'mouse' || reduced) return;
-    const node = event.currentTarget;
-    const bounds = node.getBoundingClientRect();
-    const glyphs = Array.from(node.querySelectorAll('[data-letter]'), letter => ({
-      letter,
-      rect: letter.getBoundingClientRect(),
-    }));
-    for (const { letter, rect } of glyphs) {
-      const near = event.clientY >= rect.top && event.clientY <= rect.bottom
-        && Math.abs(event.clientX - rect.left - rect.width / 2) < rect.width * .85;
-      if (near) {
-        const x = Math.round(rect.left - bounds.left);
-        const y = Math.round(rect.top - bounds.top);
-        letter.setAttribute('data-guide', `${x} / ${y}`);
-      } else {
-        letter.removeAttribute('data-guide');
-      }
-    }
-  }
-
-  return <h1 ref={heading} className="connected-identity" aria-label={workingName}
-    onPointerMove={showGuides}
-    onPointerLeave={() => clearGuides(heading.current)}
-    onPointerCancel={() => clearGuides(heading.current)}>
-    {workingName.split(' ').map((word, wordIndex) => <Fragment key={word}>
-      {wordIndex > 0 && ' '}
-      <span className="connected-word" aria-hidden="true">
-        {Array.from(word, (letter, index) => <span key={index} data-letter={letter}>{letter}</span>)}
-      </span>
-    </Fragment>)}
-  </h1>;
-}
 
 function ConsoleLink({ onOpenConsole }) {
   function open(event) {
@@ -119,6 +74,7 @@ function SpiderExplore() {
 }
 
 export default function ConnectedFoundation({ onOpenConsole }) {
+  useHomepageScroll();
   const catalog = useMemo(() => createExampleCatalog(), []);
   useEffect(() => {
     const id = window.location.hash.slice(1);
@@ -141,7 +97,7 @@ export default function ConnectedFoundation({ onOpenConsole }) {
     <main>
       <section className="connected-opening" aria-label="Opening">
         <div className="connected-hero">
-          <VectorIdentity />
+          <VectorWordmark text={workingName} />
           <div className="connected-pitch">
             <p>Bring a brief. See five specialist perspectives.</p>
             <div className="connected-actions">
