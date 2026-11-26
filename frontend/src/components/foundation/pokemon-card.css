@@ -1,0 +1,102 @@
+/* Crisp 3D tilt + hard ink offset shadow with zero gradient, holo, or sheen layers */
+.poke-card {
+  --rotate-x: 0deg;
+  --rotate-y: 0deg;
+  display: block;
+  position: relative;
+  perspective: 720px;
+  transform-style: preserve-3d;
+}
+
+.poke-card--tile {
+  width: 100%;
+}
+
+.connected-selected-art .poke-card--dossier {
+  width: var(--dossier-art-width, clamp(220px, 28vw, 340px));
+  max-width: 100%;
+  aspect-ratio: 4 / 3;
+  perspective: 900px;
+}
+
+.poke-rotator {
+  display: block;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+  transform: rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
+  transition: transform 320ms cubic-bezier(.22, 1, .36, 1);
+  will-change: transform;
+}
+
+.poke-card[data-interacting="true"] .poke-rotator {
+  transform: translate(-2px, -4px) scale(1.035) rotateX(var(--rotate-x)) rotateY(var(--rotate-y));
+  transition: transform 90ms ease-out;
+}
+
+.poke-frame {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 4px 4px 0 var(--ink);
+  transition: box-shadow 180ms cubic-bezier(.22, 1, .36, 1);
+}
+
+.poke-card--tile .poke-frame {
+  border: 0;
+  border-radius: 3px 3px 0 0;
+  box-shadow: 3px 3px 0 var(--ink);
+}
+
+.poke-card--dossier .poke-frame {
+  border-radius: 3px;
+}
+
+.poke-card[data-interacting="true"] .poke-frame {
+  box-shadow: 8px 8px 0 var(--ink);
+}
+
+.poke-artwork {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 100%;
+  background: var(--paper);
+}
+
+.poke-card--tile .poke-artwork img,
+.connected-selected-art .poke-card--dossier img:not([hidden]) {
+  display: block;
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  object-position: center;
+  pointer-events: none;
+}
+
+.poke-artwork-rear {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  pointer-events: none;
+  transition: opacity 110ms linear;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .poke-card,
+  .poke-rotator,
+  .poke-frame,
+  .poke-artwork-rear {
+    transition: none !important;
+  }
+  .poke-rotator {
+    transform: none !important;
+  }
+}

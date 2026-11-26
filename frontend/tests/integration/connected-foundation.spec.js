@@ -138,6 +138,123 @@ test('clicking a foreground image selects its tile and opens exactly one agent d
   await expect(page).toHaveURL(/#agents$/);
 });
 
+test('desktop mouse drag spins the sphere, non-blocking dossier keeps all pills reachable and browses all 5 artifacts', async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await page.goto('/#agents');
+  const shell = orbitShell(page);
+  const box = await shell.boundingBox();
+  expect(box).not.toBeNull();
+
+  // Initial resting angle places one tile front-most (--yellow) and the other 19 behind it (ink/brown/paper) across all 20 SVG cards.
+  await expect(shell.locator('.connected-sphere-tile')).toHaveCount(20);
+  await expect(shell.locator('.connected-sphere-tile [data-pokemon-card]')).toHaveCount(20);
+  const initialFront = shell.locator('.connected-sphere-tile [data-front-most="true"]');
+  const initialRear = shell.locator('.connected-sphere-tile [data-front-most="false"]');
+  await expect(initialFront).toHaveCount(1);
+  await expect(initialRear).toHaveCount(19);
+  await expect(initialFront.locator('.poke-artwork-rear')).toHaveCSS('opacity', '0');
+  await expect(initialRear.first().locator('.poke-artwork-rear')).toHaveAttribute('src', /-rear\.svg/);
+  await expect(initialRear.first().locator('.poke-artwork-rear')).toHaveCSS('opacity', '1');
+  const frontBrandTile = shell.locator('.connected-sphere-tile').filter({
+    has: page.locator('[data-front-most="true"]'),
+  });
+  const frontBrandBox = await frontBrandTile.boundingBox();
+  expect(frontBrandBox).not.toBeNull();
+  await page.mouse.move(frontBrandBox.x + frontBrandBox.width * .72, frontBrandBox.y + frontBrandBox.height * .28, { steps: 4 });
+  await expect(frontBrandTile.locator('[data-pokemon-card="true"]')).toHaveAttribute('data-interacting', 'true');
+  expect(parseFloat(await frontBrandTile.locator('[data-pokemon-card="true"]').evaluate(el => el.style.getPropertyValue('--rotate-y')))).toBeGreaterThan(1);
+
+  // Desktop click-and-drag rotates without opening a dossier, cancels hover tilt during drag, and transfers front-most by depth.
+  const yawStart = await shell.getAttribute('data-yaw');
+  await page.mouse.move(box.x + box.width * .5, box.y + box.height * .5);
+  await page.mouse.down();
+  await page.mouse.move(box.x + box.width * .5 + 170, box.y + box.height * .5 - 24, { steps: 6 });
+  await expect(shell).toHaveAttribute('data-dragging', 'true');
+  await expect(shell.locator('.connected-sphere-tile [data-interacting="true"]')).toHaveCount(0);
+  await page.mouse.up();
+  await expect(shell).not.toHaveAttribute('data-yaw', yawStart);
+  await expect(shell.locator('.connected-sphere-tile[data-agent="branding"] [data-front-most="true"]')).toHaveCount(0);
+  await expect(shell.locator('.connected-sphere-tile [data-front-most="true"]')).toHaveCount(1);
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+
+  // Verify named 4-artifact tabs + slide title aria-label + 4:3 clamp sizing + 3D tilt (without holo foil) on Branding.
+  const picker = specialistPicker(page);
+  await picker.getByRole('button', { name: 'Branding', exact: true }).click();
+  const brandingDossier = page.getByRole('dialog', { name: 'Branding', exact: true });
+  await expect(brandingDossier).toBeVisible();
+  await expect(brandingDossier.locator('.connected-step-count')).toHaveText('1 / 4');
+  await expect(brandingDossier.getByRole('group', { name: 'Browse role images' }).getByRole('button'))
+    .toHaveText(['Repair vs. replace brief', 'Positioning angle', 'Audience segments', 'Message hierarchy']);
+  const brandingCard = brandingDossier.locator('[data-pokemon-card="true"][data-front-most="true"]');
+  await expect(brandingCard).toHaveCount(1);
+  await expect(brandingDossier.locator('.poke-shine, .poke-glare')).toHaveCount(0);
+  await expect(brandingDossier.locator('.connected-selected-art figcaption')).toHaveText('Repair vs. replace brief');
+  await expect(brandingDossier.locator('.connected-selected-art img[aria-label="Repair vs. replace brief"]')).toHaveCount(1);
+  const brandCardBox = await brandingCard.boundingBox();
+  expect(brandCardBox.width).toBeGreaterThanOrEqual(219);
+  expect(brandCardBox.width).toBeLessThanOrEqual(341);
+  expect(brandCardBox.width / brandCardBox.height).toBeCloseTo(4 / 3, 1);
+  await page.mouse.move(brandCardBox.x + brandCardBox.width * .78, brandCardBox.y + brandCardBox.height * .24);
+  await expect(brandingCard).toHaveAttribute('data-interacting', 'true');
+  const brandRotateY = await brandingCard.evaluate(el => el.style.getPropertyValue('--rotate-y'));
+  expect(parseFloat(brandRotateY)).toBeGreaterThan(2);
+  await brandingDossier.getByRole('button', { name: 'Next artifact', exact: true }).click();
+  await expect(brandingDossier.locator('.connected-selected-art figcaption')).toHaveText('Positioning angle');
+  await expect(brandingDossier.locator('.connected-selected-art img[aria-label="Positioning angle"]')).toHaveCount(1);
+
+  // Open Social Community via picker, verify non-blocking panel keeps Field Events uncovered & toolbar docked at y = 0.
+  await picker.getByRole('button', { name: 'Social Community', exact: true }).click();
+  const dossier = page.getByRole('dialog', { name: 'Social Community', exact: true });
+  await expect(dossier).toBeVisible();
+  await expect(dossier.locator('[data-pokemon-card="true"][data-front-most="true"]')).toHaveCount(1);
+  const toolbar = dossier.locator('.connected-dossier-toolbar');
+  const dossierBox = await dossier.boundingBox();
+  const eventsButtonBox = await picker.getByRole('button', { name: 'Field Events', exact: true }).boundingBox();
+  expect(eventsButtonBox.x + eventsButtonBox.width).toBeLessThanOrEqual(dossierBox.x + 2);
+  expect((await toolbar.boundingBox()).y).toBeLessThanOrEqual(2);
+
+  // Scroll inside dossier: toolbar stays anchored at y = 0 with nothing bleeding above.
+  await page.mouse.move(dossierBox.x + dossierBox.width * .5, dossierBox.y + dossierBox.height * .5);
+  await page.mouse.wheel(0, 320);
+  await expect.poll(() => dossier.evaluate(el => el.scrollTop)).toBeGreaterThan(100);
+  expect((await toolbar.boundingBox()).y).toBeLessThanOrEqual(2);
+
+  // Browse all 4 artifacts inside the open dossier via Next, Previous wrap-around, and named item pills.
+  const caption = dossier.locator('.connected-selected-art figcaption');
+  const indexGroup = dossier.getByRole('group', { name: 'Browse role images' });
+  const expectedLabels = ['Community brief', 'Content storyboard', 'Thread outline', 'Weekly rhythm'];
+  await expect(indexGroup.getByRole('button')).toHaveText(expectedLabels);
+  for (let i = 0; i < expectedLabels.length; i += 1) {
+    await expect(caption).toHaveText(expectedLabels[i]);
+    await expect(shell).toHaveAttribute('data-selected', `social-${i + 1}`);
+    if (i < expectedLabels.length - 1) {
+      await dossier.getByRole('button', { name: 'Next artifact', exact: true }).click();
+    }
+  }
+  await dossier.getByRole('button', { name: 'Next artifact', exact: true }).click();
+  await expect(caption).toHaveText('Community brief');
+  await dossier.getByRole('button', { name: 'Previous artifact', exact: true }).click();
+  await expect(caption).toHaveText('Weekly rhythm');
+  await indexGroup.getByRole('button', { name: 'Thread outline', exact: true }).click();
+  await expect(caption).toHaveText('Thread outline');
+  await expect(shell).toHaveAttribute('data-selected', 'social-3');
+
+  // Clicking empty lower space inside the dossier panel must NOT close it.
+  await page.mouse.click(dossierBox.x + 24, dossierBox.y + dossierBox.height - 20);
+  await expect(dossier).toBeVisible();
+
+  // Switch straight to Field Events in 1 click without closing first and dismiss via Escape.
+  await picker.getByRole('button', { name: 'Field Events', exact: true }).click();
+  const eventsDossier = page.getByRole('dialog', { name: 'Field Events', exact: true });
+  await expect(eventsDossier).toBeVisible();
+  await expect(shell).toHaveAttribute('data-selected', 'events-1');
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('dialog')).toHaveCount(0);
+  await expect(shell).toHaveAttribute('data-selected', '');
+  await expect(page).toHaveURL(/#agents$/);
+  await expect(picker.getByRole('button', { name: 'Field Events', exact: true })).toBeFocused();
+});
+
 test('a gallery arrow key brings the next image forward for keyboard activation and focus return', async ({ page }) => {
   await page.goto('/#agents');
   const shell = orbitShell(page);
@@ -201,7 +318,7 @@ test('slow artwork keeps navigation usable and recovers through the local retry'
   let releaseArt;
   const artworkResponse = new Promise(resolve => { releaseArt = resolve; });
   let remainingInitialFailures = 1;
-  await page.route('**/assets/agent-gallery/branding-1.webp*', async route => {
+  await page.route('**/assets/agent-gallery/branding-1.svg*', async route => {
     if (remainingInitialFailures === 0) return route.continue();
     remainingInitialFailures -= 1;
     await artworkResponse;
@@ -218,7 +335,7 @@ test('slow artwork keeps navigation usable and recovers through the local retry'
     await gallery.getByRole('button', { name: 'Retry artwork' }).click();
     await expect(gallery.getByText('Artwork unavailable.', { exact: true })).toHaveCount(0);
     await expect(gallery.getByText('Loading agent artwork…', { exact: true })).toHaveCount(0);
-    const image = gallery.locator('img[src*="branding-1.webp"]').first();
+    const image = gallery.locator('img[src*="branding-1.svg"]').first();
     await expect.poll(() => image.evaluate(element => element.complete && element.naturalWidth > 0)).toBe(true);
   } finally {
     releaseArt();
@@ -262,6 +379,16 @@ test.describe('touch fallback', () => {
     await page.goto('/#agents');
     await expect(page.locator('html')).not.toHaveClass(/\blenis\b/);
     await expect(orbitShell(page)).toHaveCount(0);
+    const brandChoice = specialistPicker(page).getByRole('button', { name: 'Branding', exact: true });
+    await brandChoice.tap();
+    const brandDossier = page.getByRole('dialog', { name: 'Branding', exact: true });
+    await expect(brandDossier).toBeVisible();
+    await expect(brandDossier.locator('[data-pokemon-card="true"][data-front-most="true"]')).toHaveCount(1);
+    await brandDossier.getByRole('button', { name: 'Positioning angle', exact: true }).tap();
+    await expect(brandDossier.locator('.connected-selected-art figcaption')).toHaveText('Positioning angle');
+    await brandDossier.getByRole('button', { name: 'Close dossier' }).tap();
+    await expect(brandDossier).toHaveCount(0);
+
     const choice = specialistPicker(page).getByRole('button', { name: 'Field Events', exact: true });
     await choice.tap();
     const dossier = page.getByRole('dialog', { name: 'Field Events', exact: true });
@@ -289,6 +416,12 @@ test('a narrow reduced-motion dossier and the named landing page remain accessib
   await page.goto('/');
   const axe = () => new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
   expect((await axe()).violations).toEqual([]);
+  await specialistPicker(page).getByRole('button', { name: 'Branding', exact: true }).click();
+  const brandingDialog = page.getByRole('dialog', { name: 'Branding', exact: true });
+  await expect(brandingDialog.getByRole('heading', { name: 'A positioning recommendation', exact: true })).toBeVisible();
+  expect((await axe()).violations).toEqual([]);
+  await page.keyboard.press('Escape');
+
   await specialistPicker(page).getByRole('button', { name: 'Social Community', exact: true }).click();
   const dialog = page.getByRole('dialog', { name: 'Social Community', exact: true });
   await expect(dialog.getByRole('heading', { name: 'A community-content recommendation', exact: true })).toBeVisible();

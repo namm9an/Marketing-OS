@@ -165,7 +165,11 @@
 .connected-brief-path ol { margin: 12px 0 0; padding-inline-start: 1.4em; font-size: clamp(17px, 1.75vw, 24px); }
 .connected-brief-path li { border-bottom: 1px solid var(--rule); padding-block: 12px; }
 
-.connected-gallery { border-top: 1px solid var(--rule); padding-block: clamp(48px, 6vw, 92px) 68px; }
+.connected-gallery {
+  border-top: 1px solid var(--rule);
+  padding-block: clamp(48px, 6vw, 92px) 68px;
+  transition: padding-inline-end 190ms cubic-bezier(.2,.8,.25,1);
+}
 .connected-gallery-heading {
   display: flex;
   align-items: end;
@@ -175,7 +179,15 @@
 .connected-gallery-heading p { margin: 0; max-width: 31ch; }
 .connected-gallery-stage { position: relative; min-height: var(--stage-height); isolation: isolate; }
 .connected-gallery-stage .connected-orbit-viewport { height: var(--stage-height); }
-.connected-gallery-stage .connected-orbit-shell { --orbit-radius: clamp(140px, 22vw, 250px); }
+.connected-gallery-stage .connected-orbit-shell { --orbit-radius: clamp(112px, 17vw, 206px); }
+@media (min-width: 861px) {
+  .connected-gallery.has-open-dossier {
+    padding-inline-end: calc(min(468px, 42vw) + 28px);
+  }
+  .connected-gallery.has-open-dossier .connected-gallery-stage .connected-orbit-shell {
+    --orbit-radius: clamp(104px, 14.5vw, 186px);
+  }
+}
 .connected-art-status {
   position: absolute;
   z-index: 2;
@@ -206,34 +218,111 @@
 
 .connected-dossier {
   position: fixed;
+  z-index: 40;
   inset: 0 0 0 auto;
-  width: min(490px, 100%);
+  width: min(468px, 100%);
   height: 100%;
   max-width: 100%;
   max-height: 100%;
   margin: 0;
   border: 0;
   border-inline-start: 1px solid var(--ink);
-  padding: clamp(20px, 3.8vw, 48px);
+  padding: 0;
   background: var(--paper);
   color: var(--ink);
   font-family: var(--font-sans);
+  overflow-y: auto;
   overscroll-behavior: contain;
+  scroll-padding-top: 76px;
+  box-shadow: -8px 0 28px color-mix(in srgb, var(--ink) 8%, transparent);
 }
-.connected-dossier::backdrop { background: var(--veil); }
+.connected-dossier.is-panel { width: min(468px, 42vw); }
+.connected-dossier.is-modal::backdrop { background: var(--veil); }
 html:has(.connected-dossier[open]) { overflow: hidden; }
-.connected-dossier-toolbar { position: sticky; z-index: 1; top: 0; background: var(--paper); }
+.connected-dossier:focus { outline: none; }
+.connected-dossier-toolbar {
+  position: sticky;
+  z-index: 2;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px clamp(20px, 3.8vw, 48px);
+  background: var(--paper);
+  border-bottom: 1px solid var(--rule);
+}
+.connected-dossier-step {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.connected-step-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  border: 1px solid var(--rule);
+  border-radius: 999px;
+  background: transparent;
+}
+.connected-step-btn:is(:hover, :focus-visible) { border-color: var(--ink); background: var(--peach); }
+.connected-step-count {
+  min-width: 3.4em;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--brown);
+  font-variant-numeric: tabular-nums;
+}
+.connected-dossier-body {
+  padding: 20px clamp(20px, 3.8vw, 48px) clamp(24px, 4vw, 48px);
+}
 .connected-dossier h2 {
-  margin-block: 12px 20px;
-  font-size: clamp(32px, 4vw, 50px);
+  margin-block: 4px 18px;
+  font-size: clamp(32px, 4vw, 46px);
   font-weight: 650;
   line-height: 1.04;
   letter-spacing: -.04em;
 }
-.connected-selected-art { margin: 0 0 24px; }
-.connected-selected-art img { display: block; width: 100%; height: auto; max-height: 190px; object-fit: contain; object-position: left center; }
+.connected-selected-art {
+  --dossier-art-width: clamp(220px, 28vw, 340px);
+  margin: 0 0 14px;
+}
+.connected-selected-art > img:not([hidden]) {
+  display: block;
+  width: var(--dossier-art-width);
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  object-fit: cover;
+  object-position: center;
+}
 .connected-selected-art img[hidden] { display: none; }
-.connected-selected-art figcaption { margin-top: 8px; color: var(--brown); font-size: 14px; }
+.connected-selected-art figcaption { margin-top: 10px; color: var(--brown); font-size: 14px; font-weight: 500; }
+.connected-artifact-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.connected-artifact-tabs button {
+  min-height: 38px;
+  padding: 6px 14px;
+  border: 1px solid var(--rule);
+  border-radius: 32px;
+  background: transparent;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.2;
+}
+.connected-artifact-tabs button:is(:hover, :focus-visible) { border-color: var(--ink); }
+.connected-artifact-tabs button[aria-pressed=true] {
+  border-color: var(--ink);
+  background: var(--yellow);
+  font-weight: 600;
+}
 .connected-dossier .agent-example { padding: 0; border: 0; }
 .connected-dossier .agent-example::before { content: none; }
 .connected-dossier .agent-result > p { font-size: 17px; }
@@ -273,10 +362,34 @@ html:has(.connected-dossier[open]) { overflow: hidden; }
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .connected-dossier[open] { animation: connected-dossier-entry 240ms cubic-bezier(.2,.8,.25,1); }
+  .connected-dossier[open] {
+    animation: connected-dossier-entry 240ms cubic-bezier(.2,.8,.25,1) both;
+  }
+  .connected-dossier[data-closing=true] {
+    pointer-events: none;
+    animation: connected-dossier-exit 190ms cubic-bezier(.4,0,.2,1) both;
+  }
+  .connected-dossier.is-modal[open]::backdrop {
+    animation: connected-backdrop-in 240ms ease-out both;
+  }
+  .connected-dossier.is-modal[data-closing=true]::backdrop {
+    animation: connected-backdrop-out 190ms ease-in both;
+  }
   @keyframes connected-dossier-entry {
     from { opacity: .65; transform: translateX(28px); }
     to { opacity: 1; transform: none; }
+  }
+  @keyframes connected-dossier-exit {
+    from { opacity: 1; transform: none; }
+    to { opacity: 0; transform: translateX(28px); }
+  }
+  @keyframes connected-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes connected-backdrop-out {
+    from { opacity: 1; }
+    to { opacity: 0; }
   }
 }
 
@@ -297,6 +410,7 @@ html:has(.connected-dossier[open]) { overflow: hidden; }
   .connected-hero-brief { justify-self: start; }
 }
 @media (prefers-reduced-motion: reduce) {
+  .connected-gallery { transition: none; }
   .vector-wordmark[data-wordmark-state] > .connected-word { opacity: 1; }
   .vector-wordmark-canvas, .vector-wordmark-label { display: none; }
   .connected-spider canvas { display: none; }

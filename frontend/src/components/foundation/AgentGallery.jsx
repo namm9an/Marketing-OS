@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { clamp, cursorRotation, dragRotation, edgeOrbitVelocity, focusTileRotation, ORBIT_PITCH_LIMIT, projectTile, spherePoints } from './galleryGeometry';
+import PokemonHoloCard from './PokemonHoloCard';
 import './agent-gallery.css';
 
 const TILE_IMG_PROPS = {
@@ -22,13 +23,22 @@ function stopCursor(cursor) {
   cursor.lastTs = null;
 }
 
+const IDLE_YAW_SPEED = 0.22;
+const WAVE_PHASE_SPEED = 2.05;
+
 export default function AgentGallery({ tiles, selectedId, onSelect, reduced = false, hidden = false }) {
-  const [rotation, setRotation] = useState({ yaw: .15, pitch: -.12 });
+  const [rotation, setRotation] = useState({ yaw: 1.05, pitch: .12 });
+  const [wave, setWave] = useState({ phase: 0, strength: 0 });
   const [dragging, setDragging] = useState(false);
+  const [inView, setInView] = useState(true);
+  const [paused, setPaused] = useState(false);
   const [focusId, setFocusId] = useState(null);
   const shell = useRef(null);
   const pendingFocus = useRef(null);
   const currentRotation = useRef(rotation);
+  const hovered = useRef(false);
+  const focusedInside = useRef(false);
+  const waveState = useRef({ phase: 0, strength: 0, resumeAt: 0 });
   const cursor = useRef({
     frame: null, start: null, target: null, bounds: null,
     x: 0, y: 0, edgeSpeed: 0, lastTs: null,
@@ -56,27 +66,80 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
     function haltCursor() {
       stopCursor(cursor.current);
     }
+    function onBlur() {
+      hovered.current = false;
+      focusedInside.current = false;
+      haltCursor();
+    }
     function onVisibility() {
+      setPaused(document.hidden);
       if (document.hidden) haltCursor();
     }
-    window.addEventListener('blur', haltCursor);
+    window.addEventListener('blur', onBlur);
     window.addEventListener('scroll', haltCursor, { passive: true });
     document.addEventListener('visibilitychange', onVisibility);
 
     let observer = null;
     if (shell.current && window.IntersectionObserver) {
       observer = new IntersectionObserver(([entry]) => {
+        setInView(entry.isIntersecting);
         if (!entry.isIntersecting) haltCursor();
       }, { threshold: 0.05 });
       observer.observe(shell.current);
     }
     return () => {
-      window.removeEventListener('blur', haltCursor);
+      window.removeEventListener('blur', onBlur);
       window.removeEventListener('scroll', haltCursor);
       document.removeEventListener('visibilitychange', onVisibility);
       observer?.disconnect();
     };
   }, [hidden, reduced]);
+
+  useEffect(() => {
+    const active = !hidden && !reduced && !selectedId && !dragging && inView && !paused;
+    if (!active) {
+      waveState.current.strength = 0;
+      setWave(previous => (previous.strength === 0 ? previous : { ...previous, strength: 0 }));
+      return;
+    }
+
+    let frame = null;
+    let lastTs = null;
+    function tick(now) {
+      frame = window.requestAnimationFrame(tick);
+      const dt = lastTs === null ? .016 : Math.min(.05, Math.max(.001, (now - lastTs) / 1000));
+      lastTs = now;
+
+      const state = waveState.current;
+      const userBusy = hovered.current
+        || focusedInside.current
+        || cursor.current.frame !== null
+        || drag.current !== null
+        || now < state.resumeAt;
+
+      if (!userBusy) {
+        state.strength = Math.min(1, state.strength + dt * 2.4);
+        updateRotation({
+          yaw: currentRotation.current.yaw + dt * IDLE_YAW_SPEED,
+          pitch: currentRotation.current.pitch,
+        });
+      } else {
+        state.strength = Math.max(0, state.strength - dt * 4.5);
+      }
+
+      if (state.strength > 0.001) {
+        state.phase = (state.phase + dt * WAVE_PHASE_SPEED) % (Math.PI * 200);
+        setWave({ phase: state.phase, strength: state.strength });
+      } else if (state.strength === 0) {
+        setWave(previous => (previous.strength === 0 ? previous : { ...previous, strength: 0 }));
+      }
+    }
+
+    frame = window.requestAnimationFrame(tick);
+    return () => {
+      if (frame !== null) window.cancelAnimationFrame(frame);
+    };
+  }, [dragging, hidden, inView, paused, reduced, selectedId]);
 
   useLayoutEffect(() => {
     const id = pendingFocus.current;
@@ -126,6 +189,7 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
     if (drag.current?.pointerId !== event.pointerId) return;
     const wasMoved = drag.current.moved;
     drag.current = null;
+    waveState.current.resumeAt = performance.now() + 550;
     setDragging(false);
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
     if (event.type === 'pointercancel') {
@@ -143,7 +207,7 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
 
   if (hidden || reduced) return null;
 
-  const poses = points.map((point, index) => projectTile(point, rotation, tiles[index].id === selectedId));
+  const poses = points.map((point, index) => projectTile(point, rotation, tiles[index].id === selectedId, wave));
   const selectedIndex = selectedId ? tiles.findIndex(tile => tile.id === selectedId) : -1;
   const frontMostIndex = selectedIndex >= 0
     ? selectedIndex
@@ -153,7 +217,14 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
 
   return <div ref={shell} className="connected-orbit-shell" data-selected={selectedId || ''} data-dragging={String(dragging)}
     data-yaw={rotation.yaw.toFixed(4)} data-pitch={rotation.pitch.toFixed(4)}
+    data-wave={wave.strength.toFixed(2)}
     role="group" aria-label="Agent work images. Use arrow keys to browse the images."
+    onBlur={event => {
+      if (!event.currentTarget.contains(event.relatedTarget)) focusedInside.current = false;
+    }}
+    onPointerEnter={event => {
+      if (event.pointerType === 'mouse') hovered.current = true;
+    }}
     onKeyDown={event => {
       if (selectedId || event.altKey || event.ctrlKey || event.metaKey || event.shiftKey) return;
       const forward = event.key === 'ArrowRight' || event.key === 'ArrowDown';
@@ -207,6 +278,7 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
       }
 
       if (event.pointerType === 'mouse') {
+        hovered.current = true;
         if (event.buttons || drag.current) return;
         const focused = document.activeElement;
         if (event.currentTarget.contains(focused) && focused.matches('.connected-sphere-tile:focus-visible')) return;
@@ -233,10 +305,16 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
       }
     }}
     onPointerLeave={event => {
+      hovered.current = false;
+      waveState.current.resumeAt = performance.now() + 450;
       stopCursor(cursor.current);
       if (drag.current && !drag.current.moved) endDrag(event);
     }}
-    onPointerUp={endDrag} onPointerCancel={event => { stopCursor(cursor.current); endDrag(event); }}
+    onPointerUp={endDrag} onPointerCancel={event => {
+      hovered.current = false;
+      stopCursor(cursor.current);
+      endDrag(event);
+    }}
     onLostPointerCapture={endDrag}
     onClickCapture={event => {
       if (!suppressClick.current) return;
@@ -261,8 +339,9 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
             transform: `translate(-50%, -50%) translate(calc(${pose.x} * var(--orbit-radius)), calc(${pose.y} * var(--orbit-radius))) scale(${pose.scale}) rotateY(${pose.yaw}deg)`,
             opacity: pose.opacity * (selectedId && !selected ? .42 : 1), zIndex: pose.zIndex,
           }}
-          onFocus={() => {
+          onFocus={event => {
             stopCursor(cursor.current);
+            if (event.currentTarget.matches?.(':focus-visible')) focusedInside.current = true;
             setFocusId(tile.id);
           }}
           onDragStart={event => event.preventDefault()}
@@ -270,7 +349,16 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
             stopCursor(cursor.current);
             onSelect(tile, event);
           }}>
-          <img key={tile.image} src={tile.image} alt="" aria-label={tile.label} {...TILE_IMG_PROPS} />
+          <PokemonHoloCard
+            key={tile.id}
+            src={tile.image}
+            rearSrc={tile.rearImage}
+            label={tile.label}
+            variant="tile"
+            interactive={!reduced && !dragging && pose.front}
+            frontMost={index === frontMostIndex}
+            imgProps={TILE_IMG_PROPS}
+          />
           <span>{tile.label}</span>
         </button>;
       })}

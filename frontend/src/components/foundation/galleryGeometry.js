@@ -50,20 +50,37 @@ export function focusTileRotation(point) {
   };
 }
 
-export function projectTile(point, rotation, selected = false) {
+/**
+ * Computes radial swell and scale multiplier for an idle spherical wave pass.
+ */
+export function waveOffset(point, wave) {
+  const strength = finite(wave?.strength);
+  if (!strength) return { radius: 1, scale: 1 };
+  const phase = finite(wave?.phase);
+  const spatial = point.y * 2.5 + Math.atan2(point.x, point.z) * 1.2;
+  const swell = Math.sin(phase - spatial) * strength;
+  return {
+    radius: 1 + swell * 0.075,
+    scale: 1 + swell * 0.045,
+  };
+}
+
+export function projectTile(point, rotation, selected = false, wave = null) {
   const yaw = finite(rotation.yaw), pitch = finite(rotation.pitch);
+  const { radius, scale: waveScale } = selected ? { radius: 1, scale: 1 } : waveOffset(point, wave);
   const x = point.x * Math.cos(yaw) + point.z * Math.sin(yaw);
   const z = point.z * Math.cos(yaw) - point.x * Math.sin(yaw);
   const y = point.y * Math.cos(pitch) - z * Math.sin(pitch);
-  const depth = point.y * Math.sin(pitch) + z * Math.cos(pitch);
+  const baseDepth = point.y * Math.sin(pitch) + z * Math.cos(pitch);
+  const depth = baseDepth * radius;
   const perspective = 3.4 / (3.4 - depth);
   return {
-    x: selected ? 0 : x * perspective,
-    y: selected ? 0 : -y * perspective,
-    scale: selected ? 1.65 : perspective * .79,
+    x: selected ? 0 : x * radius * perspective,
+    y: selected ? 0 : -y * radius * perspective,
+    scale: selected ? 1.65 : perspective * .79 * waveScale,
     yaw: selected ? 0 : Math.max(-32, Math.min(32, x * 32)),
     depth,
-    opacity: selected ? 1 : .25 + (depth + 1) * .375,
+    opacity: selected ? 1 : Math.max(.25, Math.min(1, .25 + (baseDepth + 1) * .375)),
     zIndex: selected ? 300 : Math.round((depth + 1) * 100),
     front: selected || depth > .02,
   };

@@ -35,9 +35,6 @@
   cursor: pointer;
   backface-visibility: hidden;
 }
-.connected-sphere-tile {
-  overflow: hidden;
-}
 .connected-orbit-shell[data-dragging=true] .connected-sphere-tile { cursor: grabbing; }
 .connected-sphere-tile:disabled { pointer-events: none; cursor: inherit; }
 .connected-sphere-tile img { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; pointer-events: none; }
