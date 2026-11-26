@@ -64,15 +64,19 @@ it('pauses the document and leaves nested scroll native until the open dialog cl
   const instance = Lenis.mock.instances.at(-1);
   const { prevent } = Lenis.mock.calls.at(-1)[0];
   const modal = document.createElement('dialog');
+  const child = document.createElement('div');
+  modal.append(child);
   document.body.append(modal);
 
   try {
     modal.setAttribute('open', '');
     await waitFor(() => expect(instance.isStopped).toBe(true));
     expect(prevent(modal)).toBe(true);
+    expect(prevent(child)).toBe(true);
     modal.removeAttribute('open');
     await waitFor(() => expect(instance.isStopped).toBe(false));
     expect(prevent(modal)).toBe(false);
+    expect(prevent(child)).toBe(false);
 
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');

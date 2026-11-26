@@ -2,7 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import AgentGallery from './AgentGallery';
-import { cursorRotation, dragRotation, projectTile, spherePoints } from './galleryGeometry';
+import { cursorRotation, dragRotation, edgeOrbitVelocity, projectTile, spherePoints } from './galleryGeometry';
 
 describe('spherical image projection', () => {
   it('distributes distinct image points on a finite unit shell', () => {
@@ -20,7 +20,7 @@ describe('spherical image projection', () => {
     const rotated = dragRotation(start, 80, 30);
     expect(rotated).not.toEqual(start);
     expect(dragRotation(start, 0, 0)).toEqual(start);
-    expect(dragRotation(start, 0, 10000).pitch).toBe(-.85);
+    expect(dragRotation(start, 0, 10000).pitch).toBe(-1.05);
     for (const point of spherePoints(25)) for (const yaw of [0, Math.PI, Math.PI * 2, 1000]) {
       const pose = projectTile(point, { yaw, pitch: .85 });
       for (const key of ['x', 'y', 'scale', 'yaw', 'opacity', 'depth']) expect(Number.isFinite(pose[key])).toBe(true);
@@ -97,11 +97,11 @@ describe('sphere activation is separate from rotation', () => {
     act(() => vi.advanceTimersByTime(20));
     const tile = container.querySelector('[data-front=true]');
     const pressedPose = shell.dataset.yaw;
-    fireEvent.pointerDown(tile, { pointerType: 'mouse', button: 0, buttons: 1 });
-    fireEvent.pointerMove(tile, { pointerType: 'mouse', buttons: 1, clientX: 710, clientY: 270 });
+    fireEvent.pointerDown(tile, { pointerType: 'mouse', button: 0, buttons: 1, clientX: 630, clientY: 340 });
+    fireEvent.pointerMove(tile, { pointerType: 'mouse', buttons: 1, clientX: 634, clientY: 343 });
     act(() => vi.advanceTimersByTime(500));
     expect(shell.dataset.yaw).toBe(pressedPose);
-    fireEvent.pointerUp(tile, { pointerType: 'mouse' });
+    fireEvent.pointerUp(tile, { pointerType: 'mouse', clientX: 634, clientY: 343 });
     fireEvent.click(tile, { detail: 1 });
     expect(onSelect).toHaveBeenCalledExactlyOnceWith(tiles.find(item => item.id === tile.dataset.tileId), expect.anything());
     rerender(React.createElement(AgentGallery, { tiles, onSelect, selectedId: tile.dataset.tileId }));
@@ -109,6 +109,30 @@ describe('sphere activation is separate from rotation', () => {
     act(() => vi.advanceTimersByTime(500));
     expect(shell.dataset.yaw).toBe(pressedPose);
     expect(tile).toHaveClass('is-selected');
+  });
+
+  it('rotates via desktop mouse drag past the threshold and suppresses accidental click selection', () => {
+    const onSelect = vi.fn();
+    const { container } = render(React.createElement(AgentGallery, { tiles, onSelect }));
+    const shell = container.querySelector('.connected-orbit-shell');
+    const initialYaw = shell.dataset.yaw;
+    fireEvent.pointerDown(shell, { pointerType: 'mouse', button: 0, buttons: 1, clientX: 200, clientY: 200 });
+    fireEvent.pointerMove(shell, { pointerType: 'mouse', buttons: 1, clientX: 320, clientY: 220 });
+    expect(shell.dataset.dragging).toBe('true');
+    expect(shell.dataset.yaw).not.toBe(initialYaw);
+    fireEvent.pointerUp(shell, { pointerType: 'mouse', clientX: 320, clientY: 220 });
+    expect(shell.dataset.dragging).toBe('false');
+    const tile = container.querySelector('[data-front=true]');
+    fireEvent.click(tile, { detail: 1 });
+    expect(onSelect).not.toHaveBeenCalled();
+  });
+
+  it('orbits continuously in the blank outer margins and stops cleanly when centered', () => {
+    vi.useFakeTimers();
+    const bounds = { left: 0, top: 0, width: 1000, height: 500 };
+    expect(edgeOrbitVelocity(500, bounds)).toBe(0);
+    expect(edgeOrbitVelocity(980, bounds)).toBeGreaterThan(0);
+    expect(edgeOrbitVelocity(20, bounds)).toBeLessThan(0);
   });
 
   it('provides one keyboard entry and exposes each tile with the arrow keys', () => {

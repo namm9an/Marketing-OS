@@ -17,7 +17,7 @@ export function useHomepageScroll() {
       syncTouch: false,
       anchors: false,
       lerp: 0.15,
-      prevent: element => element.matches(openDialog),
+      prevent: element => Boolean(element?.closest?.(openDialog)),
     });
     let frame = null;
 

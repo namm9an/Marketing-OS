@@ -1,12 +1,25 @@
-import { useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { cursorRotation, dragRotation, focusTileRotation, projectTile, spherePoints } from './galleryGeometry';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { clamp, cursorRotation, dragRotation, edgeOrbitVelocity, focusTileRotation, ORBIT_PITCH_LIMIT, projectTile, spherePoints } from './galleryGeometry';
 import './agent-gallery.css';
+
+const TILE_IMG_PROPS = {
+  loading: 'lazy',
+  decoding: 'async',
+  draggable: false,
+  onError: event => { event.currentTarget.style.visibility = 'hidden'; },
+  onLoad: event => { event.currentTarget.style.removeProperty('visibility'); },
+};
 
 function stopCursor(cursor) {
   if (cursor.frame !== null) window.cancelAnimationFrame(cursor.frame);
   cursor.frame = null;
   cursor.start = null;
   cursor.target = null;
+  cursor.bounds = null;
+  cursor.x = 0;
+  cursor.y = 0;
+  cursor.edgeSpeed = 0;
+  cursor.lastTs = null;
 }
 
 export default function AgentGallery({ tiles, selectedId, onSelect, reduced = false, hidden = false }) {
@@ -16,9 +29,13 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
   const shell = useRef(null);
   const pendingFocus = useRef(null);
   const currentRotation = useRef(rotation);
-  const cursor = useRef({ frame: null, start: null, target: null });
+  const cursor = useRef({
+    frame: null, start: null, target: null, bounds: null,
+    x: 0, y: 0, edgeSpeed: 0, lastTs: null,
+  });
   const drag = useRef(null);
   const suppressClick = useRef(false);
+  const clearClickTimer = useRef(null);
   const points = useMemo(() => spherePoints(tiles.length), [tiles.length]);
 
   useLayoutEffect(() => {
@@ -26,8 +43,40 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
     drag.current = null;
     suppressClick.current = false;
     setDragging(false);
-    return () => stopCursor(tracking);
+    return () => {
+      stopCursor(tracking);
+      if (clearClickTimer.current !== null) {
+        window.clearTimeout(clearClickTimer.current);
+        clearClickTimer.current = null;
+      }
+    };
   }, [hidden, reduced, selectedId]);
+
+  useEffect(() => {
+    function haltCursor() {
+      stopCursor(cursor.current);
+    }
+    function onVisibility() {
+      if (document.hidden) haltCursor();
+    }
+    window.addEventListener('blur', haltCursor);
+    window.addEventListener('scroll', haltCursor, { passive: true });
+    document.addEventListener('visibilitychange', onVisibility);
+
+    let observer = null;
+    if (shell.current && window.IntersectionObserver) {
+      observer = new IntersectionObserver(([entry]) => {
+        if (!entry.isIntersecting) haltCursor();
+      }, { threshold: 0.05 });
+      observer.observe(shell.current);
+    }
+    return () => {
+      window.removeEventListener('blur', haltCursor);
+      window.removeEventListener('scroll', haltCursor);
+      document.removeEventListener('visibilitychange', onVisibility);
+      observer?.disconnect();
+    };
+  }, [hidden, reduced]);
 
   useLayoutEffect(() => {
     const id = pendingFocus.current;
@@ -42,35 +91,65 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
     setRotation(next);
   }
 
-  function trackCursor() {
+  function trackCursor(now) {
     const tracking = cursor.current;
     tracking.frame = null;
     const target = tracking.target;
     if (!target) return;
+    const timestamp = typeof now === 'number' ? now : performance.now();
+    const dt = tracking.lastTs === null ? .016 : Math.min(.05, Math.max(.001, (timestamp - tracking.lastTs) / 1000));
+    tracking.lastTs = timestamp;
+
+    if (tracking.edgeSpeed !== 0 && tracking.start && tracking.bounds) {
+      const spin = tracking.edgeSpeed * dt;
+      tracking.start = { ...tracking.start, yaw: tracking.start.yaw + spin };
+      tracking.target = cursorRotation(tracking.start, tracking.x, tracking.y, tracking.bounds);
+    }
+
+    const activeTarget = tracking.target;
     const current = currentRotation.current;
-    const yaw = target.yaw - current.yaw;
-    const pitch = target.pitch - current.pitch;
-    if (Math.max(Math.abs(yaw), Math.abs(pitch)) < .001) {
-      updateRotation(target);
+    const yaw = activeTarget.yaw - current.yaw;
+    const pitch = activeTarget.pitch - current.pitch;
+    if (tracking.edgeSpeed === 0 && Math.max(Math.abs(yaw), Math.abs(pitch)) < .001) {
+      tracking.lastTs = null;
+      updateRotation(activeTarget);
       return;
     }
-    updateRotation({ yaw: current.yaw + yaw * .32, pitch: current.pitch + pitch * .32 });
+    updateRotation({
+      yaw: current.yaw + yaw * .24,
+      pitch: clamp(current.pitch + pitch * .24, ORBIT_PITCH_LIMIT),
+    });
     tracking.frame = window.requestAnimationFrame(trackCursor);
   }
 
   function endDrag(event) {
     if (drag.current?.pointerId !== event.pointerId) return;
+    const wasMoved = drag.current.moved;
     drag.current = null;
     setDragging(false);
     if (event.currentTarget.hasPointerCapture?.(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
+    if (event.type === 'pointercancel') {
+      suppressClick.current = false;
+      return;
+    }
+    if (wasMoved) {
+      if (clearClickTimer.current !== null) window.clearTimeout(clearClickTimer.current);
+      clearClickTimer.current = window.setTimeout(() => {
+        clearClickTimer.current = null;
+        suppressClick.current = false;
+      }, 0);
+    }
   }
 
   if (hidden || reduced) return null;
 
   const poses = points.map((point, index) => projectTile(point, rotation, tiles[index].id === selectedId));
+  const selectedIndex = selectedId ? tiles.findIndex(tile => tile.id === selectedId) : -1;
+  const frontMostIndex = selectedIndex >= 0
+    ? selectedIndex
+    : poses.reduce((best, pose, index) => (pose.depth > poses[best].depth ? index : best), 0);
   const focusedIndex = tiles.findIndex(tile => tile.id === focusId);
-  const entryIndex = poses[focusedIndex]?.front ? focusedIndex
-    : poses.reduce((front, pose, index) => pose.depth > poses[front].depth ? index : front, 0);
+  const entryIndex = poses[focusedIndex]?.front ? focusedIndex : frontMostIndex;
 
   return <div ref={shell} className="connected-orbit-shell" data-selected={selectedId || ''} data-dragging={String(dragging)}
     data-yaw={rotation.yaw.toFixed(4)} data-pitch={rotation.pitch.toFixed(4)}
@@ -89,39 +168,69 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
       updateRotation(focusTileRotation(points[next]));
     }}
     onPointerDown={event => {
-      if (event.button !== 0 || selectedId) return;
+      if (event.button !== 0 || selectedId || drag.current) return;
       suppressClick.current = false;
+      if (clearClickTimer.current !== null) {
+        window.clearTimeout(clearClickTimer.current);
+        clearClickTimer.current = null;
+      }
       stopCursor(cursor.current);
-      // Freezing the current pose on mouse down keeps the pressed tile under the pointer until click.
-      if (event.pointerType === 'mouse') return;
+      const onTile = Boolean(event.target instanceof Element && event.target.closest('.connected-sphere-tile'));
       drag.current = {
-        pointerId: event.pointerId, x: event.clientX, y: event.clientY,
-        rotation: currentRotation.current, moved: false,
+        pointerId: event.pointerId,
+        x: event.clientX,
+        y: event.clientY,
+        rotation: currentRotation.current,
+        moved: false,
+        threshold: event.pointerType === 'mouse' && onTile ? 10 : 6,
       };
     }}
     onPointerMove={event => {
       if (selectedId) return;
+      const start = drag.current;
+      if (start && start.pointerId === event.pointerId) {
+        const dx = event.clientX - start.x;
+        const dy = event.clientY - start.y;
+        if (!start.moved) {
+          if (Math.hypot(dx, dy) < start.threshold || (event.pointerType === 'touch' && Math.abs(dx) < Math.abs(dy) * 1.2)) return;
+          start.moved = true;
+          suppressClick.current = true;
+          try {
+            event.currentTarget.setPointerCapture?.(event.pointerId);
+          } catch {
+            // Pointer may no longer be active before capture.
+          }
+          setDragging(true);
+        }
+        updateRotation(dragRotation(start.rotation, dx, dy));
+        return;
+      }
+
       if (event.pointerType === 'mouse') {
         if (event.buttons || drag.current) return;
         const focused = document.activeElement;
         if (event.currentTarget.contains(focused) && focused.matches('.connected-sphere-tile:focus-visible')) return;
+        const bounds = event.currentTarget.getBoundingClientRect();
         const tracking = cursor.current;
-        tracking.start ??= currentRotation.current;
-        tracking.target = cursorRotation(tracking.start, event.clientX, event.clientY, event.currentTarget.getBoundingClientRect());
+        const previousEdge = tracking.edgeSpeed;
+        const nextEdge = edgeOrbitVelocity(event.clientX, bounds);
+
+        // Keep initial entry responsive from current pose; only re-anchor when exiting an outer edge spin.
+        if (tracking.start === null) {
+          tracking.start = currentRotation.current;
+        } else if (previousEdge !== 0 && nextEdge === 0) {
+          const cur = currentRotation.current;
+          const zeroed = cursorRotation({ yaw: 0, pitch: 0 }, event.clientX, event.clientY, bounds);
+          tracking.start = { yaw: cur.yaw - zeroed.yaw, pitch: cur.pitch - zeroed.pitch };
+        }
+
+        tracking.bounds = bounds;
+        tracking.x = event.clientX;
+        tracking.y = event.clientY;
+        tracking.edgeSpeed = nextEdge;
+        tracking.target = cursorRotation(tracking.start, event.clientX, event.clientY, bounds);
         if (tracking.frame === null) tracking.frame = window.requestAnimationFrame(trackCursor);
-        return;
       }
-      const start = drag.current;
-      if (!start || start.pointerId !== event.pointerId) return;
-      const dx = event.clientX - start.x, dy = event.clientY - start.y;
-      if (!start.moved) {
-        if (Math.hypot(dx, dy) < 6 || (event.pointerType === 'touch' && Math.abs(dx) < Math.abs(dy) * 1.2)) return;
-        start.moved = true;
-        suppressClick.current = true;
-        event.currentTarget.setPointerCapture?.(event.pointerId);
-        setDragging(true);
-      }
-      updateRotation(dragRotation(start.rotation, dx, dy));
     }}
     onPointerLeave={event => {
       stopCursor(cursor.current);
@@ -132,6 +241,10 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
     onClickCapture={event => {
       if (!suppressClick.current) return;
       suppressClick.current = false;
+      if (clearClickTimer.current !== null) {
+        window.clearTimeout(clearClickTimer.current);
+        clearClickTimer.current = null;
+      }
       if (event.detail === 0) return;
       event.preventDefault();
       event.stopPropagation();
@@ -154,13 +267,10 @@ export default function AgentGallery({ tiles, selectedId, onSelect, reduced = fa
           }}
           onDragStart={event => event.preventDefault()}
           onClick={event => {
-            if (selectedId) return;
             stopCursor(cursor.current);
             onSelect(tile, event);
           }}>
-          <img key={tile.image} src={tile.image} alt="" loading="lazy" decoding="async" draggable="false"
-            onError={event => { event.currentTarget.style.visibility = 'hidden'; }}
-            onLoad={event => { event.currentTarget.style.removeProperty('visibility'); }} />
+          <img key={tile.image} src={tile.image} alt="" aria-label={tile.label} {...TILE_IMG_PROPS} />
           <span>{tile.label}</span>
         </button>;
       })}
