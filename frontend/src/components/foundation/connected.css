@@ -154,7 +154,7 @@
   letter-spacing: -.05em;
   text-wrap: balance;
 }
-.connected-introduction p, .connected-gallery-heading p, .connected-results-lead p {
+.connected-introduction p, .connected-gallery-heading p {
   max-width: 43ch;
   margin-top: 24px;
   color: var(--brown);
@@ -326,16 +326,14 @@ html:has(.connected-dossier[open]) { overflow: hidden; }
 .connected-dossier .agent-example { padding: 0; border: 0; }
 .connected-dossier .agent-example::before { content: none; }
 .connected-dossier .agent-result > p { font-size: 17px; }
-.connected-explanation { border-top: 1px solid var(--rule); margin-top: 24px; padding-top: 12px; }
-.connected-explanation summary { cursor: pointer; font-weight: 600; }
-.connected-explanation ol { margin-top: 12px; padding-inline-start: 1.4em; }
+.dossier-explain { margin-block-start: 24px; min-height: 44px; }
+.connected-explanation { border-top: 1px solid var(--rule); margin-top: 24px; padding-top: 16px; }
+.connected-explanation h3 { font-size: clamp(20px, 2vw, 30px); line-height: 1.15; scroll-margin-block: 6rem; }
+.connected-explanation button { margin-block-start: 16px; min-height: 44px; }
+.connected-explanation ol { margin-top: 12px; padding-inline-start: 1.4em; list-style: decimal; }
 .connected-explanation li + li { margin-top: 8px; }
 
 .connected-results {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 48px clamp(36px, 7vw, 100px);
-  align-items: start;
   border-top: 1px solid var(--rule);
   padding-block: clamp(60px, 8vw, 120px);
 }
@@ -398,7 +396,7 @@ html:has(.connected-dossier[open]) { overflow: hidden; }
   .connected-gallery-heading { display: grid; gap: 16px; }
   .connected-gallery-heading p { max-width: 42ch; }
   .connected-picker { justify-content: flex-start; margin-top: 28px; }
-  .connected-introduction, .connected-results { grid-template-columns: minmax(0, 1fr); }
+  .connected-introduction { grid-template-columns: minmax(0, 1fr); }
   .connected-brief-path { max-width: 420px; width: 100%; }
 }
 @media (max-width: 760px) {

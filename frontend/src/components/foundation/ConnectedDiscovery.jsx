@@ -3,6 +3,8 @@ import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { AGENTS } from '../../lib/agents';
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { AGENT_COPY } from './agentCopy';
+import { SpecialistComparison } from './SpecialistComparison';
+import { useExplanation } from './useExplanation';
 import { AgentExample } from './AgentExample';
 import AgentGallery from './AgentGallery';
 import PokemonHoloCard from './PokemonHoloCard';
@@ -134,6 +136,8 @@ export default function ConnectedDiscovery({ catalog }) {
   const lastScrollAgent = useRef(null);
   const wasOpen = useRef(false);
 
+  const explanation = useExplanation();
+  const { stage, close: closeExplanation } = explanation;
   const initialTile = tileFromLocation();
   const [selected, setSelected] = useState(initialTile);
   const [renderedTile, setRenderedTile] = useState(initialTile);
@@ -207,6 +211,7 @@ export default function ConnectedDiscovery({ catalog }) {
     function syncSelection() {
       closingHistory.current = false;
       const next = tileFromLocation();
+      if (next?.id === selected?.id) return;
       revealDirectEntry.current = Boolean(next);
       setSelected(next);
       if (next) {
@@ -220,7 +225,7 @@ export default function ConnectedDiscovery({ catalog }) {
       window.removeEventListener('popstate', syncSelection);
       window.removeEventListener('hashchange', syncSelection);
     };
-  }, []);
+  }, [selected?.id]);
 
   useLayoutEffect(() => {
     const panel = dialog.current;
@@ -291,7 +296,7 @@ export default function ConnectedDiscovery({ catalog }) {
   useEffect(() => {
     if (!selected) return;
     function onKeyDown(event) {
-      if (event.key === 'Escape' && !event.defaultPrevented && !closing) {
+      if (!stage && event.key === 'Escape' && !event.defaultPrevented && !closing) {
         event.preventDefault();
         closeDossier();
       }
@@ -309,7 +314,7 @@ export default function ConnectedDiscovery({ catalog }) {
         }
       }
       return Boolean(target.closest(
-        '.connected-sphere-tile, .connected-picker button, .connected-art-status button, #results button, #results details, a[href], summary, input',
+        '.connected-sphere-tile, .connected-picker button, .connected-art-status button, #results, a[href], summary, input',
       ));
     }
     function onPointerDown(event) {
@@ -319,7 +324,8 @@ export default function ConnectedDiscovery({ catalog }) {
       const pressed = outsidePressTarget.current;
       outsidePressTarget.current = null;
       if (!pressed || event.detail === 0 || isInsidePanelOrTrigger(event.target, event.clientX, event.clientY)) return;
-      closeDossier();
+      if (stage) closeExplanation(closeDossier);
+      else closeDossier();
     }
     window.addEventListener('keydown', onKeyDown);
     document.addEventListener('pointerdown', onPointerDown, true);
@@ -330,10 +336,15 @@ export default function ConnectedDiscovery({ catalog }) {
       document.removeEventListener('click', onClick);
       outsidePressTarget.current = null;
     };
-  }, [closeDossier, closing, narrow, selected]);
+  }, [closeDossier, closing, narrow, selected, stage, closeExplanation]);
 
   function selectTile(tile, event, { replace = false } = {}) {
     if (!tile) return;
+    if (window.history.state?.explanation) {
+      const trigger = event?.currentTarget;
+      closeExplanation(() => selectTile(tile, { currentTarget: trigger }, { replace }));
+      return;
+    }
     cancelFocusFrame();
     const url = new URL(window.location.href);
     url.searchParams.set('agent', tile.agent);
@@ -369,6 +380,33 @@ export default function ConnectedDiscovery({ catalog }) {
     setRenderedTile(tile);
     setFeatured(tile.agent);
   }
+
+  useEffect(() => {
+    if (!stage) return;
+    function dismiss(event) {
+      if (event.key === 'Escape' && !event.defaultPrevented) {
+        event.preventDefault();
+        closeExplanation();
+      }
+    }
+    window.addEventListener('keydown', dismiss);
+    return () => window.removeEventListener('keydown', dismiss);
+  }, [stage, closeExplanation]);
+
+  const preview = stage && <section className="connected-explanation" aria-labelledby="explanation-title">
+    <h3 id="explanation-title" tabIndex={-1} ref={explanation.heading}>{AGENT_COPY[stage.agent].name}: How it works</h3>
+    <ol>{AGENT_COPY[stage.agent].steps.map(step => <li key={step}>{step}</li>)}</ol>
+    <button type="button" className="text-action" onClick={() => closeExplanation()}>Close explanation</button>
+  </section>;
+
+  function dismissDossier() {
+    if (stage) closeExplanation(closeDossier);
+    else closeDossier();
+  }
+
+  useEffect(() => {
+    if (narrow && selected && stage?.surface === 'results') closeExplanation(undefined, true);
+  }, [narrow, selected, stage, closeExplanation]);
 
   function stepAgentTile(delta) {
     if (agentTiles.length < 2 || activeTileIndex < 0) return;
@@ -412,13 +450,13 @@ export default function ConnectedDiscovery({ catalog }) {
       className={`connected-dossier${narrow ? ' is-modal' : ' is-panel'}`}
       data-closing={closing ? 'true' : undefined}
       aria-labelledby="dossier-title"
-      onCancel={event => { event.preventDefault(); closeDossier(); }}
+      onCancel={event => { event.preventDefault(); if (stage) closeExplanation(); else closeDossier(); }}
       onAnimationEnd={event => {
         if (event.target === dialog.current && closing) finishClose();
       }}>
       {activeTile && <div key={activeAgent} className="connected-dossier-content">
         <div className="connected-dossier-toolbar">
-          <button className="text-action" type="button" onClick={closeDossier}>Close dossier</button>
+          <button className="text-action" type="button" onClick={dismissDossier}>Close dossier</button>
           {agentTiles.length > 1 && <div className="connected-dossier-step" role="group" aria-label={`${activeCopy.name} artifacts`}>
             <button type="button" className="connected-step-btn" aria-label="Previous artifact" onClick={() => stepAgentTile(-1)}>
               <ChevronLeft size={16} aria-hidden="true" />
@@ -451,21 +489,19 @@ export default function ConnectedDiscovery({ catalog }) {
             </button>)}
           </div>}
           <AgentExample agent={activeAgent} catalog={catalog} inDossier />
-          <details className="connected-explanation">
-            <summary>How it works</summary>
-            <ol>{activeCopy.steps.map(step => <li key={step}>{step}</li>)}</ol>
-          </details>
+          <button type="button" className="text-action dossier-explain" aria-expanded={stage?.surface === 'dossier'}
+            onClick={event => explanation.open(activeAgent, event.currentTarget, 'dossier')}>How it works</button>
+          {stage?.surface === 'dossier' && preview}
         </div>
       </div>}
     </dialog>
 
-    <section id="results" className="connected-results" aria-labelledby="results-title" tabIndex={-1}>
-      <div className="connected-results-lead">
-        <h2 id="results-title">See what each specialist recommends</h2>
-        <p>Explore an illustrative recommendation, its brief and supporting sources.</p>
-        <a className="text-action" href="#agents">Back to agents</a>
-      </div>
-      <AgentExample agent={featured} catalog={catalog} />
-    </section>
+    <SpecialistComparison catalog={catalog}
+      onExplain={(agent, trigger) => explanation.open(agent, trigger, 'results')}
+      onPairChange={previous => {
+        if (stage?.surface === 'results' && stage.agent === previous) closeExplanation(undefined, true);
+      }}>
+      {stage?.surface === 'results' && preview}
+    </SpecialistComparison>
   </>;
 }

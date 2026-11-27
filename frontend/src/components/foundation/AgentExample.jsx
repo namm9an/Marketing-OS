@@ -2,11 +2,11 @@ import React, { useEffect, useState } from 'react';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { AGENT_COPY } from './agentCopy';
 
-export function AgentExample({ agent, catalog, inDossier = false }) {
+export function AgentExample({ agent, catalog, inDossier = false, inComparison = false }) {
   const [example, setExample] = useState(null);
   const [retry, setRetry] = useState(0);
   const copy = AGENT_COPY[agent];
-  const SectionHeading = inDossier ? 'h3' : 'h4';
+  const SectionHeading = inDossier || inComparison ? 'h3' : 'h4';
   useEffect(() => {
     let active = true;
     catalog.load(agent).then(result => { if (active) setExample({ ...result, agent }); });
@@ -16,9 +16,11 @@ export function AgentExample({ agent, catalog, inDossier = false }) {
   const view = current?.state === 'available' ? current.presentation : null;
   const sources = view?.evidence.facts ?? [];
   return <article className="agent-example" aria-label={`${copy.name} example`}>
-    {!inDossier && <div className="agent-example-heading"><h3>{copy.name}</h3></div>}
+    {!inDossier && !inComparison && <div className="agent-example-heading"><h3>{copy.name}</h3></div>}
     <p className="agent-purpose">{copy.purpose}</p>
-    <div className="agent-brief"><SectionHeading>The brief</SectionHeading><p>{view?.input.text ?? copy.brief}</p><small>Illustrative demo · fictional repair and trade-in service</small></div>
+    {(view || !inComparison) && <div className="agent-brief"><SectionHeading>The brief</SectionHeading><p>{view?.input.text ?? copy.brief}</p>
+      {!inComparison && <small>Illustrative demo · fictional repair and trade-in service</small>}
+    </div>}
     {!current && <p role="status" className="agent-result-state">
       <span className="connected-pixels" aria-hidden="true" />Loading example…
     </p>}
@@ -28,9 +30,10 @@ export function AgentExample({ agent, catalog, inDossier = false }) {
     {view && <>
       <div className="agent-result"><SectionHeading>{copy.deliverable}</SectionHeading><p>{view.output.text}</p></div>
       {view.governance.escalated === true && <p className="agent-review-state">Flagged for human review</p>}
-      {view.output.risks && <div className="agent-considerations"><SectionHeading>Considerations</SectionHeading><p>{view.output.risks}</p></div>}
-      {(view.output.rationale || sources.length > 0) && <details className="agent-support"><summary>Sources and rationale</summary>
+      {!inComparison && view.output.risks && <div className="agent-considerations"><SectionHeading>Considerations</SectionHeading><p>{view.output.risks}</p></div>}
+      {(view.output.rationale || sources.length > 0 || (inComparison && view.output.risks)) && <details className="agent-support"><summary>Sources and rationale</summary>
         {view.output.rationale && <p>{view.output.rationale}</p>}
+        {inComparison && view.output.risks && <p>{view.output.risks}</p>}
         {sources.length > 0 && <ul>{sources.map(fact => <li key={fact.id}>
           <p>{fact.content}</p>{fact.sourceUrl && <a href={fact.sourceUrl} target="_blank" rel="noreferrer">{fact.title || new URL(fact.sourceUrl).hostname} <ArrowUpRight size={13} /></a>}
         </li>)}</ul>}
