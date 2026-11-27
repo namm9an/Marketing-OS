@@ -54,7 +54,10 @@ export function createExampleCatalog({ fetcher = globalThis.fetch } = {}) {
         if (!response.ok) fail('manifest-unavailable');
         const value = await response.json();
         return { value, ready: validateManifest(value) };
-      })().catch(error => { manifestPromise = null; throw error; });
+      })().then(result => {
+        if (!result.ready) manifestPromise = null;
+        return result;
+      }).catch(error => { manifestPromise = null; throw error; });
     }
     return manifestPromise;
   };

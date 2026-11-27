@@ -1,18 +1,11 @@
-import React, { useEffect, useState } from 'react';
 import { ArrowRight, ArrowUpRight } from 'lucide-react';
 import { AGENT_COPY } from './agentCopy';
+import { usePublicExample } from './usePublicExample';
 
 export function AgentExample({ agent, catalog, inDossier = false, inComparison = false }) {
-  const [example, setExample] = useState(null);
-  const [retry, setRetry] = useState(0);
+  const { current, retry } = usePublicExample(catalog, agent);
   const copy = AGENT_COPY[agent];
   const SectionHeading = inDossier || inComparison ? 'h3' : 'h4';
-  useEffect(() => {
-    let active = true;
-    catalog.load(agent).then(result => { if (active) setExample({ ...result, agent }); });
-    return () => { active = false; };
-  }, [agent, catalog, retry]);
-  const current = example?.agent === agent ? example : null;
   const view = current?.state === 'available' ? current.presentation : null;
   const sources = view?.evidence.facts ?? [];
   return <article className="agent-example" aria-label={`${copy.name} example`}>
@@ -25,7 +18,7 @@ export function AgentExample({ agent, catalog, inDossier = false, inComparison =
       <span className="connected-pixels" aria-hidden="true" />Loading example…
     </p>}
     {current?.state === 'unavailable' && <div role="alert" className="agent-result-state"><p>This example couldn’t load.</p>
-      <button className="text-action" onClick={() => { setExample(null); setRetry(value => value + 1); }}>Try again <ArrowRight size={15} /></button>
+      <button className="text-action" onClick={retry}>Try again <ArrowRight size={15} /></button>
     </div>}
     {view && <>
       <div className="agent-result"><SectionHeading>{copy.deliverable}</SectionHeading><p>{view.output.text}</p></div>

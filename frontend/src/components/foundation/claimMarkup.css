@@ -1,0 +1,80 @@
+.claim-markup {
+  container-type: inline-size;
+  margin-block-start: 20px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+.claim-markup-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  gap: clamp(20px, 5cqi, 72px);
+  border-top: 1px solid var(--rule);
+  margin-block-start: 20px;
+  padding-block-start: 24px;
+}
+.marketing-page .claim-markup h4 {
+  margin-block-end: 8px;
+  font-size: .875rem;
+  font-weight: 650;
+}
+.claim-markup mark {
+  background: var(--yellow);
+  color: inherit;
+  box-decoration-break: clone;
+}
+.claim-markup .claim-context {
+  color: var(--brown);
+  font-size: .875rem;
+}
+.claim-markup .claim-quote {
+  max-width: 24ch;
+  margin: 8px 0 0;
+  font-family: var(--font-display);
+  font-size: clamp(1.6rem, 4cqi, 2.75rem);
+  font-weight: 650;
+  letter-spacing: -.035em;
+  line-height: 1.13;
+}
+.claim-quote mark {
+  white-space: nowrap;
+}
+.claim-checkpoint {
+  background: color-mix(in srgb, var(--yellow) 25%, var(--paper));
+  padding: 16px 16px 8px;
+}
+.claim-checkpoint ul {
+  padding: 0;
+  list-style: none;
+}
+.claim-checkpoint li > p {
+  color: var(--brown);
+  margin-block-start: 12px;
+}
+.claim-checkpoint a {
+  display: inline-flex;
+  font-size: .875rem;
+  max-width: 100%;
+  margin-block-start: 6px;
+  text-decoration: underline;
+  text-underline-offset: .18em;
+}
+.claim-recommendation p {
+  max-width: 54ch;
+  font-size: clamp(1rem, 2cqi, 1.5rem);
+  line-height: 1.45;
+}
+.claim-review mark {
+  padding: 2px 5px;
+}
+.claim-review .claim-context {
+  margin-block-start: 8px;
+}
+@container (min-width: 641px) {
+  .claim-markup-grid {
+    grid-template-columns: minmax(0, 1.65fr) minmax(0, 1fr);
+  }
+  .claim-checkpoint {
+    padding-inline: 20px;
+  }
+}

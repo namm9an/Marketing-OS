@@ -5,6 +5,7 @@ import { useMediaQuery } from '../../lib/useMediaQuery';
 import { AGENT_COPY } from './agentCopy';
 import { SpecialistComparison } from './SpecialistComparison';
 import { useExplanation } from './useExplanation';
+import { ClaimMarkup } from './ClaimMarkup';
 import { AgentExample } from './AgentExample';
 import AgentGallery from './AgentGallery';
 import PokemonHoloCard from './PokemonHoloCard';
@@ -393,9 +394,10 @@ export default function ConnectedDiscovery({ catalog }) {
     return () => window.removeEventListener('keydown', dismiss);
   }, [stage, closeExplanation]);
 
+  const outline = stage && <ol>{AGENT_COPY[stage.agent].steps.map(step => <li key={step}>{step}</li>)}</ol>;
   const preview = stage && <section className="connected-explanation" aria-labelledby="explanation-title">
     <h3 id="explanation-title" tabIndex={-1} ref={explanation.heading}>{AGENT_COPY[stage.agent].name}: How it works</h3>
-    <ol>{AGENT_COPY[stage.agent].steps.map(step => <li key={step}>{step}</li>)}</ol>
+    {stage.agent === 'pr' ? <ClaimMarkup catalog={catalog} fallback={outline} headingRef={explanation.heading} /> : outline}
     <button type="button" className="text-action" onClick={() => closeExplanation()}>Close explanation</button>
   </section>;
 

@@ -306,7 +306,12 @@ test('all five keyboard choices restore focus on close and isolate How it works 
     const heading = page.getByRole('heading', { name: `${name}: How it works` });
     await expect(heading).toBeVisible();
     const stage = page.getByRole('region', { name: `${name}: How it works` });
-    outlines.push(await stage.getByRole('list').innerText());
+    if (name === 'PR & Policy') {
+      await expect(stage.getByRole('heading', { name: 'Evidence checkpoint' })).toBeVisible();
+      outlines.push(await stage.innerText());
+    } else {
+      outlines.push(await stage.getByRole('list').innerText());
+    }
     await page.keyboard.press('Escape');
     await expect(dialog).toBeVisible();
     await expect(opener).toBeFocused();

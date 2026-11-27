@@ -43,13 +43,16 @@ it('loads all five concise views using cached anonymous static reads and immutab
   expect(fetcher.mock.calls.every(([url, options]) => url.startsWith('/examples/') && options.credentials === 'omit' && !options.method)).toBe(true);
 });
 
-it('keeps incomplete examples unavailable without substituting invented content', async () => {
+it('keeps incomplete examples unavailable and rechecks the manifest on retry', async () => {
+  vi.stubGlobal('crypto', webcrypto);
   const { fetcher, manifest } = files();
   manifest.status = 'unavailable';
   const catalog = createExampleCatalog({ fetcher });
   expect((await catalog.status()).state).toBe('unavailable');
   expect((await catalog.load('branding')).reason).toBe('examples-not-ready');
-  expect(fetcher).toHaveBeenCalledTimes(1);
+  manifest.status = 'ready';
+  expect((await catalog.load('branding')).state).toBe('available');
+  expect(fetcher).toHaveBeenCalledTimes(4);
 });
 
 it.each([

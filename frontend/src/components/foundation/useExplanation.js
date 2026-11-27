@@ -28,8 +28,22 @@ export function useExplanation() {
         frame = requestAnimationFrame(() => {
           if (previous.href !== window.location.href || window.history.state?.explanation) return;
           if (previous.trigger.isConnected) {
-            window.scrollTo({ top: previous.y, behavior: 'instant' });
-            if (previous.panel) previous.panel.scrollTop = previous.panelTop;
+            if (previous.panel) {
+              window.scrollTo({ top: previous.y, behavior: 'instant' });
+              previous.panel.scrollTop = previous.panelTop;
+              const trigger = previous.trigger.getBoundingClientRect();
+              const panel = previous.panel.getBoundingClientRect();
+              if (trigger.top < panel.top || trigger.bottom > panel.bottom) {
+                previous.trigger.scrollIntoView({ block: 'center', behavior: 'instant' });
+              }
+            } else {
+              const trigger = previous.trigger.getBoundingClientRect();
+              const available = window.innerHeight - trigger.height;
+              const offset = previous.triggerTop >= 0 && previous.triggerTop <= available
+                ? previous.triggerTop : available / 2;
+              const top = window.scrollY + trigger.top - offset;
+              window.scrollTo({ top, behavior: 'instant' });
+            }
             previous.trigger.focus({ preventScroll: true });
           }
         });
@@ -54,6 +68,7 @@ export function useExplanation() {
     const active = window.history.state?.explanation;
     const next = {
       agent, surface, trigger, href: window.location.href, y: window.scrollY,
+      triggerTop: trigger.getBoundingClientRect().top,
       panel, panelTop: panel?.scrollTop, key: active?.key ?? performance.now(),
     };
     visit.current = next;
