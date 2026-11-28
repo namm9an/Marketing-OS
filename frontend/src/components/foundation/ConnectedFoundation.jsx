@@ -1,76 +1,55 @@
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo } from 'react';
 import { ArrowDown, ArrowUpRight } from 'lucide-react';
 import { createExampleCatalog } from '../../lib/exampleCatalog';
 import { useHomepageScroll } from '../../lib/useHomepageScroll';
 import VectorWordmark from './VectorWordmark';
 import ConnectedDiscovery from './ConnectedDiscovery';
+import { TopDock } from './TopDock';
+import { InteractiveButton } from './InteractiveButton';
 import './foundation.css';
 import './connected.css';
 
 const workingName = 'Marketing Helper';
+const NAV_ITEMS = [
+  { href: '#agents', label: 'Agents' },
+  { href: '#results', label: 'Results' },
+  { href: '#how-its-built', label: 'How it’s built' },
+];
 
-function ConsoleLink({ onOpenConsole }) {
+function ConsoleLink({ onOpenConsole, wrapperClassName = '' }) {
   function open(event) {
     if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button) return;
     event.preventDefault();
     onOpenConsole();
   }
 
-  return <a className="connected-action connected-console" href="/console" onClick={open}>
-    Open console <ArrowUpRight size={16} aria-hidden="true" />
-  </a>;
+  return (
+    <InteractiveButton
+      as="a"
+      href="/console"
+      label="Open console"
+      icon={ArrowUpRight}
+      variant="primary"
+      spider
+      className="connected-console"
+      wrapperClassName={wrapperClassName}
+      onClick={open}
+    />
+  );
 }
 
 function SpiderExplore() {
-  const canvas = useRef(null);
-  const anchor = useRef(null);
-
-  function draw(event) {
-    const layer = canvas.current;
-    const context = layer.getContext('2d');
-    if (!context) return;
-    const bounds = layer.getBoundingClientRect();
-    const scale = Math.min(2, window.devicePixelRatio || 1);
-    const width = Math.round(bounds.width * scale);
-    const height = Math.round(bounds.height * scale);
-    if (layer.width !== width || layer.height !== height) {
-      layer.width = width;
-      layer.height = height;
-    }
-    context.setTransform(scale, 0, 0, scale, 0, 0);
-    context.clearRect(0, 0, bounds.width, bounds.height);
-    if (!event || event.pointerType !== 'mouse' || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-
-    const button = anchor.current.getBoundingClientRect();
-    const x = event.clientX - bounds.left;
-    const y = event.clientY - bounds.top;
-    const edge = (event.clientX > button.left + button.width / 2 ? button.right : button.left) - bounds.left;
-    const middle = button.top + button.height / 2 - bounds.top;
-    const attachment = edge + (x < edge ? -7 : 7);
-    context.strokeStyle = getComputedStyle(anchor.current).color;
-    context.globalAlpha = 0.48;
-    context.lineWidth = 0.8;
-    context.beginPath();
-    for (let offset = -18; offset <= 18; offset += 9) {
-      context.moveTo(edge, middle + offset);
-      context.quadraticCurveTo(attachment, (middle + offset + y) / 2, x, y);
-    }
-    for (const fraction of [0.24, 0.42, 0.66]) {
-      const webX = edge + (x - edge) * fraction;
-      const webY = middle + (y - middle) * fraction;
-      const span = 18 * (1 - fraction);
-      context.moveTo(webX, webY - span);
-      context.quadraticCurveTo(webX + (edge - x) * 0.12, webY, webX, webY + span);
-    }
-    context.stroke();
-  }
-
-  return <div className="connected-spider" onPointerMove={draw} onPointerLeave={() => draw()}>
-    <canvas ref={canvas} aria-hidden="true" />
-    <a ref={anchor} className="connected-action connected-explore" href="#agents">
-      Explore the agents <ArrowDown size={18} aria-hidden="true" />
-    </a>
-  </div>;
+  return (
+    <InteractiveButton
+      as="a"
+      href="#agents"
+      label="Explore the agents"
+      icon={ArrowDown}
+      variant="secondary"
+      spider
+      className="connected-explore"
+    />
+  );
 }
 
 export default function ConnectedFoundation({ onOpenConsole }) {
@@ -87,12 +66,8 @@ export default function ConnectedFoundation({ onOpenConsole }) {
   return <div className="marketing-page connected-page with-grain" data-treatment="type" id="top">
     <header className="connected-header">
       <a className="connected-brand" href="#top">{workingName}</a>
-      <nav aria-label="Showcase">
-        <a href="#agents">Agents</a>
-        <a href="#results">Results</a>
-        <a href="#how-its-built">How it’s built</a>
-      </nav>
-      <ConsoleLink onOpenConsole={onOpenConsole} />
+      <TopDock items={NAV_ITEMS} ariaLabel="Showcase" />
+      <ConsoleLink onOpenConsole={onOpenConsole} wrapperClassName="connected-console-wrap" />
     </header>
     <main>
       <section className="connected-opening" aria-label="Opening">

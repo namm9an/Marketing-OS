@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Lenis from 'lenis';
+import { ArrowUpRight, ChevronLeft, ChevronRight } from 'lucide-react';
 import { AGENTS } from '../../lib/agents';
 import { useMediaQuery } from '../../lib/useMediaQuery';
 import { AGENT_COPY } from './agentCopy';
+import { InteractiveButton } from './InteractiveButton';
 import { SpecialistComparison } from './SpecialistComparison';
 import { useExplanation } from './useExplanation';
 import { ClaimMarkup } from './ClaimMarkup';
@@ -19,7 +21,7 @@ const workImages = {
   events: ['Event agenda', 'Session tracks', 'Journey map', 'Stage plan'],
 };
 
-const CLOSE_DURATION_MS = 190;
+const CLOSE_DURATION_MS = 540;
 
 const DOSSIER_HOLO_IMG_PROPS = {
   width: 360,
@@ -127,6 +129,8 @@ export default function ConnectedDiscovery({ catalog }) {
   const staticView = narrow || reduced;
   const gallery = useRef(null);
   const dialog = useRef(null);
+  const dossierScroll = useRef(null);
+  const dossierLenis = useRef(null);
   const opener = useRef(null);
   const restoreFocus = useRef(false);
   const revealDirectEntry = useRef(true);
@@ -253,7 +257,8 @@ export default function ConnectedDiscovery({ catalog }) {
           else panel.show();
         }
         if (justOpening || lastScrollAgent.current !== selected.agent) {
-          panel.scrollTop = 0;
+          if (dossierLenis.current) dossierLenis.current.scrollTo(0, { immediate: true });
+          else panel.scrollTop = 0;
           lastScrollAgent.current = selected.agent;
         } else if (isModalOpen !== narrow) {
           panel.scrollTop = savedTop;
@@ -293,6 +298,67 @@ export default function ConnectedDiscovery({ catalog }) {
       }
     };
   }, [cancelFocusFrame, finishClose, narrow, reduced, selected]);
+
+  const dossierOpen = Boolean(selected);
+
+  useEffect(() => {
+    const panel = dialog.current;
+    const content = dossierScroll.current;
+    if (!dossierOpen || narrow || reduced || !mouse || !panel || !content) return undefined;
+
+    const lenis = new Lenis({
+      wrapper: panel,
+      content,
+      eventsTarget: panel,
+      smoothWheel: true,
+      syncTouch: false,
+      lerp: 0.14,
+      autoResize: true,
+    });
+    dossierLenis.current = lenis;
+    let frame = null;
+
+    function cancelFrame() {
+      if (frame !== null) {
+        window.cancelAnimationFrame(frame);
+        frame = null;
+      }
+    }
+
+    function tick(time) {
+      frame = null;
+      lenis.raf(time);
+      if (lenis.isScrolling === 'smooth') frame = window.requestAnimationFrame(tick);
+    }
+
+    const unsubscribe = lenis.on('virtual-scroll', ({ event }) => {
+      if (event.type !== 'wheel' || event.ctrlKey || frame !== null || lenis.isStopped) return;
+      lenis.raf(performance.now());
+      frame = window.requestAnimationFrame(tick);
+    });
+
+    const scrollKeys = new Set(['ArrowUp', 'ArrowDown', 'PageUp', 'PageDown', 'Home', 'End', ' ']);
+    function onKeyDown(event) {
+      if (scrollKeys.has(event.key) && lenis.isScrolling === 'smooth') {
+        cancelFrame();
+        lenis.stop();
+        lenis.start();
+      }
+    }
+    panel.addEventListener('keydown', onKeyDown, true);
+
+    return () => {
+      panel.removeEventListener('keydown', onKeyDown, true);
+      unsubscribe();
+      cancelFrame();
+      lenis.destroy();
+      if (dossierLenis.current === lenis) dossierLenis.current = null;
+    };
+  }, [dossierOpen, narrow, reduced, mouse]);
+
+  useEffect(() => {
+    if (dossierOpen) dossierLenis.current?.resize();
+  }, [dossierOpen, activeTile?.id, stage?.surface, stage?.agent]);
 
   useEffect(() => {
     if (!selected) return;
@@ -440,11 +506,19 @@ export default function ConnectedDiscovery({ catalog }) {
         </div>}
       </div>}
       <div className="connected-picker" role="group" aria-label="Choose a specialist">
-        {AGENTS.map(({ id }) => <button key={id} type="button" data-agent={id}
-          aria-pressed={activeAgent === id}
-          onClick={event => selectTile(tiles.find(tile => tile.agent === id), event, { replace: Boolean(selected) })}>
-          {AGENT_COPY[id].name}
-        </button>)}
+        {AGENTS.map(({ id }) => (
+          <InteractiveButton
+            key={id}
+            as="button"
+            label={AGENT_COPY[id].name}
+            icon={ArrowUpRight}
+            variant="picker"
+            spider
+            data-agent={id}
+            aria-pressed={activeAgent === id}
+            onClick={event => selectTile(tiles.find(tile => tile.agent === id), event, { replace: Boolean(selected) })}
+          />
+        ))}
       </div>
     </section>
 
@@ -456,54 +530,59 @@ export default function ConnectedDiscovery({ catalog }) {
       onAnimationEnd={event => {
         if (event.target === dialog.current && closing) finishClose();
       }}>
-      {activeTile && <div key={activeAgent} className="connected-dossier-content">
-        <div className="connected-dossier-toolbar">
-          <button className="text-action" type="button" onClick={dismissDossier}>Close dossier</button>
-          {agentTiles.length > 1 && <div className="connected-dossier-step" role="group" aria-label={`${activeCopy.name} artifacts`}>
-            <button type="button" className="connected-step-btn" aria-label="Previous artifact" onClick={() => stepAgentTile(-1)}>
-              <ChevronLeft size={16} aria-hidden="true" />
-            </button>
-            <span className="connected-step-count">{activeTileIndex + 1} / {agentTiles.length}</span>
-            <button type="button" className="connected-step-btn" aria-label="Next artifact" onClick={() => stepAgentTile(1)}>
-              <ChevronRight size={16} aria-hidden="true" />
-            </button>
-          </div>}
-        </div>
-        <div className="connected-dossier-body">
-          <h2 id="dossier-title">{activeCopy.name}</h2>
-          <figure className="connected-selected-art" data-agent={activeAgent}>
-            <PokemonHoloCard
-              key={activeTile.image}
-              src={activeTile.image}
-              label={activeTile.label}
-              variant="dossier"
-              interactive={!reduced}
-              frontMost
-              imgProps={DOSSIER_HOLO_IMG_PROPS}
-            />
-            <figcaption><SpecialText key={activeTile.id}>{activeTile.label}</SpecialText></figcaption>
-          </figure>
-          {agentTiles.length > 1 && <div className="connected-artifact-tabs" role="group" aria-label="Browse role images">
-            {agentTiles.map(item => <button key={item.id} type="button"
-              aria-pressed={item.id === activeTile.id}
-              onClick={() => selectTile(item, null, { replace: true })}>
-              {item.label}
-            </button>)}
-          </div>}
-          <AgentExample agent={activeAgent} catalog={catalog} inDossier />
-          <button type="button" className="text-action dossier-explain" aria-expanded={stage?.surface === 'dossier'}
-            onClick={event => explanation.open(activeAgent, event.currentTarget, 'dossier')}>How it works</button>
-          {stage?.surface === 'dossier' && preview}
-        </div>
-      </div>}
+      <div ref={dossierScroll} className="connected-dossier-scroll">
+        {activeTile && <div key={activeAgent} className="connected-dossier-content">
+          <div className="connected-dossier-toolbar">
+            <button className="text-action" type="button" onClick={dismissDossier}>Close dossier</button>
+            {agentTiles.length > 1 && <div className="connected-dossier-step" role="group" aria-label={`${activeCopy.name} artifacts`}>
+              <button type="button" className="connected-step-btn" aria-label="Previous artifact" onClick={() => stepAgentTile(-1)}>
+                <ChevronLeft size={16} aria-hidden="true" />
+              </button>
+              <span className="connected-step-count">{activeTileIndex + 1} / {agentTiles.length}</span>
+              <button type="button" className="connected-step-btn" aria-label="Next artifact" onClick={() => stepAgentTile(1)}>
+                <ChevronRight size={16} aria-hidden="true" />
+              </button>
+            </div>}
+          </div>
+          <div className="connected-dossier-body">
+            <h2 id="dossier-title">{activeCopy.name}</h2>
+            <figure className="connected-selected-art" data-agent={activeAgent}>
+              <PokemonHoloCard
+                key={activeTile.image}
+                src={activeTile.image}
+                label={activeTile.label}
+                variant="dossier"
+                interactive={!reduced}
+                frontMost
+                imgProps={DOSSIER_HOLO_IMG_PROPS}
+              />
+              <figcaption><SpecialText key={activeTile.id}>{activeTile.label}</SpecialText></figcaption>
+            </figure>
+            {agentTiles.length > 1 && <div className="connected-artifact-tabs" role="group" aria-label="Browse role images">
+              {agentTiles.map(item => <button key={item.id} type="button"
+                aria-pressed={item.id === activeTile.id}
+                onClick={() => selectTile(item, null, { replace: true })}>
+                {item.label}
+              </button>)}
+            </div>}
+            <AgentExample agent={activeAgent} catalog={catalog} inDossier />
+            <button type="button" className="text-action dossier-explain" aria-expanded={stage?.surface === 'dossier'}
+              onClick={event => explanation.open(activeAgent, event.currentTarget, 'dossier')}>How it works</button>
+            {stage?.surface === 'dossier' && preview}
+          </div>
+        </div>}
+      </div>
     </dialog>
 
     <SpecialistComparison catalog={catalog}
-      onExplain={(agent, trigger) => explanation.open(agent, trigger, 'results')}
+      activeExplanation={stage?.surface === 'results' ? stage : null}
+      explanationNode={stage?.surface === 'results' ? preview : null}
+      onExplain={(agent, trigger) => {
+        if (stage?.surface === 'results' && stage.agent === agent) closeExplanation();
+        else explanation.open(agent, trigger, 'results');
+      }}
       onPairChange={previous => {
         if (stage?.surface === 'results' && stage.agent === previous) closeExplanation(undefined, true);
-      }}>
-      {stage?.surface === 'results' && preview}
-    </SpecialistComparison>
+      }} />
   </>;
 }

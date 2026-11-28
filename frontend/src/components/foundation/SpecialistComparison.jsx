@@ -1,11 +1,12 @@
 import { Fragment, useRef, useState } from 'react';
-import { ChevronDown } from 'lucide-react';
-import { AGENTS } from '../../lib/agents';
+import { ArrowRight } from 'lucide-react';
 import { AGENT_COPY } from './agentCopy';
 import { AgentExample } from './AgentExample';
+import { InteractiveButton } from './InteractiveButton';
+import { SpecialistDropdown } from './SpecialistDropdown';
 import './specialistComparison.css';
 
-export function SpecialistComparison({ catalog, onExplain, onPairChange, children }) {
+export function SpecialistComparison({ catalog, activeExplanation, explanationNode, onExplain, onPairChange }) {
   const [pair, setPair] = useState(['branding', 'pr']);
   const selects = useRef([]);
 
@@ -23,36 +24,47 @@ export function SpecialistComparison({ catalog, onExplain, onPairChange, childre
       {pair.map((agent, index) => {
         const position = index === 0 ? 'First' : 'Second';
         const name = AGENT_COPY[agent]?.name;
+        const labelId = 'compare-specialist-label-' + index;
+        const isExplaining = Boolean(agent && activeExplanation?.agent === agent);
         return <div className="comparison-position" key={position}
           role="group" aria-label={position + ' comparison position'}>
           <div className="comparison-control">
-            <label htmlFor={'compare-specialist-' + index}>{position} specialist</label>
+            <label id={labelId} htmlFor={'compare-specialist-' + index}>{position} specialist</label>
             {agent && <button type="button" className="comparison-remove" aria-label={'Remove ' + name}
               onClick={() => {
                 replace(index, '');
-                selects.current[index].focus();
+                selects.current[index]?.focus();
               }}>Remove</button>}
-            <div className="comparison-select-wrap">
-              <select id={'compare-specialist-' + index} value={agent}
-                ref={node => { selects.current[index] = node; }}
-                onChange={event => replace(index, event.target.value)}>
-                <option value="">Choose a specialist</option>
-                {AGENTS.map(({ id }) => <option key={id} value={id} disabled={id === pair[1 - index]}>
-                  {AGENT_COPY[id].name}
-                </option>)}
-              </select>
-              <ChevronDown aria-hidden="true" size={20} />
-            </div>
+            <SpecialistDropdown
+              id={'compare-specialist-' + index}
+              labelId={labelId}
+              value={agent}
+              disabledId={pair[1 - index]}
+              onChange={next => replace(index, next)}
+              buttonRef={node => { selects.current[index] = node; }}
+            />
           </div>
           {agent ? <Fragment key={agent}>
             <AgentExample agent={agent} catalog={catalog} inComparison />
-            <button type="button" className="comparison-explain" aria-label={'How it works for ' + name}
-              onClick={event => onExplain(agent, event.currentTarget)}>How it works</button>
+            <InteractiveButton
+              as="button"
+              label="How it works"
+              icon={ArrowRight}
+              variant="explain"
+              spider
+              className="comparison-explain"
+              wrapperClassName="comparison-explain-wrap"
+              aria-expanded={isExplaining}
+              aria-label={'How it works for ' + name}
+              onClick={event => onExplain(agent, event.currentTarget)}
+            />
+            {isExplaining && explanationNode && (
+              <div className="comparison-explanation-slot">{explanationNode}</div>
+            )}
           </Fragment> : <p className="comparison-empty">Choose a specialist to see their brief and recommendation.</p>}
         </div>;
       })}
     </div>
-    {children}
     <a className="text-action comparison-return" href="#agents">Back to agents</a>
   </section>;
 }

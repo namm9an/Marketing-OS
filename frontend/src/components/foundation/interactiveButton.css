@@ -1,0 +1,202 @@
+.spider-wrap {
+  position: relative;
+  display: inline-flex;
+  padding: 8px;
+  margin: -8px;
+}
+
+.spider-canvas {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  z-index: 3;
+}
+
+.marketing-page .ib {
+  --ib-bg: var(--paper);
+  --ib-fg: var(--ink);
+  --ib-border: var(--ink);
+  --ib-fill: var(--ink);
+  --ib-hover-fg: var(--paper);
+  --ib-dot-color: var(--ink);
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 46px;
+  padding: 0 24px;
+  border: 1px solid var(--ib-border);
+  border-radius: 999px;
+  background: var(--ib-bg);
+  color: var(--ib-fg);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -.01em;
+  line-height: 1.1;
+  text-decoration: none;
+  white-space: nowrap;
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color 220ms ease, box-shadow 220ms ease, background-color 220ms ease;
+}
+
+.marketing-page .ib--primary {
+  --ib-bg: var(--yellow);
+  --ib-fg: var(--ink);
+  --ib-border: var(--ink);
+  --ib-fill: var(--ink);
+  --ib-hover-fg: var(--yellow);
+  --ib-dot-color: var(--ink);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.marketing-page .ib--secondary {
+  --ib-bg: transparent;
+  --ib-fg: var(--ink);
+  --ib-border: var(--ink);
+  --ib-fill: var(--ink);
+  --ib-hover-fg: var(--paper);
+  --ib-dot-color: var(--ink);
+}
+
+.marketing-page .ib--picker {
+  --ib-bg: transparent;
+  --ib-fg: var(--ink);
+  --ib-border: var(--rule);
+  --ib-fill: var(--ink);
+  --ib-hover-fg: var(--paper);
+  --ib-dot-color: var(--ink);
+  min-height: 44px;
+  padding: 0 22px;
+  font-size: 14px;
+}
+
+.marketing-page .ib--picker:is(:hover, :focus-visible) {
+  --ib-border: var(--ink);
+}
+
+.marketing-page .ib--picker[aria-pressed="true"] {
+  --ib-bg: var(--yellow);
+  --ib-border: var(--ink);
+  --ib-hover-fg: var(--yellow);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.marketing-page .ib--explain {
+  --ib-bg: transparent;
+  --ib-fg: var(--ink);
+  --ib-border: var(--ink);
+  --ib-fill: var(--ink);
+  --ib-hover-fg: var(--paper);
+  --ib-dot-color: var(--ink);
+  min-height: 44px;
+  padding: 0 22px;
+  font-size: 14px;
+}
+
+.marketing-page .ib--explain[aria-expanded="true"] {
+  --ib-bg: var(--yellow);
+  --ib-hover-fg: var(--yellow);
+  box-shadow: 2px 2px 0 var(--ink);
+}
+
+.ib-dot {
+  position: absolute;
+  left: 16px;
+  top: 50%;
+  z-index: 0;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: var(--ib-dot-color);
+  transform: translateY(-50%) scale(1);
+  pointer-events: none;
+  transition:
+    left 320ms cubic-bezier(.22, 1, .36, 1),
+    top 320ms cubic-bezier(.22, 1, .36, 1),
+    width 320ms cubic-bezier(.22, 1, .36, 1),
+    height 320ms cubic-bezier(.22, 1, .36, 1),
+    transform 320ms cubic-bezier(.22, 1, .36, 1),
+    background-color 220ms ease;
+}
+
+.ib-idle {
+  position: relative;
+  z-index: 1;
+  display: inline-block;
+  padding-left: 14px;
+  transform: translateX(0);
+  opacity: 1;
+  transition: transform 300ms cubic-bezier(.22, 1, .36, 1), opacity 240ms ease;
+}
+
+.ib-hover {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  color: var(--ib-hover-fg);
+  transform: translateX(26px);
+  opacity: 0;
+  pointer-events: none;
+  transition: transform 300ms cubic-bezier(.22, 1, .36, 1), opacity 240ms ease;
+}
+
+.ib-icon {
+  flex-shrink: 0;
+}
+
+.marketing-page .ib:is(:hover, :focus-visible) .ib-dot {
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background: var(--ib-fill);
+  transform: translateY(0) scale(1.65);
+}
+
+.marketing-page .ib:is(:hover, :focus-visible) .ib-idle {
+  transform: translateX(28px);
+  opacity: 0;
+}
+
+.marketing-page .ib:is(:hover, :focus-visible) .ib-hover {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.marketing-page .ib:active {
+  transform: translateY(1px);
+}
+
+.marketing-page .ib:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 3px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .spider-canvas {
+    display: none;
+  }
+  .ib-dot,
+  .ib-idle,
+  .ib-hover {
+    transition: none;
+  }
+  .marketing-page .ib:is(:hover, :focus-visible) .ib-dot {
+    transform: none;
+    border-radius: 0;
+  }
+  .marketing-page .ib:is(:hover, :focus-visible) .ib-idle {
+    transform: none;
+  }
+  .marketing-page .ib:is(:hover, :focus-visible) .ib-hover {
+    transform: none;
+  }
+}
